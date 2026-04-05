@@ -1,4 +1,4 @@
-# FEAT-CRM: Customer Relationship Management
+# FEAT-004: Customer Relationship Management
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -11,7 +11,7 @@
 
 SatERP's CRM module replaces Salesforce/HubSpot with a fully integrated customer relationship management system purpose-built for satellite operator sales cycles. These cycles are long (6-18 months), complex (multi-stakeholder, multi-entity, frequently involving government and military buyers), and multinational (customers span governments, militaries, telcos, and enterprises worldwide, including conflict zones like Ukraine and Israel).
 
-The CRM is not a bolt-on -- it is the front door to the commercial system. Contacts and companies flow into opportunities, opportunities generate quotes (FEAT-SLS), quotes become orders, and orders drive fulfillment and billing. Pipeline data feeds forecasting. Campaign attribution traces marketing spend to closed revenue. Customer health scoring on capacity accounts feeds renewal and upsell workflows.
+The CRM is not a bolt-on -- it is the front door to the commercial system. Contacts and companies flow into opportunities, opportunities generate quotes (FEAT-003), quotes become orders, and orders drive fulfillment and billing. Pipeline data feeds forecasting. Campaign attribution traces marketing spend to closed revenue. Customer health scoring on capacity accounts feeds renewal and upsell workflows.
 
 By building CRM into the ERP rather than integrating an external system, SatERP eliminates the data synchronization problems, licensing costs, and vendor dependency that satellite operators currently suffer with Salesforce/HubSpot alongside NetSuite/SAP.
 
@@ -90,7 +90,7 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 - AC-CRM-002-03: Each stage has a default probability used for weighted forecasting.
 - AC-CRM-002-04: Stage history is logged with timestamps and duration-in-stage metrics.
 - AC-CRM-002-05: Pipeline views support filtering and grouping by rep, region, product line, stage, and close-date range.
-- AC-CRM-002-06: Opportunities link to one or more quotes (FEAT-SLS); quote status is visible on the opportunity record.
+- AC-CRM-002-06: Opportunities link to one or more quotes (FEAT-003); quote status is visible on the opportunity record.
 
 ### CRM-003: Activity Tracking
 
@@ -187,7 +187,7 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 4. Rep qualifies the lead through discovery activities (calls, emails, meetings).
 5. Qualified lead is converted: system creates contact, company (or links to existing), and opportunity.
 6. Rep advances opportunity through pipeline stages, logging activities at each step.
-7. At the Proposal stage, rep creates a quote in FEAT-SLS linked to the opportunity.
+7. At the Proposal stage, rep creates a quote in FEAT-003 linked to the opportunity.
 8. Quote approval, customer negotiation, and close cycle proceed in Sales module.
 9. Closed Won opportunity updates forecast actuals and campaign attribution.
 
@@ -215,10 +215,10 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 
 | System | Direction | Data |
 |--------|-----------|------|
-| **Sales & Commercial (FEAT-SLS)** | Bidirectional | Opportunity-to-quote handoff; quote status on opportunities; customer master sync; renewal pipeline |
-| **Financial Management (FEAT-FIN)** | Inbound | Closed revenue data for forecast-vs-actual and campaign ROI calculations |
-| **Export Control (FEAT-EXP)** | Inbound | Country and entity risk flags displayed on company and contact records |
-| **Orbital Asset Management (FEAT-OAM)** | Inbound | Capacity utilization data feeding customer health scores |
+| **Sales & Commercial (FEAT-003)** | Bidirectional | Opportunity-to-quote handoff; quote status on opportunities; customer master sync; renewal pipeline |
+| **Financial Management (FEAT-001)** | Inbound | Closed revenue data for forecast-vs-actual and campaign ROI calculations |
+| **Export Control (FEAT-006)** | Inbound | Country and entity risk flags displayed on company and contact records |
+| **Orbital Asset Management (FEAT-005)** | Inbound | Capacity utilization data feeding customer health scores |
 | **Email Provider** | Bidirectional | Email sync (sent/received), open/click tracking, template sends |
 | **Web Forms / Marketing Automation** | Inbound | Lead capture from website, landing pages, and third-party event platforms |
 

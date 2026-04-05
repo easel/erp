@@ -1,4 +1,4 @@
-# FEAT-PLT: Platform & Infrastructure
+# FEAT-009: Platform & Infrastructure
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft

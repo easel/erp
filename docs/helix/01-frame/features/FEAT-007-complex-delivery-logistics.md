@@ -1,4 +1,4 @@
-# FEAT-LOG: Complex Delivery & Logistics
+# FEAT-007: Complex Delivery & Logistics
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -11,7 +11,7 @@
 
 Satellite operators deliver hardware -- terminals, modems, antennas, ground station equipment, RF assemblies -- to some of the most challenging destinations on Earth. Customers operate in conflict zones (Ukraine, Israel), sanctioned or restricted territories, remote island ground stations, polar monitoring sites, and maritime platforms. Standard carrier integrations are not sufficient; a single shipment may require diplomatic clearance, military logistics coordination, ATA Carnet documentation, multi-modal freight across air/ocean/ground, and GPS-verified proof of delivery before the corresponding AR invoice can be released.
 
-This module handles the full logistics chain from warehouse pick through final delivery confirmation, with export compliance checks enforced at every gate. It works hand-in-hand with FEAT-EXP (Export Control & Sanctions Compliance) to ensure no hardware leaves without validated classification, screening, and licensing. It also integrates tightly with Sales (fulfillment triggers), Financial Management (freight cost allocation, duty accruals, AR reconciliation), and Procurement (inbound receipt and RMA processing).
+This module handles the full logistics chain from warehouse pick through final delivery confirmation, with export compliance checks enforced at every gate. It works hand-in-hand with FEAT-006 (Export Control & Sanctions Compliance) to ensure no hardware leaves without validated classification, screening, and licensing. It also integrates tightly with Sales (fulfillment triggers), Financial Management (freight cost allocation, duty accruals, AR reconciliation), and Procurement (inbound receipt and RMA processing).
 
 The design assumes that "normal" shipments (domestic US, allied-nation commercial) and "complex" shipments (conflict zone, restricted destination, remote/austere site) flow through the same workflow engine, with complexity injected by destination classification rules rather than parallel codepaths.
 
@@ -79,7 +79,7 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 2. Warehouse operator can scan item serial/lot numbers during packing; mismatched serials are rejected.
 3. Carrier selection presents configured carrier accounts with rate estimates (where carrier API supports it).
 4. Label generation produces a carrier-compliant shipping label and captures the tracking number on the shipment record.
-5. Shipment cannot be confirmed if any line item has an unresolved export compliance hold (integration with FEAT-EXP).
+5. Shipment cannot be confirmed if any line item has an unresolved export compliance hold (integration with FEAT-006).
 6. Shipment confirmation triggers inventory deduction and updates the sales order fulfillment status.
 
 ### LOG-002: Customs Documentation (P0)
@@ -199,7 +199,7 @@ Sales Order Confirmed
   --> Pick list generated (warehouse assignment)
   --> Warehouse pick (scan items, verify serial/lot)
   --> Pack (assign to packages, capture dimensions/weight)
-  --> Export compliance gate (FEAT-EXP: screening, classification, license check)
+  --> Export compliance gate (FEAT-006: screening, classification, license check)
   --> Customs document generation (commercial invoice, packing list, AES data)
   --> Carrier selection & label generation
   --> Ship confirmation (tracking number captured, inventory deducted)
@@ -232,7 +232,7 @@ Sales Order Confirmed (ship-to country = restricted or sanctioned)
 ```
 Sales Order Confirmed (ship-to country = conflict zone)
   --> Standard pick/pack
-  --> Export compliance gate (FEAT-EXP)
+  --> Export compliance gate (FEAT-006)
   --> Restricted destination approval workflow
   --> HOLD: Conflict zone workflow initiated (from country-specific template)
       --> Diplomatic clearance request submitted & tracked
@@ -293,12 +293,12 @@ RMA Authorized (from sales order or support case)
 
 | Module | Integration | Direction |
 |--------|-------------|-----------|
-| **Sales (FEAT-SLS)** | Sales order fulfillment triggers shipment creation; shipment status updates sales order status; delivery confirmation can trigger invoice release. | Bidirectional |
-| **Export Control (FEAT-EXP)** | Every shipment passes through export compliance screening before release. Product classification, denied-party results, and license references are consumed by logistics. Restricted destination rules are co-managed. | Bidirectional |
-| **Financial Management (FEAT-FIN)** | Freight costs posted to GL; duty and tax accruals on import; AR reconciliation on delivery confirmation; landed cost calculation. | Logistics --> Finance |
-| **Procurement (FEAT-SCM)** | Inbound goods receipt (PO receiving) uses shared warehouse operations. RMA returns follow return receipt workflow. | Bidirectional |
-| **Inventory (FEAT-SCM)** | Pick operations check and reserve inventory; ship confirmation deducts inventory; returns update inventory. Serial/lot tracking shared. | Bidirectional |
-| **Platform (FEAT-PLT)** | Workflow engine drives approval workflows. Audit log captures all logistics events. RBAC controls access to compliance-sensitive operations. Notifications for shipment events. | Logistics --> Platform |
+| **Sales (FEAT-003)** | Sales order fulfillment triggers shipment creation; shipment status updates sales order status; delivery confirmation can trigger invoice release. | Bidirectional |
+| **Export Control (FEAT-006)** | Every shipment passes through export compliance screening before release. Product classification, denied-party results, and license references are consumed by logistics. Restricted destination rules are co-managed. | Bidirectional |
+| **Financial Management (FEAT-001)** | Freight costs posted to GL; duty and tax accruals on import; AR reconciliation on delivery confirmation; landed cost calculation. | Logistics --> Finance |
+| **Procurement (FEAT-002)** | Inbound goods receipt (PO receiving) uses shared warehouse operations. RMA returns follow return receipt workflow. | Bidirectional |
+| **Inventory (FEAT-002)** | Pick operations check and reserve inventory; ship confirmation deducts inventory; returns update inventory. Serial/lot tracking shared. | Bidirectional |
+| **Platform (FEAT-009)** | Workflow engine drives approval workflows. Audit log captures all logistics events. RBAC controls access to compliance-sensitive operations. Notifications for shipment events. | Logistics --> Platform |
 
 ### External Systems
 

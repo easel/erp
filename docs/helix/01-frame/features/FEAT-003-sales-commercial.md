@@ -1,4 +1,4 @@
-# FEAT-SLS: Sales & Commercial
+# FEAT-003: Sales & Commercial
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -212,13 +212,13 @@ Both GEO and LEO business models are first-class citizens. A GEO operator leasin
 
 | System | Direction | Data |
 |--------|-----------|------|
-| **CRM (FEAT-CRM)** | Bidirectional | Opportunity-to-quote handoff; customer master sync; renewal pipeline visibility |
-| **Financial Management (FEAT-FIN)** | Outbound | Invoice generation, revenue recognition schedules, credit memo posting |
-| **Export Control (FEAT-EXP)** | Outbound/Inbound | Denied-party screening requests, classification lookups, hold/release signals |
-| **Orbital Asset Management (FEAT-OAM)** | Bidirectional | Capacity availability queries, allocation commits, usage metering data |
-| **Logistics (FEAT-LOG)** | Outbound | Fulfillment release, shipping instructions, customs documentation data |
-| **Program Management (FEAT-PGM)** | Inbound | Milestone completion events for milestone billing triggers |
-| **Inventory (FEAT-SCM)** | Bidirectional | Stock availability for quoting, allocation on order, receipt for returns |
+| **CRM (FEAT-004)** | Bidirectional | Opportunity-to-quote handoff; customer master sync; renewal pipeline visibility |
+| **Financial Management (FEAT-001)** | Outbound | Invoice generation, revenue recognition schedules, credit memo posting |
+| **Export Control (FEAT-006)** | Outbound/Inbound | Denied-party screening requests, classification lookups, hold/release signals |
+| **Orbital Asset Management (FEAT-005)** | Bidirectional | Capacity availability queries, allocation commits, usage metering data |
+| **Logistics (FEAT-007)** | Outbound | Fulfillment release, shipping instructions, customs documentation data |
+| **Program Management (FEAT-008)** | Inbound | Milestone completion events for milestone billing triggers |
+| **Inventory (FEAT-002)** | Bidirectional | Stock availability for quoting, allocation on order, receipt for returns |
 
 ## Open Design Questions
 

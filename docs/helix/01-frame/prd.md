@@ -123,14 +123,15 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 | EXP-001 | P0 | Product classification engine: USML category and CCL ECCN assignment per item with jurisdiction determination (ITAR vs. EAR) |
 | EXP-002 | P0 | Denied-party screening: automated screening of customers, vendors, end-users, and intermediaries against OFAC SDN, Entity List, Denied Persons List, Unverified List, and allied-nation restricted lists on every transaction |
 | EXP-003 | P0 | Transaction hold: automatic hold on any sales order, PO, or shipment that fails screening or lacks required export authorization |
-| EXP-004 | P0 | Country-based restriction rules: configurable embargo and restriction rules by destination country, triggered on order entry and shipping |
+| EXP-004 | P0 | Country and region-based restriction rules: configurable embargo and restriction rules by destination country and sub-national region (e.g., Crimea, Donetsk, Luhansk within Ukraine), triggered on order entry and shipping; addresses that cannot be definitively resolved to a non-restricted region must route to an ambiguous-address manual review workflow |
 | EXP-005 | P1 | Export license management: DSP-5, DSP-73, DSP-85, TAA, and BIS license tracking with expiration alerts, quantity/value drawdown against license limits, and proviso compliance |
-| EXP-006 | P1 | Screening list auto-update: automated ingestion of updated OFAC, BIS, and allied-nation screening lists (daily or on-publish) |
+| EXP-006 | P0 | Screening list auto-update: automated daily ingestion of updated OFAC, BIS, and allied-nation screening lists with manual upload fallback for air-gapped environments |
 | EXP-007 | P1 | End-use certificate management: generation, tracking, and archival of end-use/end-user certificates for defense articles |
 | EXP-008 | P1 | Audit trail: immutable log of all screening results, classification decisions, license applications, and compliance officer overrides |
 | EXP-009 | P2 | Deemed export control: foreign person access tracking, technology control plan management, and deemed export license tracking |
 | EXP-010 | P2 | Compliance reporting: ITAR annual compliance reports, BIS semi-annual reports, and voluntary self-disclosure support |
 | EXP-011 | P2 | Sanctions scenario modeling: "what-if" analysis for proposed transactions against current sanctions landscape |
+| EXP-012 | P0 | Region-aware sanctions handling: the system must maintain sub-national region restriction records for territories subject to region-level sanctions (e.g., Crimea, Donetsk, Luhansk), match shipping addresses against restricted regions using address parsing and geocoding where available, and route ambiguous or unparseable addresses to a compliance officer manual review queue rather than allowing the transaction to proceed |
 
 ### 3.7 Complex Delivery & Logistics
 
@@ -199,7 +200,7 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 - Procurement (P0): POs, vendor management, inventory, receipts
 - Sales (P0): Quotes, orders, invoicing, customer master, product catalog
 - CRM (P0): Contacts, companies, pipeline, activities
-- Export Control (P0): Classification, denied-party screening, transaction holds, country restrictions
+- Export Control (P0): Classification, denied-party screening, transaction holds, country/region restrictions, automated screening list ingestion
 - Logistics (P0): Pick/pack/ship, customs docs
 - Platform (P0): Auth, RBAC, audit log, APIs, database
 
@@ -215,7 +216,7 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 - CPQ and Contract Management (P1): Bundled pricing, multi-year capacity contracts, milestone billing
 - Advanced CRM (P1): Forecasting, lead scoring, campaigns, territories
 - Launch Procurement (P1): Launch service agreements, manifest management
-- Export License Management (P1): License tracking, drawdown, end-use certificates
+- Export License Management (P1): License tracking, drawdown, end-use certificates, audit trail
 - Program Management (P1): WBS, milestones, milestone billing integration
 
 **Exit criteria:** Orbital assets are tracked in the ERP and linked to customer contracts and financial records. Revenue recognition for capacity contracts is automated. Export licensing is managed in-system.

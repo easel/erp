@@ -1,4 +1,4 @@
-# FEAT-FIN: Financial Management
+# FEAT-001: Financial Management
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft

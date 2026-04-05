@@ -1,4 +1,4 @@
-# FEAT-EXP: Export Control & Sanctions Compliance
+# FEAT-006: Export Control & Sanctions Compliance
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -15,7 +15,7 @@ The system must make it **difficult to accidentally violate regulations**. ITAR 
 
 Every sales order, purchase order, and shipment must pass automated compliance screening before it can proceed. Compliance failures result in automatic transaction holds that require explicit compliance officer authorization to release. The immutable audit trail captures every screening result, classification decision, and override for regulatory examination and voluntary self-disclosure.
 
-This module is P0 and ships in Phase 1 (classification, denied-party screening, transaction holds, country restrictions). Phase 2 adds license management, screening list auto-update, end-use certificates, and the immutable audit trail. Phase 3 adds deemed export control, compliance reporting, and sanctions scenario modeling.
+This module is P0 and ships in Phase 1 (classification, denied-party screening, transaction holds, country restrictions, and automated screening list ingestion). Phase 2 adds license management, end-use certificates, and the immutable audit trail. Phase 3 adds deemed export control, compliance reporting, and sanctions scenario modeling.
 
 ### Regulatory Framework
 
@@ -59,6 +59,14 @@ This module is P0 and ships in Phase 1 (classification, denied-party screening, 
 - **As a sales rep,** I want to be warned immediately at order entry if the ship-to country triggers any restriction so that I know before quoting whether the deal requires special authorization.
 - **As a logistics coordinator,** I want the system to block shipment creation for embargoed destinations unless an explicit license or authorization is on file so that no hardware ships to a prohibited country by accident.
 - **As a compliance officer,** I want to maintain per-country rules that account for the distinction between comprehensive sanctions (e.g., North Korea, Iran) and selective sanctions (e.g., Russia sectoral sanctions) so that the system enforces the correct level of restriction for each destination.
+
+### Sub-Country / Region-Level Sanctions
+
+- **As a compliance officer,** I need the system to distinguish between shipments to government-controlled Ukraine vs. Crimea/Donetsk/Luhansk, because sanctions differ by region within the same country.
+- **As a compliance officer,** I want to configure region-level restriction rules independently from their parent country so that sub-national sanctions regimes (e.g., Crimea embargoed while mainland Ukraine is unrestricted) are enforced correctly.
+- **As a logistics coordinator,** I want the system to parse shipping addresses and match them against restricted sub-national regions so that shipments are automatically flagged when the destination falls within a sanctioned territory.
+- **As a compliance officer,** I want addresses that cannot be definitively resolved to a restricted or non-restricted region to be routed to a manual review queue so that ambiguous destinations are never shipped to without human judgment.
+- **As a compliance officer,** I want to maintain a registry of sub-national restricted regions with their geographic boundaries, applicable sanctions programs, and effective dates so that the region restriction data is auditable and current.
 
 ### License Management
 
@@ -139,6 +147,18 @@ This module is P0 and ships in Phase 1 (classification, denied-party screening, 
 | EXP-004-AC05 | Country restriction checks run at both order entry and shipment creation; a country that becomes restricted between order entry and shipment triggers a new hold |
 | EXP-004-AC06 | The system supports sub-country restrictions (e.g., Crimea region within Ukraine) using a secondary region field, so that shipments to non-restricted regions of a partially restricted country are not unnecessarily blocked |
 | EXP-004-AC07 | Country restriction rule changes are versioned and audited; a compliance officer must provide a reason and regulatory reference when changing a country's restriction level |
+
+### EXP-012: Region-Aware Sanctions Handling
+
+| ID | Criterion |
+|----|-----------|
+| EXP-012-AC01 | The system maintains a `RegionRestriction` registry of sub-national restricted territories, each with: parent country code (ISO 3166-1), region identifier, region name, geographic boundary definition (list of administrative divisions or GeoJSON polygon), restriction level, applicable sanctions program(s), effective date, and expiration date |
+| EXP-012-AC02 | Pre-loaded region data covers all current US sub-national sanctions programs: Crimea, so-called Donetsk People's Republic, and so-called Luhansk People's Republic regions of Ukraine |
+| EXP-012-AC03 | On order entry and shipment creation, the system parses the destination address and attempts to resolve it to a specific sub-national region; if the resolved region matches a restricted territory, the applicable restriction level is enforced (embargo, hold, or caution) |
+| EXP-012-AC04 | When an address cannot be definitively resolved to either a restricted or non-restricted region (ambiguous address), the transaction is placed on compliance hold with hold reason `AMBIGUOUS_REGION` and routed to the compliance officer manual review queue |
+| EXP-012-AC05 | The compliance officer can resolve an ambiguous-region hold by confirming the address is in a non-restricted area (with rationale) or confirming it is in a restricted area (triggering the appropriate restriction workflow) |
+| EXP-012-AC06 | Region restriction records are versioned and audited with the same controls as country restriction records (EXP-004-AC07) |
+| EXP-012-AC07 | The system supports both administrative-division-based matching (e.g., matching against a list of oblast/raion names) and coordinate-based matching (geocoded address checked against a GeoJSON boundary) to maximize coverage across address formats |
 
 ### EXP-005: Export License Management
 
@@ -314,7 +334,7 @@ ComplianceHold
   - id: UUID
   - transactionType: enum [SALES_ORDER, PURCHASE_ORDER, SHIPMENT]
   - transactionId: UUID
-  - holdReason: enum [SCREENING_MATCH, MISSING_LICENSE, COUNTRY_RESTRICTION, MISSING_CLASSIFICATION, MISSING_END_USE_CERT]
+  - holdReason: enum [SCREENING_MATCH, MISSING_LICENSE, COUNTRY_RESTRICTION, AMBIGUOUS_REGION, MISSING_CLASSIFICATION, MISSING_END_USE_CERT]
   - triggeringEntityId: UUID | null      // FK -> ScreeningResult, CountryRestriction, etc.
   - status: enum [ACTIVE, RELEASED, REJECTED, ESCALATED]
   - createdAt: timestamp
@@ -327,12 +347,29 @@ ComplianceHold
 CountryRestriction
   - id: UUID
   - countryCode: string                  // ISO 3166-1 alpha-2
-  - regionCode: string | null            // sub-country region (e.g., "CRIMEA")
+  - regionCode: string | null            // sub-country region (e.g., "CRIMEA") — deprecated, use RegionRestriction for sub-national rules
   - restrictionLevel: enum [EMBARGOED, HEAVILY_RESTRICTED, LICENSE_REQUIRED, CAUTION, UNRESTRICTED]
   - sanctionsPrograms: string[]          // e.g., ["OFAC_IRAN", "EAR_RUSSIA_SECTORAL"]
   - effectiveDate: date
   - expirationDate: date | null
   - regulatoryReference: string          // e.g., "EO 13662, Directive 4"
+  - version: integer
+  - changedBy: UUID (FK -> User)
+  - changeReason: text
+
+RegionRestriction
+  - id: UUID
+  - countryCode: string                  // ISO 3166-1 alpha-2 (parent country)
+  - regionIdentifier: string             // e.g., "UA-43" (Crimea), "UA-14" (Donetsk)
+  - regionName: string                   // e.g., "Crimea", "Donetsk", "Luhansk"
+  - boundaryType: enum [ADMIN_DIVISION, GEOJSON_POLYGON]
+  - adminDivisions: string[] | null      // list of administrative division names/codes
+  - geojsonBoundary: jsonb | null        // GeoJSON polygon for coordinate-based matching
+  - restrictionLevel: enum [EMBARGOED, HEAVILY_RESTRICTED, LICENSE_REQUIRED, CAUTION, UNRESTRICTED]
+  - sanctionsPrograms: string[]          // e.g., ["OFAC_CRIMEA"]
+  - effectiveDate: date
+  - expirationDate: date | null
+  - regulatoryReference: string          // e.g., "EO 13685"
   - version: integer
   - changedBy: UUID (FK -> User)
   - changeReason: text
@@ -390,6 +427,8 @@ EndUseCertificate      *---*  Shipment
 TechnologyControlPlan  *---1  ForeignPerson
 TechnologyControlPlan  *---0..1  Program
 CountryRestriction     *---1  Country (by code)
+RegionRestriction      *---1  Country (by code, parent country)
+ComplianceHold         *---0..1  RegionRestriction (for AMBIGUOUS_REGION holds)
 ```
 
 ---
@@ -590,9 +629,9 @@ System checks: does the program involve ITAR/EAR items?
 
 | External System | Integration Method | Data Flow | Phase |
 |----------------|-------------------|-----------|-------|
-| **OFAC SDN / Consolidated Lists** | HTTPS download from `sanctionslist.ofac.treas.gov` (CSV/XML) | Inbound: screening list data | Phase 2 (manual upload Phase 1) |
-| **BIS Entity/Denied/Unverified Lists** | HTTPS download from BIS website (CSV) | Inbound: screening list data | Phase 2 (manual upload Phase 1) |
-| **Allied-Nation Lists** (UK, EU, AU, CA) | HTTPS download from respective government sources | Inbound: screening list data | Phase 2 |
+| **OFAC SDN / Consolidated Lists** | HTTPS download from `sanctionslist.ofac.treas.gov` (CSV/XML) | Inbound: screening list data | Phase 1 (automated daily ingestion; manual upload fallback for air-gapped environments) |
+| **BIS Entity/Denied/Unverified Lists** | HTTPS download from BIS website (CSV) | Inbound: screening list data | Phase 1 (automated daily ingestion; manual upload fallback for air-gapped environments) |
+| **Allied-Nation Lists** (UK, EU, AU, CA) | HTTPS download from respective government sources | Inbound: screening list data | Phase 1 (automated daily ingestion) |
 | **DDTC D-Trade** | Manual (no API available) | License applications and status | Manual workflow |
 | **BIS SNAP-R** | Manual (no public API) | BIS license applications | Manual workflow |
 | **AES / ACE (Census/CBP)** | Future integration for electronic export filing | Outbound: export declarations | Phase 3+ |
@@ -640,4 +679,4 @@ System checks: does the program involve ITAR/EAR items?
 
 ---
 
-*This feature specification is governed by the [PRD](../prd.md). All design and implementation decisions must trace back to requirements EXP-001 through EXP-011 defined therein.*
+*This feature specification is governed by the [PRD](../prd.md). All design and implementation decisions must trace back to requirements EXP-001 through EXP-012 defined therein.*

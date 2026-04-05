@@ -1,4 +1,4 @@
-# FEAT-OAM: Orbital Asset Management
+# FEAT-005: Orbital Asset Management
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -300,7 +300,7 @@ Design → Manufacturing → Launch → Commissioning → Operational → End-of
 
 ## Integration Points
 
-### Financial Management (FEAT-FIN)
+### Financial Management (FEAT-001)
 
 | Direction | Data | Purpose |
 |-----------|------|---------|
@@ -308,15 +308,15 @@ Design → Manufacturing → Launch → Commissioning → Operational → End-of
 | OAM → FIN | Spectrum lease terms, payment schedules | Operating expense recognition and amortization |
 | FIN → OAM | Book value, accumulated depreciation | Display on satellite asset dashboard |
 
-### Sales and Contract Management (FEAT-SCM)
+### Sales and Contract Management (FEAT-003)
 
 | Direction | Data | Purpose |
 |-----------|------|---------|
-| OAM → SCM | Available capacity inventory (transponder/beam) | Contract quoting and capacity reservation |
-| SCM → OAM | Executed contract line items | Activate capacity allocations, set start/end dates |
-| OAM → SCM | Utilization data, anomaly impacts | Contract compliance reporting, SLA monitoring |
+| OAM → SLS | Available capacity inventory (transponder/beam) | Contract quoting and capacity reservation |
+| SLS → OAM | Executed contract line items | Activate capacity allocations, set start/end dates |
+| OAM → SLS | Utilization data, anomaly impacts | Contract compliance reporting, SLA monitoring |
 
-### Program Management (FEAT-PGM)
+### Program Management (FEAT-008)
 
 | Direction | Data | Purpose |
 |-----------|------|---------|

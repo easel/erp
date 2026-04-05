@@ -1,4 +1,4 @@
-# FEAT-SCM: Procurement & Supply Chain
+# FEAT-002: Procurement & Supply Chain
 
 **Authority Level:** 3 (Governing)
 **Status:** Draft
@@ -299,37 +299,37 @@ BlanketPurchaseOrder 1──* PurchaseOrder (releases)
 
 ## Integration Points
 
-### Export Control & Sanctions Compliance (FEAT-EXP)
+### Export Control & Sanctions Compliance (FEAT-006)
 
 - **Classification propagation**: Inventory item ITAR/EAR classifications (SCM-009) are consumed by the Export Control module (EXP-001) for jurisdiction determination on every transaction.
 - **Denied-party screening**: Vendor records are screened against denied-party lists (EXP-002) at vendor creation and on every PO creation. Screening failures trigger transaction holds (EXP-003).
 - **License drawdown**: POs for export-controlled items decrement against the applicable export license quantity and value limits (EXP-005).
 - **End-use certificates**: POs to foreign vendors for defense articles generate end-use certificate requirements (EXP-007).
 
-### Financial Management (FEAT-FIN)
+### Financial Management (FEAT-001)
 
 - **Accounts Payable**: Approved POs and completed 3-way matches generate AP vouchers. Launch milestone payments flow to AP as payment requests (FIN-003).
 - **General Ledger**: Goods receipts create inventory accrual journal entries. Inventory adjustments post to appropriate GL accounts (FIN-002).
 - **Multi-currency**: POs in foreign currencies are converted using configured exchange rates. Realized gain/loss is calculated at payment (FIN-005).
 - **Fixed Assets**: Launch vehicle payments and satellite manufacturing costs feed into the satellite asset's capitalized cost basis (FIN-009).
 
-### Program Management (FEAT-PGM)
+### Program Management (FEAT-008)
 
 - **Build program linkage**: Component genealogy traces (SCM-008) link to the satellite build program via the program's work breakdown structure (PGM-001).
 - **Milestone alignment**: Launch procurement milestones (SCM-006) align with program milestones (PGM-002) for integrated schedule tracking.
 - **Cost tracking**: PO costs are allocated to programs for cost-at-completion forecasting (PGM-006).
 
-### Orbital Asset Management (FEAT-OAM)
+### Orbital Asset Management (FEAT-005)
 
 - **Satellite lifecycle**: Successful launch (SCM-006) transitions the satellite record from `Integration` to `Launch` to `Commissioning` in the orbital asset registry (OAM-001).
 - **Component genealogy**: The as-built BOM (SCM-008) is linked to the orbital asset for the satellite's operational life, supporting anomaly investigation and end-of-life disposition.
 
-### Sales & Commercial (FEAT-SLS)
+### Sales & Commercial (FEAT-003)
 
 - **Inventory availability**: Sales order promising checks available inventory (SCM-003) for hardware orders (SLS-002).
 - **Demand signal**: Open sales orders feed into MRP demand calculations (SCM-012).
 
-### Complex Delivery & Logistics (FEAT-LOG)
+### Complex Delivery & Logistics (FEAT-007)
 
 - **Shipment classification**: Outbound shipments inherit ITAR/EAR classification from inventory items (SCM-009) and trigger appropriate customs documentation (LOG-002) and restricted destination checks (LOG-003).
 - **Warehouse operations**: Pick, pack, and ship workflows (LOG-001) consume inventory balances managed by this module.
