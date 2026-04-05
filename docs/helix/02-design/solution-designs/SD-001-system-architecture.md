@@ -126,7 +126,7 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 |-----------|--------|-----------|
 | Unit / Integration | **bun test** | Bun's built-in test runner (`bun test`) — Jest-compatible API, zero-config, runs TypeScript natively without transpilation. Eliminates a test framework dependency per ADR-009's single-binary approach. Module-level integration tests run against real PostgreSQL (via testcontainers) |
 | E2E | **Playwright** | Cross-browser testing for ERP UI workflows. Critical for financial forms where a misplaced decimal has real consequences |
-| API Testing | **bun test + supertest** (for Fastify) | Request-level testing of REST and GraphQL endpoints with auth context |
+| API Testing | **bun test + Fastify `inject()`** | Request-level testing of REST and GraphQL endpoints using Fastify's built-in light-weight injection (no HTTP overhead, no external dependency). Auth context passed via headers in the injected request |
 | Compliance Testing | **Custom test harness** | Known-good and known-bad transaction scenarios for export control validation. Screening list test fixtures with expected match/no-match outcomes. This is not optional — it is a P0 deliverable per Risk R1 |
 
 ---

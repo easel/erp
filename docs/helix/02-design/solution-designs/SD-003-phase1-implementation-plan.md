@@ -456,7 +456,7 @@ Testing:                                                                  [WP-7 
 
 ### End-to-End Tests
 
-- **Framework:** Playwright (if UI is included in Phase 1) or API-driven E2E via supertest
+- **Framework:** Playwright (if UI is included in Phase 1) or API-driven E2E via Fastify `inject()`
 - **Key workflows:**
   - Quote -> order -> compliance check -> fulfill -> ship -> invoice -> payment
   - PO -> goods receipt -> three-way match -> payment
