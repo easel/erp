@@ -922,3 +922,696 @@ CREATE TABLE IF NOT EXISTS tracking_event (
 	raw_data         JSONB,
 	created_at       TIMESTAMPTZ   NOT NULL DEFAULT now()
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-2: Financial Management Schema
+-- Tables: fiscal_year, fiscal_period, currency, exchange_rate_type,
+--         exchange_rate, account, account_segment, account_segment_value,
+--         account_mapping, journal_entry, journal_entry_line, period_status,
+--         gl_balance, vendor_bill, vendor_bill_line, payment_batch, payment,
+--         vendor_bill_payment, customer_invoice, customer_invoice_line,
+--         customer_payment, payment_application, dunning_run, dunning_letter,
+--         intercompany_agreement, intercompany_transaction, elimination_entry
+-- Ref: SD-002-data-model.md §3.1 (fiscal), §4
+-- Issue: hx-c0ca9962
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 3.1 Fiscal Calendar (Platform — Finance dependency)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS fiscal_year (
+	id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id    UUID         NOT NULL REFERENCES legal_entity(id),
+	year_label   VARCHAR(10)  NOT NULL,
+	start_date   DATE         NOT NULL,
+	end_date     DATE         NOT NULL,
+	is_closed    BOOLEAN      NOT NULL DEFAULT FALSE,
+	created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by   UUID         NOT NULL REFERENCES user_account(id),
+	updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by   UUID         NOT NULL REFERENCES user_account(id),
+	version      INTEGER      NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, year_label),
+	CHECK (end_date > start_date)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'fiscal_year'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON fiscal_year
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS fiscal_period (
+	id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	fiscal_year_id   UUID         NOT NULL REFERENCES fiscal_year(id),
+	entity_id        UUID         NOT NULL REFERENCES legal_entity(id),
+	period_number    INTEGER      NOT NULL,
+	period_label     VARCHAR(20)  NOT NULL,
+	start_date       DATE         NOT NULL,
+	end_date         DATE         NOT NULL,
+	status           VARCHAR(20)  NOT NULL DEFAULT 'FUTURE'
+		CHECK (status IN ('FUTURE', 'OPEN', 'SOFT_CLOSED', 'HARD_CLOSED')),
+	created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by       UUID         NOT NULL REFERENCES user_account(id),
+	updated_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by       UUID         NOT NULL REFERENCES user_account(id),
+	version          INTEGER      NOT NULL DEFAULT 1,
+	UNIQUE (fiscal_year_id, period_number),
+	CHECK (end_date > start_date)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'fiscal_period'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON fiscal_period
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.5 Multi-Currency (declared early — referenced by exchange_rate and GL)
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS currency (
+	code           CHAR(3)      PRIMARY KEY,
+	name           VARCHAR(100) NOT NULL,
+	symbol         VARCHAR(5),
+	decimal_places INTEGER      NOT NULL DEFAULT 2,
+	is_active      BOOLEAN      NOT NULL DEFAULT TRUE
+);
+
+CREATE TABLE IF NOT EXISTS exchange_rate_type (
+	id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	code        VARCHAR(20)  NOT NULL UNIQUE,
+	name        VARCHAR(100) NOT NULL,
+	is_default  BOOLEAN      NOT NULL DEFAULT FALSE
+);
+
+CREATE TABLE IF NOT EXISTS exchange_rate (
+	id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	rate_type_id     UUID           NOT NULL REFERENCES exchange_rate_type(id),
+	from_currency    CHAR(3)        NOT NULL REFERENCES currency(code),
+	to_currency      CHAR(3)        NOT NULL REFERENCES currency(code),
+	rate             NUMERIC(18,10) NOT NULL,
+	effective_date   DATE           NOT NULL,
+	source           VARCHAR(50),
+	created_at       TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by       UUID           NOT NULL REFERENCES user_account(id),
+	UNIQUE (rate_type_id, from_currency, to_currency, effective_date),
+	CHECK (rate > 0),
+	CHECK (from_currency <> to_currency)
+);
+
+-- Seed common currencies
+INSERT INTO currency (code, name, symbol, decimal_places) VALUES
+	('USD', 'US Dollar',          '$',  2),
+	('EUR', 'Euro',               '€',  2),
+	('GBP', 'British Pound',      '£',  2),
+	('JPY', 'Japanese Yen',       '¥',  0),
+	('SGD', 'Singapore Dollar',   'S$', 2),
+	('CAD', 'Canadian Dollar',    'C$', 2),
+	('AUD', 'Australian Dollar',  'A$', 2),
+	('CHF', 'Swiss Franc',        'CHF',2)
+ON CONFLICT (code) DO NOTHING;
+
+INSERT INTO exchange_rate_type (code, name, is_default) VALUES
+	('SPOT',    'Spot Rate',       TRUE),
+	('BUDGET',  'Budget Rate',     FALSE),
+	('AVERAGE', 'Average Rate',    FALSE),
+	('CLOSING', 'Period Closing Rate', FALSE)
+ON CONFLICT (code) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.1 Chart of Accounts
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS account (
+	id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID         NOT NULL REFERENCES legal_entity(id),
+	account_number       VARCHAR(30)  NOT NULL,
+	name                 VARCHAR(255) NOT NULL,
+	account_type         VARCHAR(20)  NOT NULL
+		CHECK (account_type IN ('ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE')),
+	normal_balance       VARCHAR(6)   NOT NULL
+		CHECK (normal_balance IN ('DEBIT', 'CREDIT')),
+	parent_account_id    UUID         REFERENCES account(id),
+	is_header            BOOLEAN      NOT NULL DEFAULT FALSE,
+	is_active            BOOLEAN      NOT NULL DEFAULT TRUE,
+	currency_code        CHAR(3)      REFERENCES currency(code),
+	itar_compartment_id  UUID         REFERENCES itar_compartment(id),
+	ext                  JSONB        NOT NULL DEFAULT '{}'::jsonb,
+	created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by           UUID         NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by           UUID         NOT NULL REFERENCES user_account(id),
+	version              INTEGER      NOT NULL DEFAULT 1,
+	deleted_at           TIMESTAMPTZ,
+	UNIQUE (entity_id, account_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'account'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON account
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS account_segment (
+	id             UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id      UUID         NOT NULL REFERENCES legal_entity(id),
+	code           VARCHAR(30)  NOT NULL,
+	name           VARCHAR(100) NOT NULL,
+	display_order  INTEGER      NOT NULL DEFAULT 0,
+	is_required    BOOLEAN      NOT NULL DEFAULT FALSE,
+	created_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by     UUID         NOT NULL REFERENCES user_account(id),
+	updated_at     TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by     UUID         NOT NULL REFERENCES user_account(id),
+	version        INTEGER      NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS account_segment_value (
+	id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	segment_id  UUID         NOT NULL REFERENCES account_segment(id),
+	code        VARCHAR(30)  NOT NULL,
+	name        VARCHAR(100) NOT NULL,
+	is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
+	created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by  UUID         NOT NULL REFERENCES user_account(id),
+	UNIQUE (segment_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS account_mapping (
+	id                  UUID  PRIMARY KEY DEFAULT gen_random_uuid(),
+	source_entity_id    UUID  NOT NULL REFERENCES legal_entity(id),
+	source_account_id   UUID  NOT NULL REFERENCES account(id),
+	target_entity_id    UUID  NOT NULL REFERENCES legal_entity(id),
+	target_account_id   UUID  NOT NULL REFERENCES account(id),
+	effective_from      DATE  NOT NULL,
+	effective_to        DATE,
+	created_at          TIMESTAMPTZ NOT NULL DEFAULT now(),
+	created_by          UUID        NOT NULL REFERENCES user_account(id),
+	UNIQUE (source_entity_id, source_account_id, target_entity_id, effective_from)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.2 General Ledger
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS journal_entry (
+	id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID         NOT NULL REFERENCES legal_entity(id),
+	entry_number        VARCHAR(30)  NOT NULL,
+	entry_date          DATE         NOT NULL,
+	fiscal_period_id    UUID         NOT NULL REFERENCES fiscal_period(id),
+	description         VARCHAR(500) NOT NULL,
+	source_module       VARCHAR(30),
+	source_document_id  UUID,
+	status              VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'POSTED', 'REVERSED', 'VOID')),
+	posted_at           TIMESTAMPTZ,
+	posted_by           UUID         REFERENCES user_account(id),
+	reversal_of_id      UUID         REFERENCES journal_entry(id),
+	is_adjustment       BOOLEAN      NOT NULL DEFAULT FALSE,
+	ext                 JSONB        NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by          UUID         NOT NULL REFERENCES user_account(id),
+	updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by          UUID         NOT NULL REFERENCES user_account(id),
+	version             INTEGER      NOT NULL DEFAULT 1,
+	deleted_at          TIMESTAMPTZ,
+	UNIQUE (entity_id, entry_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'journal_entry'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON journal_entry
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS journal_entry_line (
+	id                  UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	journal_entry_id    UUID           NOT NULL REFERENCES journal_entry(id),
+	line_number         INTEGER        NOT NULL,
+	account_id          UUID           NOT NULL REFERENCES account(id),
+	description         VARCHAR(500),
+	debit_amount        NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	credit_amount       NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	currency_code       CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate       NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	base_debit_amount   NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	base_credit_amount  NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	segment_values      JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	itar_compartment_id UUID           REFERENCES itar_compartment(id),
+	ext                 JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (journal_entry_id, line_number),
+	CHECK (debit_amount >= 0),
+	CHECK (credit_amount >= 0),
+	CHECK (NOT (debit_amount > 0 AND credit_amount > 0))
+);
+
+-- period_status: per SD-002 ADR-007 note, canonical lifecycle is fiscal_period.status.
+-- Retained for module-level override granularity only.
+CREATE TABLE IF NOT EXISTS period_status (
+	id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	fiscal_period_id  UUID         NOT NULL REFERENCES fiscal_period(id),
+	entity_id         UUID         NOT NULL REFERENCES legal_entity(id),
+	module            VARCHAR(30)  NOT NULL DEFAULT 'GL',
+	status            VARCHAR(20)  NOT NULL DEFAULT 'OPEN'
+		CHECK (status IN ('OPEN', 'CLOSED', 'FUTURE')),
+	closed_at         TIMESTAMPTZ,
+	closed_by         UUID         REFERENCES user_account(id),
+	created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by        UUID         NOT NULL REFERENCES user_account(id),
+	updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by        UUID         NOT NULL REFERENCES user_account(id),
+	version           INTEGER      NOT NULL DEFAULT 1,
+	UNIQUE (fiscal_period_id, entity_id, module)
+);
+
+CREATE TABLE IF NOT EXISTS gl_balance (
+	id                  UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID           NOT NULL REFERENCES legal_entity(id),
+	account_id          UUID           NOT NULL REFERENCES account(id),
+	fiscal_period_id    UUID           NOT NULL REFERENCES fiscal_period(id),
+	currency_code       CHAR(3)        NOT NULL REFERENCES currency(code),
+	segment_values      JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	period_debit_total  NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	period_credit_total NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	period_net          NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	ytd_debit_total     NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	ytd_credit_total    NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	ytd_net             NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	last_refreshed_at   TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (entity_id, account_id, fiscal_period_id, currency_code, segment_values)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.3 Accounts Payable
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS vendor_bill (
+	id                  UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID           NOT NULL REFERENCES legal_entity(id),
+	vendor_id           UUID           NOT NULL REFERENCES vendor(id),
+	bill_number         VARCHAR(50)    NOT NULL,
+	internal_ref        VARCHAR(30)    NOT NULL,
+	bill_date           DATE           NOT NULL,
+	due_date            DATE           NOT NULL,
+	currency_code       CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate       NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	subtotal_amount     NUMERIC(19,6)  NOT NULL,
+	tax_amount          NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	total_amount        NUMERIC(19,6)  NOT NULL,
+	base_total_amount   NUMERIC(19,6)  NOT NULL,
+	amount_paid         NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	balance_due         NUMERIC(19,6)  NOT NULL,
+	status              VARCHAR(20)    NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'POSTED',
+		                  'PARTIALLY_PAID', 'PAID', 'VOID')),
+	fiscal_period_id    UUID           REFERENCES fiscal_period(id),
+	journal_entry_id    UUID           REFERENCES journal_entry(id),
+	purchase_order_id   UUID           REFERENCES purchase_order(id),
+	goods_receipt_id    UUID           REFERENCES goods_receipt(id),
+	payment_terms       VARCHAR(30),
+	notes               TEXT,
+	ext                 JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by          UUID           NOT NULL REFERENCES user_account(id),
+	updated_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by          UUID           NOT NULL REFERENCES user_account(id),
+	version             INTEGER        NOT NULL DEFAULT 1,
+	deleted_at          TIMESTAMPTZ,
+	UNIQUE (entity_id, vendor_id, bill_number),
+	CHECK (total_amount >= 0),
+	CHECK (balance_due >= 0)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'vendor_bill'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON vendor_bill
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS vendor_bill_line (
+	id                     UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	vendor_bill_id         UUID           NOT NULL REFERENCES vendor_bill(id),
+	line_number            INTEGER        NOT NULL,
+	description            VARCHAR(500)   NOT NULL,
+	account_id             UUID           NOT NULL REFERENCES account(id),
+	quantity               NUMERIC(16,4)  NOT NULL DEFAULT 1,
+	unit_price             NUMERIC(19,6)  NOT NULL,
+	amount                 NUMERIC(19,6)  NOT NULL,
+	currency_code          CHAR(3)        NOT NULL REFERENCES currency(code),
+	tax_code               VARCHAR(20),
+	tax_amount             NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	purchase_order_line_id UUID           REFERENCES purchase_order_line(id),
+	segment_values         JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	ext                    JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at             TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (vendor_bill_id, line_number)
+);
+
+CREATE TABLE IF NOT EXISTS payment_batch (
+	id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id       UUID           NOT NULL REFERENCES legal_entity(id),
+	batch_number    VARCHAR(30)    NOT NULL,
+	payment_method  VARCHAR(20)    NOT NULL
+		CHECK (payment_method IN ('CHECK', 'WIRE', 'ACH', 'CREDIT_CARD')),
+	currency_code   CHAR(3)        NOT NULL REFERENCES currency(code),
+	total_amount    NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	status          VARCHAR(20)    NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'APPROVED', 'PROCESSING', 'COMPLETED', 'CANCELLED')),
+	payment_date    DATE           NOT NULL,
+	bank_account_id UUID,
+	created_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by      UUID           NOT NULL REFERENCES user_account(id),
+	updated_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by      UUID           NOT NULL REFERENCES user_account(id),
+	version         INTEGER        NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, batch_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'payment_batch'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON payment_batch
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS payment (
+	id                UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id         UUID           NOT NULL REFERENCES legal_entity(id),
+	payment_batch_id  UUID           REFERENCES payment_batch(id),
+	vendor_id         UUID           NOT NULL REFERENCES vendor(id),
+	payment_number    VARCHAR(30)    NOT NULL,
+	payment_date      DATE           NOT NULL,
+	payment_method    VARCHAR(20)    NOT NULL
+		CHECK (payment_method IN ('CHECK', 'WIRE', 'ACH', 'CREDIT_CARD')),
+	currency_code     CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate     NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	amount            NUMERIC(19,6)  NOT NULL,
+	base_amount       NUMERIC(19,6)  NOT NULL,
+	status            VARCHAR(20)    NOT NULL DEFAULT 'PENDING'
+		CHECK (status IN ('PENDING', 'CLEARED', 'VOIDED', 'RETURNED')),
+	reference         VARCHAR(100),
+	journal_entry_id  UUID           REFERENCES journal_entry(id),
+	realized_gain_loss NUMERIC(19,6) DEFAULT 0,
+	ext               JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by        UUID           NOT NULL REFERENCES user_account(id),
+	updated_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by        UUID           NOT NULL REFERENCES user_account(id),
+	version           INTEGER        NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, payment_number),
+	CHECK (amount > 0)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'payment'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON payment
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS vendor_bill_payment (
+	id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	payment_id      UUID           NOT NULL REFERENCES payment(id),
+	vendor_bill_id  UUID           NOT NULL REFERENCES vendor_bill(id),
+	applied_amount  NUMERIC(19,6)  NOT NULL,
+	currency_code   CHAR(3)        NOT NULL REFERENCES currency(code),
+	applied_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	applied_by      UUID           NOT NULL REFERENCES user_account(id),
+	UNIQUE (payment_id, vendor_bill_id),
+	CHECK (applied_amount > 0)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.4 Accounts Receivable
+-- Note: customer_id FKs reference customer(id) which is created in WP-5.
+--       sales_order_id FKs reference sales_order(id) from WP-5.
+--       product_id FKs reference product(id) from WP-5.
+--       FK constraints will be added via ALTER TABLE in the WP-5 migration.
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS customer_invoice (
+	id                UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id         UUID           NOT NULL REFERENCES legal_entity(id),
+	customer_id       UUID           NOT NULL,  -- FK to customer(id) added in WP-5
+	invoice_number    VARCHAR(30)    NOT NULL,
+	invoice_date      DATE           NOT NULL,
+	due_date          DATE           NOT NULL,
+	currency_code     CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate     NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	subtotal_amount   NUMERIC(19,6)  NOT NULL,
+	tax_amount        NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	total_amount      NUMERIC(19,6)  NOT NULL,
+	base_total_amount NUMERIC(19,6)  NOT NULL,
+	amount_received   NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	balance_due       NUMERIC(19,6)  NOT NULL,
+	status            VARCHAR(20)    NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'SENT', 'PARTIALLY_PAID', 'PAID', 'VOID', 'WRITTEN_OFF')),
+	fiscal_period_id  UUID           REFERENCES fiscal_period(id),
+	journal_entry_id  UUID           REFERENCES journal_entry(id),
+	sales_order_id    UUID,                      -- FK to sales_order(id) added in WP-5
+	payment_terms     VARCHAR(30),
+	notes             TEXT,
+	ext               JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by        UUID           NOT NULL REFERENCES user_account(id),
+	updated_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by        UUID           NOT NULL REFERENCES user_account(id),
+	version           INTEGER        NOT NULL DEFAULT 1,
+	deleted_at        TIMESTAMPTZ,
+	UNIQUE (entity_id, invoice_number),
+	CHECK (total_amount >= 0),
+	CHECK (balance_due >= 0)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'customer_invoice'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON customer_invoice
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS customer_invoice_line (
+	id                    UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	customer_invoice_id   UUID           NOT NULL REFERENCES customer_invoice(id),
+	line_number           INTEGER        NOT NULL,
+	product_id            UUID,                      -- FK to product(id) added in WP-5
+	description           VARCHAR(500)   NOT NULL,
+	account_id            UUID           NOT NULL REFERENCES account(id),
+	quantity              NUMERIC(16,4)  NOT NULL DEFAULT 1,
+	unit_price            NUMERIC(19,6)  NOT NULL,
+	discount_percent      NUMERIC(5,2)   NOT NULL DEFAULT 0,
+	amount                NUMERIC(19,6)  NOT NULL,
+	currency_code         CHAR(3)        NOT NULL REFERENCES currency(code),
+	tax_code              VARCHAR(20),
+	tax_amount            NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	segment_values        JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	ext                   JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at            TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (customer_invoice_id, line_number)
+);
+
+CREATE TABLE IF NOT EXISTS customer_payment (
+	id                UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id         UUID           NOT NULL REFERENCES legal_entity(id),
+	customer_id       UUID           NOT NULL,  -- FK to customer(id) added in WP-5
+	payment_number    VARCHAR(30)    NOT NULL,
+	payment_date      DATE           NOT NULL,
+	payment_method    VARCHAR(20)    NOT NULL
+		CHECK (payment_method IN ('WIRE', 'CHECK', 'ACH', 'CREDIT_CARD')),
+	currency_code     CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate     NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	amount            NUMERIC(19,6)  NOT NULL,
+	base_amount       NUMERIC(19,6)  NOT NULL,
+	status            VARCHAR(20)    NOT NULL DEFAULT 'RECEIVED'
+		CHECK (status IN ('RECEIVED', 'APPLIED', 'RETURNED', 'VOIDED')),
+	reference         VARCHAR(100),
+	journal_entry_id  UUID           REFERENCES journal_entry(id),
+	realized_gain_loss NUMERIC(19,6) DEFAULT 0,
+	ext               JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by        UUID           NOT NULL REFERENCES user_account(id),
+	updated_at        TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by        UUID           NOT NULL REFERENCES user_account(id),
+	version           INTEGER        NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, payment_number),
+	CHECK (amount > 0)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'customer_payment'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON customer_payment
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS payment_application (
+	id                    UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	customer_payment_id   UUID           NOT NULL REFERENCES customer_payment(id),
+	customer_invoice_id   UUID           NOT NULL REFERENCES customer_invoice(id),
+	applied_amount        NUMERIC(19,6)  NOT NULL,
+	currency_code         CHAR(3)        NOT NULL REFERENCES currency(code),
+	applied_at            TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	applied_by            UUID           NOT NULL REFERENCES user_account(id),
+	UNIQUE (customer_payment_id, customer_invoice_id),
+	CHECK (applied_amount > 0)
+);
+
+CREATE TABLE IF NOT EXISTS dunning_run (
+	id           UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id    UUID         NOT NULL REFERENCES legal_entity(id),
+	run_date     DATE         NOT NULL,
+	run_number   VARCHAR(30)  NOT NULL,
+	status       VARCHAR(20)  NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'EXECUTED', 'CANCELLED')),
+	cutoff_date  DATE         NOT NULL,
+	created_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by   UUID         NOT NULL REFERENCES user_account(id),
+	updated_at   TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by   UUID         NOT NULL REFERENCES user_account(id),
+	version      INTEGER      NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, run_number)
+);
+
+CREATE TABLE IF NOT EXISTS dunning_letter (
+	id                    UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	dunning_run_id        UUID           NOT NULL REFERENCES dunning_run(id),
+	customer_id           UUID           NOT NULL,  -- FK to customer(id) added in WP-5
+	dunning_level         INTEGER        NOT NULL,
+	total_overdue_amount  NUMERIC(19,6)  NOT NULL,
+	currency_code         CHAR(3)        NOT NULL REFERENCES currency(code),
+	sent_at               TIMESTAMPTZ,
+	delivery_channel      VARCHAR(20)
+		CHECK (delivery_channel IN ('EMAIL', 'MAIL')),
+	created_at            TIMESTAMPTZ    NOT NULL DEFAULT now()
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 4.6 Intercompany
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS intercompany_agreement (
+	id                        UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_a_id               UUID         NOT NULL REFERENCES legal_entity(id),
+	entity_b_id               UUID         NOT NULL REFERENCES legal_entity(id),
+	agreement_number          VARCHAR(30)  NOT NULL UNIQUE,
+	description               TEXT,
+	effective_from            DATE         NOT NULL,
+	effective_to              DATE,
+	transfer_pricing_method   VARCHAR(50),
+	is_active                 BOOLEAN      NOT NULL DEFAULT TRUE,
+	created_at                TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by                UUID         NOT NULL REFERENCES user_account(id),
+	updated_at                TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by                UUID         NOT NULL REFERENCES user_account(id),
+	version                   INTEGER      NOT NULL DEFAULT 1,
+	CHECK (entity_a_id <> entity_b_id)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'intercompany_agreement'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON intercompany_agreement
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS intercompany_transaction (
+	id                         UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	agreement_id               UUID           REFERENCES intercompany_agreement(id),
+	transaction_date           DATE           NOT NULL,
+	description                VARCHAR(500),
+	entity_a_journal_entry_id  UUID           NOT NULL REFERENCES journal_entry(id),
+	entity_b_journal_entry_id  UUID           NOT NULL REFERENCES journal_entry(id),
+	amount                     NUMERIC(19,6)  NOT NULL,
+	currency_code              CHAR(3)        NOT NULL REFERENCES currency(code),
+	status                     VARCHAR(20)    NOT NULL DEFAULT 'PENDING'
+		CHECK (status IN ('PENDING', 'MATCHED', 'DISPUTED', 'ELIMINATED')),
+	created_at                 TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by                 UUID           NOT NULL REFERENCES user_account(id),
+	updated_at                 TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by                 UUID           NOT NULL REFERENCES user_account(id),
+	version                    INTEGER        NOT NULL DEFAULT 1
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'intercompany_transaction'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON intercompany_transaction
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS elimination_entry (
+	id                           UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	intercompany_transaction_id  UUID           REFERENCES intercompany_transaction(id),
+	fiscal_period_id             UUID           NOT NULL REFERENCES fiscal_period(id),
+	journal_entry_id             UUID           NOT NULL REFERENCES journal_entry(id),
+	consolidation_entity_id      UUID           NOT NULL REFERENCES legal_entity(id),
+	amount                       NUMERIC(19,6)  NOT NULL,
+	currency_code                CHAR(3)        NOT NULL REFERENCES currency(code),
+	created_at                   TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by                   UUID           NOT NULL REFERENCES user_account(id)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-2 FK fix: enforce account_id on purchase_order_line
+-- (column existed as plain UUID stub since WP-4 migration)
+-- ─────────────────────────────────────────────────────────────────────────────
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'purchase_order_line_account_id_fk'
+	) THEN
+		ALTER TABLE purchase_order_line
+			ADD CONSTRAINT purchase_order_line_account_id_fk
+				FOREIGN KEY (account_id) REFERENCES account(id);
+	END IF;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-2 Indexes
+-- ─────────────────────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS ix_journal_entry_entity_period
+	ON journal_entry (entity_id, fiscal_period_id);
+CREATE INDEX IF NOT EXISTS ix_journal_entry_status
+	ON journal_entry (status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_jel_journal_entry
+	ON journal_entry_line (journal_entry_id);
+CREATE INDEX IF NOT EXISTS ix_jel_account
+	ON journal_entry_line (account_id);
+CREATE INDEX IF NOT EXISTS ix_account_entity
+	ON account (entity_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_vendor_bill_entity_status
+	ON vendor_bill (entity_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_vendor_bill_vendor
+	ON vendor_bill (vendor_id);
+CREATE INDEX IF NOT EXISTS ix_vendor_bill_due_date
+	ON vendor_bill (due_date) WHERE status NOT IN ('PAID', 'VOID');
+CREATE INDEX IF NOT EXISTS ix_customer_invoice_entity_status
+	ON customer_invoice (entity_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_customer_invoice_customer
+	ON customer_invoice (customer_id);
+CREATE INDEX IF NOT EXISTS ix_customer_invoice_due_date
+	ON customer_invoice (due_date) WHERE status NOT IN ('PAID', 'VOID', 'WRITTEN_OFF');
+CREATE INDEX IF NOT EXISTS ix_gl_balance_account_period
+	ON gl_balance (account_id, fiscal_period_id);
+CREATE INDEX IF NOT EXISTS ix_exchange_rate_lookup
+	ON exchange_rate (from_currency, to_currency, effective_date DESC);

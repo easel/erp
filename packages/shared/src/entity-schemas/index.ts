@@ -10,3 +10,9 @@ export * from "./purchase-order.js";
 export * from "./inventory.js";
 export * from "./goods-receipt.js";
 export * from "./shipment.js";
+// WP-2: Financial Management
+export * from "./account.js";
+export * from "./fiscal-period.js";
+export * from "./currency.js";
+export * from "./vendor-bill.js";
+export * from "./customer-invoice.js";
