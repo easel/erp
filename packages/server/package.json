@@ -12,6 +12,7 @@
     "migrate": "graphile-migrate migrate"
   },
   "dependencies": {
-    "@saterp/shared": "workspace:*"
+    "@saterp/shared": "workspace:*",
+    "graphile-migrate": "^1.4.1"
   }
 }

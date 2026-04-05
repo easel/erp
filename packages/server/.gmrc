@@ -1,0 +1,4 @@
+{
+  "migrationsFolder": "./migrations",
+  "manageGraphileMigrateSchema": true
+}
