@@ -222,9 +222,10 @@ export type CreateShipmentWithLinesInput = z.infer<typeof CreateShipmentWithLine
 const DOCUMENT_TYPES = [
 	"COMMERCIAL_INVOICE",
 	"PACKING_LIST",
+	"SLI", // Shipper's Letter of Instruction
+	"AES_FILING", // Electronic Export Information (EEI) filed via AES
 	"CERTIFICATE_OF_ORIGIN",
 	"EXPORT_LICENSE",
-	"AES_FILING",
 	"CUSTOMS_DECLARATION",
 ] as const;
 
@@ -276,6 +277,173 @@ export const UpdateCustomsDocumentSchema = CreateCustomsDocumentSchema.omit({
 		},
 	);
 export type UpdateCustomsDocumentInput = z.infer<typeof UpdateCustomsDocumentSchema>;
+
+// ── Customs Document Data Schemas ─────────────────────────────────────────────
+// Structured content for document_data JSONB field, per LOG-002 (FEAT-007).
+
+/** One line item on a commercial invoice or SLI. */
+export const CommercialInvoiceLineSchema = z.object({
+	lineNumber: z.number().int().positive(),
+	description: z.string().min(1).max(500),
+	partNumber: z.string().max(100).optional(),
+	/** Harmonized Tariff Schedule / Schedule B code */
+	hsCode: z.string().max(15).optional(),
+	countryOfOrigin: z.string().length(2, "Country of origin must be ISO 3166-1 alpha-2"),
+	quantity: z.string().regex(/^\d{1,12}(\.\d{1,4})?$/),
+	unitOfMeasure: z.string().min(1).max(20),
+	unitPrice: z.string().regex(/^\d{1,15}(\.\d{1,6})?$/, "Unit price must be a positive decimal"),
+	totalPrice: z.string().regex(/^\d{1,15}(\.\d{1,6})?$/, "Total price must be a positive decimal"),
+	/** ECCN for EAR-controlled items */
+	eccn: z.string().max(20).optional(),
+	/** USML category for ITAR-controlled items */
+	usmlCategory: z.string().max(20).optional(),
+	/** Export control jurisdiction */
+	jurisdiction: z.enum(["ITAR", "EAR", "NOT_CONTROLLED"]).optional(),
+});
+export type CommercialInvoiceLine = z.infer<typeof CommercialInvoiceLineSchema>;
+
+/** Structured data for a COMMERCIAL_INVOICE customs document. */
+export const CommercialInvoiceDataSchema = z.object({
+	invoiceNumber: z.string().min(1).max(50),
+	invoiceDate: z.string().date("Must be YYYY-MM-DD"),
+	seller: z.object({
+		name: z.string().min(1).max(255),
+		address: z.string().min(1).max(1000),
+		countryCode: z.string().length(2),
+		ein: z.string().max(30).optional(),
+	}),
+	buyer: z.object({
+		name: z.string().min(1).max(255),
+		address: z.string().min(1).max(1000),
+		countryCode: z.string().length(2),
+	}),
+	shipToAddress: z.string().max(1000).optional(),
+	incoterm: z.string().max(10).optional(),
+	currency: z.string().length(3, "Currency must be ISO 4217 3-letter code"),
+	lineItems: z.array(CommercialInvoiceLineSchema).min(1).max(500),
+	totalValue: z.string().regex(/^\d{1,15}(\.\d{1,6})?$/, "Total value must be a positive decimal"),
+	/**
+	 * Destination Control Statement — auto-populated when any line item is
+	 * ITAR-controlled. Per EAR §758.6 and ITAR §123.9.
+	 */
+	destinationControlStatement: z.string().max(2000).optional(),
+	exportLicenseNumber: z.string().max(50).optional(),
+	exportLicenseExpiryDate: z.string().date().optional(),
+	notes: z.string().max(5000).optional(),
+});
+export type CommercialInvoiceData = z.infer<typeof CommercialInvoiceDataSchema>;
+
+/** One package within a packing list. */
+export const PackingListPackageSchema = z.object({
+	packageNumber: z.number().int().positive(),
+	marks: z.string().max(255).optional(),
+	contents: z.array(
+		z.object({
+			lineNumber: z.number().int().positive(),
+			description: z.string().min(1).max(500),
+			quantity: z.string().regex(/^\d{1,12}(\.\d{1,4})?$/),
+			unitOfMeasure: z.string().min(1).max(20),
+		}),
+	),
+	weightKg: z.number().positive(),
+	dimensionsCm: z
+		.object({
+			length: z.number().positive(),
+			width: z.number().positive(),
+			height: z.number().positive(),
+		})
+		.optional(),
+});
+export type PackingListPackage = z.infer<typeof PackingListPackageSchema>;
+
+/** Structured data for a PACKING_LIST customs document. */
+export const PackingListDataSchema = z.object({
+	packingListNumber: z.string().min(1).max(50),
+	shipmentReference: z.string().min(1).max(50),
+	date: z.string().date("Must be YYYY-MM-DD"),
+	shipper: z.object({ name: z.string().min(1).max(255) }),
+	consignee: z.object({ name: z.string().min(1).max(255) }),
+	packages: z.array(PackingListPackageSchema).min(1).max(500),
+	totalPackages: z.number().int().positive(),
+	totalWeightKg: z.number().positive(),
+	notes: z.string().max(5000).optional(),
+});
+export type PackingListData = z.infer<typeof PackingListDataSchema>;
+
+/** Structured data for an SLI (Shipper's Letter of Instruction). */
+export const SLIDataSchema = z.object({
+	referenceNumber: z.string().min(1).max(50),
+	date: z.string().date("Must be YYYY-MM-DD"),
+	shipper: z.object({
+		name: z.string().min(1).max(255),
+		address: z.string().min(1).max(1000),
+		countryCode: z.string().length(2),
+	}),
+	consignee: z.object({
+		name: z.string().min(1).max(255),
+		address: z.string().min(1).max(1000),
+		countryCode: z.string().length(2),
+	}),
+	notifyParty: z.string().max(500).optional(),
+	freightForwarder: z.string().max(255).optional(),
+	portOfLoading: z.string().max(100).optional(),
+	portOfDischarge: z.string().max(100).optional(),
+	incoterm: z.string().max(10).optional(),
+	freightCharges: z.enum(["PREPAID", "COLLECT"]).optional(),
+	specialInstructions: z.string().max(5000).optional(),
+	lineItems: z.array(
+		z.object({
+			description: z.string().min(1).max(500),
+			hsCode: z.string().max(15).optional(),
+			quantity: z.string().regex(/^\d{1,12}(\.\d{1,4})?$/),
+			unitOfMeasure: z.string().min(1).max(20),
+			weightKg: z.number().positive(),
+		}),
+	),
+});
+export type SLIData = z.infer<typeof SLIDataSchema>;
+
+/** One commodity line for an EEI/AES filing. */
+export const EEILineSchema = z.object({
+	/** Schedule B or HTS code */
+	scheduleB: z
+		.string()
+		.min(1)
+		.max(15)
+		.regex(/^\d{4,10}(\.\d{2})?$/, "Schedule B must be 4–10 digits with optional 2-digit suffix"),
+	commodityDescription: z.string().min(1).max(500),
+	quantity: z.number().int().positive(),
+	unitOfMeasure: z.string().min(1).max(20),
+	/** Declared export value in USD */
+	value: z.string().regex(/^\d{1,15}(\.\d{1,6})?$/, "Value must be a positive decimal"),
+	eccn: z.string().max(20),
+	/** License type per EAR */
+	licenseType: z.enum(["NLR", "LICENSE_EXCEPTION", "LICENSE_REQUIRED"]),
+	licenseNumber: z.string().max(50).optional(),
+	usmlCategory: z.string().max(20).optional(),
+	countryOfOrigin: z.string().length(2),
+});
+export type EEILine = z.infer<typeof EEILineSchema>;
+
+/** Structured data for an AES_FILING (EEI) customs document. */
+export const EEIDataSchema = z.object({
+	shipmentReference: z.string().min(1).max(50),
+	exportDate: z.string().date("Must be YYYY-MM-DD"),
+	exporterEin: z.string().max(30),
+	exporterName: z.string().min(1).max(255),
+	exporterAddress: z.string().min(1).max(1000),
+	ultimateConsigneeName: z.string().min(1).max(255),
+	destinationCountry: z.string().length(2),
+	portOfExport: z.string().max(100),
+	portOfUnlading: z.string().max(100).optional(),
+	modeOfTransport: z.enum(["AIR", "OCEAN", "GROUND", "COURIER"]),
+	carrierName: z.string().max(255).optional(),
+	commodities: z.array(EEILineSchema).min(1).max(500),
+	/** Internal Transaction Number — assigned by AES on accepted filing */
+	itnNumber: z.string().max(30).optional(),
+	relatedPartyTransaction: z.boolean().optional(),
+});
+export type EEIData = z.infer<typeof EEIDataSchema>;
 
 // ── Tracking Event ────────────────────────────────────────────────────────────
 
