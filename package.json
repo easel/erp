@@ -11,7 +11,8 @@
 		"format": "biome format --write .",
 		"build": "bun run --filter '*' build",
 		"migrate": "cd packages/server && bun run migrate",
-		"seed": "cd packages/server && bun run seed"
+		"seed": "cd packages/server && bun run seed",
+		"demo": "bun run scripts/demo.ts"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.0",
