@@ -9,6 +9,7 @@
 - k8s-kind (infra)
 - e2e-kind (testing)
 - e2e-playwright (testing)
+- demo-playwright (demo, ui)
 
 ## Area Labels
 
@@ -21,6 +22,22 @@
 | `infra` | Kubernetes (kind locally, production), Helm charts |
 
 ## Project Overrides
+
+### react-nextjs
+- **Framework**: React 19 + Next.js 15 (App Router), TypeScript strict
+- **Package**: `packages/web/` — workspace dependency on `@apogee/shared` for Zod schemas and types
+- **State**: Server state via TanStack Query 5 (planned), client state via Zustand (planned)
+- **Forms**: React Hook Form 7 + `@hookform/resolvers/zod` — Zod schemas from `@apogee/shared` are the single source of truth (ADR-010)
+- **Tables**: TanStack Table 8 (headless) wrapped in `DataTable` component with server-side pagination, sort, filter, CSV export
+- **Routing**: App Router with module-based layout: `/finance/...`, `/sales/...`, `/procurement/...`, `/crm/...`, `/compliance/...`, `/settings/...`
+- **Current gap**: Components exist (RootLayout, ModuleSidebar, DataTable, EntitySwitcher, MoneyInput, etc.) but no pages wired. GraphQL schema lacks list/detail queries needed for master-detail views.
+
+### ux-radix
+- **Component strategy**: shadcn/ui + Radix Primitives + Tailwind CSS 4 (ADR-011) — shadcn components copied into project, not installed as a dependency
+- **Current gap**: Tailwind CSS and shadcn/ui packages not yet installed; all current styling is inline CSS objects matching Tailwind's design token scale
+- **Accessibility**: WCAG 2.1 AA target — Radix handles keyboard nav, focus management, ARIA attributes
+- **Domain components**: MoneyInput (ISO 4217), ComplianceStatusBadge (pending/cleared/held), FiscalPeriodPicker (period status awareness), EntitySwitcher (Cmd+E, localStorage)
+- **Color palette**: Finance (#3b82f6), Sales (#10b981), Procurement (#f59e0b), CRM (#8b5cf6), Compliance (#ef4444)
 
 ### typescript-bun
 - **HTTP framework**: Fastify 5 + GraphQL Yoga (not raw `Bun.serve()`) — Fastify is Bun-compatible
@@ -44,8 +61,7 @@
 - **Config**: `playwright.config.ts` — single Chromium project, `tests/e2e/` test dir
 - **Base URL**: `E2E_BASE_URL` env var (defaults to `http://localhost:3000`; Kind demo uses `:3100`)
 - **Server startup**: auto-starts the API server when `E2E_BASE_URL` is not set; skipped when running against Kind
-- **Reel test**: `tests/e2e/00-reel.spec.ts` — sequential visual walkthrough of every module with screenshots; acts as a smoke test and demo artifact generator
-- **Screenshot output**: `test-results/e2e-artifacts/` — named per scene (e.g., `reel-01-health.png`)
+- **Reel test**: `tests/e2e/00-reel.spec.ts` — API-driven feature spec exercising all entity types and workflows (vendor creation, PO lifecycle, GL journal entries, compliance screening, entity switching). Will evolve to browser-driven UI walkthrough once pages are wired.
 - **Helpers**: `tests/e2e/helpers/api.ts` — `graphql()`, `screenshotPage()`, seed constants
 - **Run**: `bun run test:e2e` (headless) or `bun run test:e2e:headed` (browser visible)
 - **Against Kind**: `E2E_BASE_URL=http://localhost:3100 bun run test:e2e`
