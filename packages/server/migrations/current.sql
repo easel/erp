@@ -1,8 +1,10 @@
 -- Platform schema: WP-1 foundation
--- Tables: legal_entity, user_account, RBAC, ITAR compartments, audit_entry
+-- Tables: legal_entity, user_account, RBAC, ITAR compartments, audit_entry,
+--         authn_sessions, authn_identity_links
+-- user_account: MFA + lockout columns (mfa_totp_secret, mfa_enabled, failed_login_count, locked_until)
 -- Audit trigger: audit_stamp() + trigger on legal_entity (sentinel)
--- Ref: SD-002-data-model.md §3.1–3.3
--- Issues: hx-369c3437, hx-c3e547b2
+-- Ref: SD-002-data-model.md §3.1–3.3, SD-004-authn-provider-abstraction.md §6
+-- Issues: hx-369c3437, hx-c3e547b2, hx-96f7639a
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3.1 Entity & Organization
@@ -2522,3 +2524,60 @@ DO $$ BEGIN
 			FOREIGN KEY (product_id) REFERENCES product(id);
 	END IF;
 END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-1: AuthN Schema — PLT-006
+-- Tables: authn_sessions, authn_identity_links
+-- Columns added to user_account: MFA + lockout fields
+-- Ref: SD-004-authn-provider-abstraction.md §6
+-- Issue: hx-96f7639a
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- MFA and lockout columns on user_account (idempotent ADD COLUMN IF NOT EXISTS)
+ALTER TABLE user_account
+	ADD COLUMN IF NOT EXISTS mfa_totp_secret       TEXT        NULL,
+	ADD COLUMN IF NOT EXISTS mfa_enabled            BOOLEAN     NOT NULL DEFAULT FALSE,
+	ADD COLUMN IF NOT EXISTS failed_login_count     INTEGER     NOT NULL DEFAULT 0,
+	ADD COLUMN IF NOT EXISTS locked_until           TIMESTAMPTZ NULL;
+
+-- Session store: one row per browser session
+-- revoked_at = NULL means active; non-null means forcibly revoked
+CREATE TABLE IF NOT EXISTS authn_sessions (
+	id            UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+	user_id       UUID        NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+	created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+	last_activity TIMESTAMPTZ NOT NULL DEFAULT now(),
+	expires_at    TIMESTAMPTZ NOT NULL,
+	ip_address    INET        NOT NULL,
+	user_agent    TEXT        NOT NULL,
+	mfa_verified  BOOLEAN     NOT NULL DEFAULT FALSE,
+	provider      TEXT        NOT NULL CHECK (provider IN ('oidc', 'saml')),
+	revoked_at    TIMESTAMPTZ NULL,
+	-- Optional: encrypted IdP refresh token for background OIDC token refresh
+	idp_refresh_token_enc TEXT NULL
+);
+
+-- Fast lookup of active sessions for a user (session list UI + revokeAll)
+CREATE INDEX IF NOT EXISTS idx_authn_sessions_user_id
+	ON authn_sessions(user_id)
+	WHERE revoked_at IS NULL;
+
+-- Fast sweep of expired sessions for cleanup jobs
+CREATE INDEX IF NOT EXISTS idx_authn_sessions_expires_at
+	ON authn_sessions(expires_at)
+	WHERE revoked_at IS NULL;
+
+-- IdP identity → local user_account mapping
+-- One user can have multiple IdP links (OIDC + SAML, or multiple OIDC tenants)
+CREATE TABLE IF NOT EXISTS authn_identity_links (
+	id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+	user_id     UUID        NOT NULL REFERENCES user_account(id) ON DELETE CASCADE,
+	provider    TEXT        NOT NULL CHECK (provider IN ('oidc', 'saml')),
+	external_id TEXT        NOT NULL,
+	created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+	UNIQUE (provider, external_id)
+);
+
+-- Fast reverse lookup: user_id → identity links (for profile management)
+CREATE INDEX IF NOT EXISTS idx_authn_identity_links_user_id
+	ON authn_identity_links(user_id);
