@@ -92,6 +92,19 @@ export const CreatePurchaseOrderSchema = z
 
 export type CreatePurchaseOrderInput = z.infer<typeof CreatePurchaseOrderSchema>;
 
+/** Full PO lifecycle statuses — state machine enforced server-side. */
+export const PO_STATUSES = [
+	"DRAFT",
+	"PENDING_APPROVAL",
+	"APPROVED",
+	"SENT",
+	"PARTIALLY_RECEIVED",
+	"CLOSED",
+	"CANCELLED",
+	"ON_HOLD",
+] as const;
+export type POStatus = (typeof PO_STATUSES)[number];
+
 const PO_EDITABLE_STATUSES = ["DRAFT", "PENDING_APPROVAL"] as const;
 
 export const UpdatePurchaseOrderSchema = z.object({
@@ -106,3 +119,39 @@ export const UpdatePurchaseOrderSchema = z.object({
 });
 
 export type UpdatePurchaseOrderInput = z.infer<typeof UpdatePurchaseOrderSchema>;
+
+/**
+ * ApprovePurchaseOrderSchema — action payload for the PO approval step.
+ * Transitions the PO from PENDING_APPROVAL → APPROVED (or ON_HOLD if
+ * vendor compliance screening flags a match).
+ * Layer 1 validation only; state machine + screening runs server-side.
+ */
+export const ApprovePurchaseOrderSchema = z.object({
+	/** PO to approve */
+	id: UUIDSchema,
+	/** User performing the approval */
+	approverId: UUIDSchema,
+	/** Optional approval notes */
+	notes: z.string().max(5000).optional(),
+});
+export type ApprovePurchaseOrderInput = z.infer<typeof ApprovePurchaseOrderSchema>;
+
+/**
+ * SubmitPurchaseOrderSchema — submit a DRAFT PO for approval.
+ * Transitions DRAFT → PENDING_APPROVAL.
+ */
+export const SubmitPurchaseOrderSchema = z.object({
+	id: UUIDSchema,
+	submittedBy: UUIDSchema,
+});
+export type SubmitPurchaseOrderInput = z.infer<typeof SubmitPurchaseOrderSchema>;
+
+/**
+ * SendPurchaseOrderSchema — send an APPROVED PO to the vendor.
+ * Transitions APPROVED → SENT.
+ */
+export const SendPurchaseOrderSchema = z.object({
+	id: UUIDSchema,
+	sentBy: UUIDSchema,
+});
+export type SendPurchaseOrderInput = z.infer<typeof SendPurchaseOrderSchema>;
