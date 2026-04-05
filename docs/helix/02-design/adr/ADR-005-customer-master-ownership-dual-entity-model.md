@@ -13,7 +13,7 @@ FEAT-003 (Sales) and FEAT-004 (CRM) both flag "who owns the customer master?" as
 
 ## Decision
 
-SatERP uses a **dual-entity model**:
+Apogee uses a **dual-entity model**:
 
 - `customer` table (Sales schema) — the financial/transactional customer record. Owns billing addresses, payment terms, credit limits, tax IDs, and currency preferences. This is the entity referenced by quotes, sales orders, invoices, and AR.
 - `crm_company` table (CRM schema) — the relationship/engagement record. Owns pipeline, activities, opportunities, campaigns, and health scores. Links to `customer` via optional FK.

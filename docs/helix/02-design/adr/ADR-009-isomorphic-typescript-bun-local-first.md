@@ -9,17 +9,17 @@
 
 ## Context
 
-The original technology stack decision specified "TypeScript + Node.js" for backend and frontend. As design progresses, three architectural patterns have been identified as critical for SatERP's deployment model and developer experience:
+The original technology stack decision specified "TypeScript + Node.js" for backend and frontend. As design progresses, three architectural patterns have been identified as critical for Apogee's deployment model and developer experience:
 
 1. **Isomorphic TypeScript** — Sharing validation logic, domain types, and business rules between server and client eliminates an entire class of bugs where frontend and backend disagree on data shape, validation rules, or computation (e.g., currency rounding, compliance checks). For an ERP handling ITAR-regulated transactions, correctness parity between client and server is a compliance concern, not just a convenience.
 
-2. **Bun runtime** — SatERP is self-hosted in environments ranging from GovCloud to air-gapped facilities. Bun provides a single binary runtime with built-in TypeScript execution, bundling, testing, and package management — reducing deployment complexity and dependency surface area. Its performance characteristics (faster startup, lower memory, native SQLite for local state) are well-suited to self-hosted ERP workloads.
+2. **Bun runtime** — Apogee is self-hosted in environments ranging from GovCloud to air-gapped facilities. Bun provides a single binary runtime with built-in TypeScript execution, bundling, testing, and package management — reducing deployment complexity and dependency surface area. Its performance characteristics (faster startup, lower memory, native SQLite for local state) are well-suited to self-hosted ERP workloads.
 
 3. **Local-first architecture** — Satellite operators work from ground stations, field offices, and conflict zones where network connectivity is unreliable or intermittent. A local-first approach ensures the system remains functional when disconnected, syncing state when connectivity returns. This directly supports PRD constraint C5 ("no external network dependencies for core functions").
 
 ## Decision
 
-SatERP adopts the following architectural approach:
+Apogee adopts the following architectural approach:
 
 ### Isomorphic TypeScript
 - **Shared packages** contain domain types, validation schemas (Zod), business rule functions, and computation logic (currency math, compliance checks, tax calculations).

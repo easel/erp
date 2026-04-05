@@ -3,20 +3,20 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "saterp",
+      "name": "apogee",
       "devDependencies": {
         "@biomejs/biome": "1.9.0",
         "typescript": "^5.0.0",
       },
     },
     "packages/server": {
-      "name": "@saterp/server",
+      "name": "@apogee/server",
       "version": "0.0.1",
       "dependencies": {
         "@fastify/cors": "^11.2.0",
         "@graphql-yoga/plugin-response-cache": "^3.23.0",
         "@pothos/core": "^4.12.0",
-        "@saterp/shared": "workspace:*",
+        "@apogee/shared": "workspace:*",
         "fastify": "^5.8.4",
         "graphile-migrate": "^1.4.1",
         "graphql": "^16.13.2",
@@ -25,17 +25,17 @@
       },
     },
     "packages/shared": {
-      "name": "@saterp/shared",
+      "name": "@apogee/shared",
       "version": "0.0.1",
       "dependencies": {
         "zod": "^4.3.6",
       },
     },
     "packages/web": {
-      "name": "@saterp/web",
+      "name": "@apogee/web",
       "version": "0.0.1",
       "dependencies": {
-        "@saterp/shared": "workspace:*",
+        "@apogee/shared": "workspace:*",
       },
     },
   },
@@ -108,11 +108,11 @@
 
     "@repeaterjs/repeater": ["@repeaterjs/repeater@3.0.6", "", {}, "sha512-Javneu5lsuhwNCryN+pXH93VPQ8g0dBX7wItHFgYiwQmzE1sVdg5tWHiOgHywzL2W21XQopa7IwIEnNbmeUJYA=="],
 
-    "@saterp/server": ["@saterp/server@workspace:packages/server"],
+    "@apogee/server": ["@apogee/server@workspace:packages/server"],
 
-    "@saterp/shared": ["@saterp/shared@workspace:packages/shared"],
+    "@apogee/shared": ["@apogee/shared@workspace:packages/shared"],
 
-    "@saterp/web": ["@saterp/web@workspace:packages/web"],
+    "@apogee/web": ["@apogee/web@workspace:packages/web"],
 
     "@types/json5": ["@types/json5@0.0.30", "", {}, "sha512-sqm9g7mHlPY/43fcSNrCYfOeX9zkTTK+euO5E6+CVijSMm5tTjkVdwdqRkY3ljjIAf8679vps5jKUoJBCLsMDA=="],
 

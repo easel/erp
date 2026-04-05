@@ -13,9 +13,9 @@
 		"declarationMap": true,
 		"sourceMap": true,
 		"paths": {
-			"@saterp/shared": ["./packages/shared/src"],
-			"@saterp/server": ["./packages/server/src"],
-			"@saterp/web": ["./packages/web/src"]
+			"@apogee/shared": ["./packages/shared/src"],
+			"@apogee/server": ["./packages/server/src"],
+			"@apogee/web": ["./packages/web/src"]
 		}
 	},
 	"include": [],

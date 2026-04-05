@@ -9,7 +9,7 @@
 
 ## Overview
 
-SatERP's Sales & Commercial module handles two distinct revenue models for satellite operators:
+Apogee's Sales & Commercial module handles two distinct revenue models for satellite operators:
 
 1. **Hardware sales** -- terminals, modems, antennas, and ancillary equipment sold outright or as part of managed-service bundles. High-volume in LEO constellations; lower-volume, higher-value in GEO.
 2. **Capacity services** -- transponder leases, managed bandwidth agreements, and usage-based connectivity. Multi-year contracts with SLA commitments, escalation clauses, and renewal cycles.

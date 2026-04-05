@@ -9,7 +9,7 @@
 
 ## Overview
 
-Orbital Asset Management is the most satellite-specific module in SatERP. It provides first-class entities for satellites, transponders, beams, spectrum licenses, and ground stations, serving as the authoritative registry for all physical and regulatory assets in the operator's fleet.
+Orbital Asset Management is the most satellite-specific module in Apogee. It provides first-class entities for satellites, transponders, beams, spectrum licenses, and ground stations, serving as the authoritative registry for all physical and regulatory assets in the operator's fleet.
 
 The module links orbital assets to financial records (depreciation, impairment), customer contracts (capacity leases, managed bandwidth), and program management (build and launch programs). It supports both GEO satellites -- where transponders are leased to customers on multi-year contracts -- and LEO constellations -- where managed bandwidth is delivered to terminal users across dynamically scheduled ground station passes.
 
@@ -53,8 +53,8 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### Kratos Integration
 
-- **US-OAM-060:** As an operations engineer, I want SatERP to ingest telemetry summaries from Kratos quantumCMD so that satellite health data is available alongside asset records without duplicating the TT&C system.
-- **US-OAM-061:** As an operations engineer, I want SatERP to pull pass schedule data from Kratos epoch IPS so that LEO ground station scheduling reflects the authoritative pass plan.
+- **US-OAM-060:** As an operations engineer, I want Apogee to ingest telemetry summaries from Kratos quantumCMD so that satellite health data is available alongside asset records without duplicating the TT&C system.
+- **US-OAM-061:** As an operations engineer, I want Apogee to pull pass schedule data from Kratos epoch IPS so that LEO ground station scheduling reflects the authoritative pass plan.
 
 ---
 
@@ -153,8 +153,8 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 | # | Criterion |
 |---|-----------|
-| AC-009.1 | SatERP connects to Kratos quantumCMD via a configurable REST or message-queue interface to ingest telemetry summary data (satellite health status, anomaly flags). Kratos telemetry ingest expects JSON payloads containing: satellite_id, timestamp, health_status (NOMINAL/DEGRADED/ANOMALY), telemetry_summary (JSONB -- subsystem-level health). Poll frequency: configurable, default 5 minutes. |
-| AC-009.2 | SatERP connects to Kratos epoch IPS to retrieve pass schedules and contact plans for LEO ground station scheduling. |
+| AC-009.1 | Apogee connects to Kratos quantumCMD via a configurable REST or message-queue interface to ingest telemetry summary data (satellite health status, anomaly flags). Kratos telemetry ingest expects JSON payloads containing: satellite_id, timestamp, health_status (NOMINAL/DEGRADED/ANOMALY), telemetry_summary (JSONB -- subsystem-level health). Poll frequency: configurable, default 5 minutes. |
+| AC-009.2 | Apogee connects to Kratos epoch IPS to retrieve pass schedules and contact plans for LEO ground station scheduling. |
 | AC-009.3 | Integration is implemented as an adapter with a defined interface so that alternative TT&C systems can be substituted without modifying core OAM logic. |
 | AC-009.4 | Telemetry ingest failures are logged and surfaced as operational alerts; the system degrades gracefully (stale data is flagged, not silently served). Connection failure: retry with exponential backoff (1s, 2s, 4s, max 60s); after 10 consecutive failures, raise alert and continue operating with stale data. |
 

@@ -1,4 +1,4 @@
-# System Architecture: SatERP — Phase 1
+# System Architecture: Apogee — Phase 1
 
 **Authority Level:** 4 (Design)
 **Status:** Draft
@@ -11,7 +11,7 @@
 
 > **Scope.** This document describes the Phase 1 architecture covering the modules enumerated below (Platform, Finance, Sales, Procurement, CRM, Logistics, Export Control). Phase 2 modules — Orbital Asset Management, Program Management, and advanced features — will extend this architecture but are not detailed here.
 
-SatERP follows a layered, modular monolith architecture. All modules run in a single deployable unit with well-defined internal boundaries, shared infrastructure services, and an internal event bus for cross-module communication. This approach avoids the operational complexity of microservices for self-hosted deployments while maintaining the option to extract modules into separate services if scaling demands it later.
+Apogee follows a layered, modular monolith architecture. All modules run in a single deployable unit with well-defined internal boundaries, shared infrastructure services, and an internal event bus for cross-module communication. This approach avoids the operational complexity of microservices for self-hosted deployments while maintaining the option to extract modules into separate services if scaling demands it later.
 
 The system is organized into four primary layers: API, Service, Domain, and Data. Cross-cutting concerns (authentication, authorization, auditing, compliance, workflow) are implemented as platform services consumed by all modules through internal interfaces.
 
@@ -289,10 +289,10 @@ The internal event bus enables cross-module communication without direct service
 
 ### Monorepo Structure
 
-SatERP uses a **Bun workspace monorepo** with the following package layout:
+Apogee uses a **Bun workspace monorepo** with the following package layout:
 
 ```
-saterp/
+apogee/
 ├── packages/
 │   ├── server/                 # Fastify 5 + GraphQL Yoga + Pothos API server
 │   │   ├── migrations/         # graphile-migrate SQL migration files
@@ -389,7 +389,7 @@ User → Browser → Next.js → /api/auth/sso
                     └─────────┬─────────┘
                               │ assertion/token
                     ┌─────────▼─────────┐
-                    │  SatERP Auth       │
+                    │  Apogee Auth       │
                     │  Middleware        │
                     │  ┌──────────────┐  │
                     │  │ Validate     │  │
@@ -410,7 +410,7 @@ User → Browser → Next.js → /api/auth/sso
 **SSO Integration**
 - SAML 2.0 and OIDC are both supported. Configuration specifies which protocol and IdP metadata URL
 - Just-in-time (JIT) user provisioning: on first login via SSO, a local user record is created with default role assignment. Administrators can pre-provision users via API for role pre-assignment
-- IdP attribute mapping is configurable (map IdP claims to SatERP user fields)
+- IdP attribute mapping is configurable (map IdP claims to Apogee user fields)
 - Multiple IdPs supported (e.g., one per legal entity or business unit)
 
 **MFA**
@@ -808,7 +808,7 @@ All monetary values are stored as `NUMERIC(19,6)` in the database. Every monetar
 
 ### NIST 800-171 Alignment Summary
 
-SatERP is designed for environments handling CUI (Controlled Unclassified Information). The following maps key NIST 800-171 control families to SatERP's implementation:
+Apogee is designed for environments handling CUI (Controlled Unclassified Information). The following maps key NIST 800-171 control families to Apogee's implementation:
 
 | Control Family | Implementation |
 |----------------|---------------|

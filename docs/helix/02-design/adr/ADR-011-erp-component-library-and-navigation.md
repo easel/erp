@@ -11,7 +11,7 @@
 
 ERP user interfaces are dense, data-heavy, and workflow-oriented. Users spend hours in the system daily, navigating between modules (Finance, Sales, Procurement, Compliance), switching between legal entities, and working with complex forms (journal entries with 100+ lines, multi-year capacity contracts). Standard component libraries (MUI, Ant Design) fight back when you need financial-specific behaviors like currency-aware inputs, fiscal period pickers, or compliance status gates.
 
-SatERP needs a component library and navigation architecture that supports:
+Apogee needs a component library and navigation architecture that supports:
 - Dense data display (financial tables, inventory grids)
 - Domain-specific inputs (money, currencies, ITAR classifications)
 - Multi-entity context switching
@@ -83,7 +83,7 @@ Built on shadcn/ui + Radix primitives, these components encode ERP business rule
 
 #### MoneyInput
 - Formats display per ISO 4217 decimal places: 2 for USD/EUR, 0 for JPY/KRW, 3 for KWD/BHD/OMR
-- Validates against `MoneyAmountSchema` from @saterp/shared on every change
+- Validates against `MoneyAmountSchema` from @apogee/shared on every change
 - Paired currency selector — amount and currency are always submitted together
 - Thousand separators in display, raw number in form value
 - Right-aligned (financial convention)
@@ -195,4 +195,4 @@ The module-based layout architecture maps to how ERP users think: "I'm in Financ
 
 - FEAT-009 (Platform): Add acceptance criteria for component library and navigation
 - SD-001 (Architecture): Already references shadcn/ui + Radix + TanStack Table; this ADR provides the detailed patterns
-- @saterp/web package: Implements these components and layouts
+- @apogee/web package: Implements these components and layouts

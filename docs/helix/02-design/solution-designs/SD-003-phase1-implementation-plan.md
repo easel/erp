@@ -1,4 +1,4 @@
-# Phase 1 Implementation Plan: SatERP
+# Phase 1 Implementation Plan: Apogee
 
 **Authority Level:** 4 (Design)
 **Status:** Draft
@@ -35,7 +35,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Mailpit |
 | CI pipeline | GitHub Actions: lint, typecheck, unit test, build, container image push |
 | Database migration framework | graphile-migrate (SQL-first migrations, no ORM lock-in) |
-| Shared kernel package | `@saterp/kernel` -- base types, Result/Error types, audit context, pagination primitives |
+| Shared kernel package | `@apogee/kernel` -- base types, Result/Error types, audit context, pagination primitives |
 | API framework | Fastify + GraphQL Yoga + Pothos (GraphQL) + OpenAPI auto-gen for REST endpoints |
 | Authentication scaffolding | OIDC client integration (Keycloak dev instance), session store in Redis |
 | Deployment manifests | Dockerfile (multi-stage), Helm chart with values for dev/staging/prod |
@@ -82,7 +82,7 @@ Covers PRD requirements PLT-001 through PLT-006.
 - RBAC + ITAR compartment model complexity -- mitigate with a clear permission DSL and thorough test matrix
 - Multi-tenant data isolation bugs -- mitigate with mandatory entity-context middleware and integration tests that cross entity boundaries
 
-**Definition of Done:** Platform SDK package (`@saterp/platform`) is published, integration tests pass for all PLT requirements, and a second WP (WP-2 or WP-3) can build on it without touching platform internals.
+**Definition of Done:** Platform SDK package (`@apogee/platform`) is published, integration tests pass for all PLT requirements, and a second WP (WP-2 or WP-3) can build on it without touching platform internals.
 
 ---
 
@@ -155,7 +155,7 @@ Covers PRD requirements EXP-001 through EXP-004, EXP-006, and EXP-012.
 - Screening list ingestion pipeline (download, parse, normalize, load -- scheduled daily)
 - Screening result cache (avoid re-screening unchanged counterparties within TTL)
 - Compliance dashboard: holds pending review, screening hit rate, list freshness
-- `@saterp/compliance` SDK: `screenTransaction(tx)` callable from Sales, Procurement, and Logistics modules
+- `@apogee/compliance` SDK: `screenTransaction(tx)` callable from Sales, Procurement, and Logistics modules
 
 **Acceptance Criteria:**
 
@@ -494,26 +494,26 @@ Testing:                                                                  [WP-7 
 
 | Data Set | Priority | Approach |
 |---|---|---|
-| Chart of accounts | Must-have | CSV export, transform to SatERP COA schema, validate mappings |
+| Chart of accounts | Must-have | CSV export, transform to Apogee COA schema, validate mappings |
 | Vendor master | Must-have | Export with banking, compliance status; re-screen all vendors on import |
 | Customer master | Must-have | Export with billing/shipping addresses; re-screen all customers on import |
 | Open AP invoices | Must-have | Migrate as opening balances; link to migrated vendor records |
 | Open AR invoices | Must-have | Migrate as opening balances; link to migrated customer records |
 | Open POs/SOs | Case-by-case | Only migrate orders not yet fulfilled; complete in-flight orders in NetSuite |
 | Historical GL | Nice-to-have | Migrate summary balances as opening journal entry; archive detail in NetSuite |
-| Product catalog | Must-have | Export SKUs with ECCN classification; validate against SatERP classification engine |
+| Product catalog | Must-have | Export SKUs with ECCN classification; validate against Apogee classification engine |
 
 ### Parallel Run Period
 
 - **Duration:** 2 accounting periods (months) minimum
-- **Approach:** Dual-entry in both NetSuite and SatERP; reconcile at period close
-- **Go/no-go criteria:** SatERP financial statements match NetSuite within tolerance (< 0.01% variance attributable to rounding)
+- **Approach:** Dual-entry in both NetSuite and Apogee; reconcile at period close
+- **Go/no-go criteria:** Apogee financial statements match NetSuite within tolerance (< 0.01% variance attributable to rounding)
 
 ### Rollback Plan
 
 - NetSuite subscription maintained for 3 months post-cutover
-- Daily data sync from SatERP to NetSuite during parallel run (one-way, for rollback readiness)
-- Documented rollback procedure: re-point users to NetSuite, replay any SatERP-only transactions
+- Daily data sync from Apogee to NetSuite during parallel run (one-way, for rollback readiness)
+- Documented rollback procedure: re-point users to NetSuite, replay any Apogee-only transactions
 
 ### Training Needs
 

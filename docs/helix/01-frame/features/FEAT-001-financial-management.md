@@ -9,7 +9,7 @@
 
 ## Overview
 
-The Financial Management module is the central accounting backbone of SatERP. It provides a full double-entry general ledger, multi-entity consolidation, accounts payable/receivable, multi-currency handling, revenue recognition, and financial reporting for international satellite operators. Because these operators typically maintain 10-50 legal entities across dozens of tax jurisdictions, transact in many currencies, and must comply with both US GAAP (ASC 606) and IFRS 15 revenue recognition standards, the module must support complex organizational structures while remaining auditable and performant.
+The Financial Management module is the central accounting backbone of Apogee. It provides a full double-entry general ledger, multi-entity consolidation, accounts payable/receivable, multi-currency handling, revenue recognition, and financial reporting for international satellite operators. Because these operators typically maintain 10-50 legal entities across dozens of tax jurisdictions, transact in many currencies, and must comply with both US GAAP (ASC 606) and IFRS 15 revenue recognition standards, the module must support complex organizational structures while remaining auditable and performant.
 
 Satellite operators face unique financial challenges that generic ERP systems handle poorly. Satellites are capital assets worth hundreds of millions of dollars whose useful life is measured in orbital station-keeping fuel rather than simple calendar time. Revenue contracts bundle transponder capacity, managed services, and ground equipment into multi-element arrangements requiring sophisticated allocation under ASC 606. Operators frequently conduct business in sanctioned or conflict-affected regions (e.g., Ukraine, Israel), requiring robust withholding-tax handling, sanctions-screening integration, and multi-jurisdictional compliance. This module must address all of these domain-specific requirements while providing the standard financial controls and reporting that auditors and regulators expect.
 
@@ -326,7 +326,7 @@ Key entities and their relationships:
 
 ## Integration Points
 
-### Internal SatERP Modules
+### Internal Apogee Modules
 
 - **Contract Management.** Contracts flow into FIN for billing (AR) and revenue recognition (ASC 606). Contract modifications trigger re-evaluation of performance obligations.
 - **Procurement.** Purchase orders and goods receipts feed 3-way matching in AP. Vendor master data is shared.

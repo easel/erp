@@ -1,4 +1,4 @@
-# Product Requirements Document: SatERP
+# Product Requirements Document: Apogee
 
 **Authority Level:** 2 (Governing)
 **Status:** Draft
@@ -19,7 +19,7 @@ International satellite operators run their businesses on NetSuite, SAP, or stit
 - **CRM is a separate system.** Sales pipelines, forecasts, and customer relationships live in Salesforce or HubSpot, disconnected from orders, contracts, and billing.
 - **Vendor lock-in is the norm.** NetSuite customizations are expensive and fragile. Operators can't audit, extend, or self-host their own business system.
 
-SatERP replaces this patchwork with a single, open-source, self-hosted ERP that natively understands satellite operations.
+Apogee replaces this patchwork with a single, open-source, self-hosted ERP that natively understands satellite operations.
 
 ## 2. Goals
 
@@ -245,7 +245,7 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 - User training and operational documentation
 - Go-live with full production workload
 
-**Exit criteria:** Reference operator is running SatERP as primary system of record with NetSuite decommissioned.
+**Exit criteria:** Reference operator is running Apogee as primary system of record with NetSuite decommissioned.
 
 ## 6. Risks
 
@@ -262,9 +262,9 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 
 ## 7. Out of Scope (Phase 1-4)
 
-- **Manufacturing Execution System (MES):** Shop floor control for satellite manufacturing. SatERP tracks programs and milestones, not work orders at the assembly station level.
-- **Ground segment network management:** SatERP tracks ground station assets but does not replace network management systems (Kratos handles this via integration).
-- **Orbital mechanics / mission planning:** SatERP stores orbital parameters but does not compute maneuvers, conjunction assessments, or launch trajectories.
+- **Manufacturing Execution System (MES):** Shop floor control for satellite manufacturing. Apogee tracks programs and milestones, not work orders at the assembly station level.
+- **Ground segment network management:** Apogee tracks ground station assets but does not replace network management systems (Kratos handles this via integration).
+- **Orbital mechanics / mission planning:** Apogee stores orbital parameters but does not compute maneuvers, conjunction assessments, or launch trajectories.
 - **SaaS / multi-tenant hosting:** Self-hosted only. Revisit post-Phase 4 based on market demand.
 - **Mobile app:** Web-responsive UI only. Native mobile apps are a future consideration.
 

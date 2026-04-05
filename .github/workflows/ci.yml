@@ -15,19 +15,19 @@ jobs:
       postgres:
         image: postgres:16
         env:
-          POSTGRES_USER: saterp
-          POSTGRES_PASSWORD: saterp
-          POSTGRES_DB: saterp_test
+          POSTGRES_USER: apogee
+          POSTGRES_PASSWORD: apogee
+          POSTGRES_DB: apogee_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U saterp"
+          --health-cmd "pg_isready -U apogee"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
 
     env:
-      DATABASE_URL: postgres://saterp:saterp@localhost:5432/saterp_test
+      DATABASE_URL: postgres://apogee:apogee@localhost:5432/apogee_test
       NODE_ENV: test
 
     steps:

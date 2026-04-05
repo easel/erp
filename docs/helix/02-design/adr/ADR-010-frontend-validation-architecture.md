@@ -9,7 +9,7 @@
 
 ## Context
 
-SatERP is an isomorphic TypeScript application (ADR-009) where validation correctness is a compliance concern — an ITAR-controlled item with invalid classification data could cause regulatory violations. The system needs a validation strategy that:
+Apogee is an isomorphic TypeScript application (ADR-009) where validation correctness is a compliance concern — an ITAR-controlled item with invalid classification data could cause regulatory violations. The system needs a validation strategy that:
 
 1. Provides instant field-level feedback in the browser (UX)
 2. Enforces the same rules on the server (security)
@@ -20,10 +20,10 @@ SatERP is an isomorphic TypeScript application (ADR-009) where validation correc
 
 ### Single Schema Source of Truth
 
-All entity validation schemas live in `@saterp/shared` as Zod schemas. These are the canonical definition of "structurally valid" for every entity:
+All entity validation schemas live in `@apogee/shared` as Zod schemas. These are the canonical definition of "structurally valid" for every entity:
 
 ```
-@saterp/shared/src/schemas/
+@apogee/shared/src/schemas/
   quote.ts          → CreateQuoteSchema, UpdateQuoteSchema
   sales-order.ts    → CreateSalesOrderSchema
   journal-entry.ts  → CreateJournalEntrySchema
@@ -72,7 +72,7 @@ Server-only validation runs after Layer 1 passes. Failures return structured err
 Server-only validation failures return a consistent error shape:
 
 ```typescript
-// @saterp/shared/src/errors.ts
+// @apogee/shared/src/errors.ts
 interface ValidationError {
   code: "VALIDATION_ERROR";
   field?: string;          // which field failed (for inline display)
@@ -124,7 +124,7 @@ The two-layer split is necessary because some rules require system state that th
 - Server-only failures are explicitly handled in the UX, not silent surprises
 
 ### Negative
-- Every new entity/mutation requires a Zod schema in @saterp/shared before the form or resolver can be built
+- Every new entity/mutation requires a Zod schema in @apogee/shared before the form or resolver can be built
 - Zod schemas must remain platform-independent (no `fs`, no `window`, no Bun-only APIs)
 - Server-only validation failures require a resolution UX flow that doesn't exist in simpler architectures
 
@@ -132,4 +132,4 @@ The two-layer split is necessary because some rules require system state that th
 
 - FEAT-009 (Platform): Add acceptance criteria for validation architecture
 - SD-001 (Architecture): Already references React Hook Form + Zod; this ADR provides the detailed contract
-- @saterp/shared package: Must contain all entity Zod schemas
+- @apogee/shared package: Must contain all entity Zod schemas

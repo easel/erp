@@ -9,11 +9,11 @@
 
 ## Overview
 
-SatERP's CRM module replaces Salesforce/HubSpot with a fully integrated customer relationship management system purpose-built for satellite operator sales cycles. These cycles are long (6-18 months), complex (multi-stakeholder, multi-entity, frequently involving government and military buyers), and multinational (customers span governments, militaries, telcos, and enterprises worldwide, including conflict zones like Ukraine and Israel).
+Apogee's CRM module replaces Salesforce/HubSpot with a fully integrated customer relationship management system purpose-built for satellite operator sales cycles. These cycles are long (6-18 months), complex (multi-stakeholder, multi-entity, frequently involving government and military buyers), and multinational (customers span governments, militaries, telcos, and enterprises worldwide, including conflict zones like Ukraine and Israel).
 
 The CRM is not a bolt-on -- it is the front door to the commercial system. Contacts and companies flow into opportunities, opportunities generate quotes (FEAT-003), quotes become orders, and orders drive fulfillment and billing. Pipeline data feeds forecasting. Campaign attribution traces marketing spend to closed revenue. Customer health scoring on capacity accounts feeds renewal and upsell workflows.
 
-By building CRM into the ERP rather than integrating an external system, SatERP eliminates the data synchronization problems, licensing costs, and vendor dependency that satellite operators currently suffer with Salesforce/HubSpot alongside NetSuite/SAP.
+By building CRM into the ERP rather than integrating an external system, Apogee eliminates the data synchronization problems, licensing costs, and vendor dependency that satellite operators currently suffer with Salesforce/HubSpot alongside NetSuite/SAP.
 
 ## User Stories
 
@@ -235,7 +235,7 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 
 1. **CRM vs. Sales customer master ownership:** The PRD defines customer master in SLS-003 and contact/company management in CRM-001. Should there be a single shared entity (Company/Contact) used by both modules, or should CRM maintain prospect records that "graduate" to customer records in Sales upon first order? Single entity is simpler but blurs the prospect/customer distinction.
 
-2. **Pipeline configurability depth:** Should pipelines be fully configurable (operators define their own stages, probabilities, and required fields per stage), or should SatERP ship with opinionated defaults for hardware and capacity pipelines? Configurability adds complexity; opinionated defaults may not fit all operators.
+2. **Pipeline configurability depth:** Should pipelines be fully configurable (operators define their own stages, probabilities, and required fields per stage), or should Apogee ship with opinionated defaults for hardware and capacity pipelines? Configurability adds complexity; opinionated defaults may not fit all operators.
 
 3. **Email integration architecture:** Bi-directional email sync is technically complex (IMAP/Graph API, deduplication, threading, privacy). Should the initial implementation support a specific provider (Microsoft 365, Google Workspace) or be provider-agnostic from day one? Provider-specific is faster to ship; provider-agnostic is more aligned with the self-hosted philosophy.
 

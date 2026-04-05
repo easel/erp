@@ -1,4 +1,4 @@
-# Data Model: SatERP — Phase 1
+# Data Model: Apogee — Phase 1
 
 **Authority Level:** 4 (Design)
 **Status:** Draft
@@ -2650,4 +2650,4 @@ shipment ──< shipment_line
 
 ---
 
-*This data model covers SatERP Phase 1 (P0) requirements. Phase 2 will extend with: advanced tax engine tables, bank reconciliation, fixed assets, project accounting, manufacturing/MRP, and HR/payroll schemas.*
+*This data model covers Apogee Phase 1 (P0) requirements. Phase 2 will extend with: advanced tax engine tables, bank reconciliation, fixed assets, project accounting, manufacturing/MRP, and HR/payroll schemas.*

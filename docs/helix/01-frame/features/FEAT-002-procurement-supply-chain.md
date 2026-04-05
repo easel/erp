@@ -9,7 +9,7 @@
 
 ## Overview
 
-The Procurement & Supply Chain module manages the full lifecycle of purchasing, inventory, and vendor relationships for a satellite operator that both manufactures integrated satellite systems and sells hardware (terminals, modems, antennas) to end users worldwide. Unlike a general-purpose procurement system, SatERP must handle launch vehicle procurement --- a multi-hundred-million-dollar process involving launch service agreements, manifest slot allocation, milestone payments, and insurance --- as a first-class workflow rather than a bolt-on.
+The Procurement & Supply Chain module manages the full lifecycle of purchasing, inventory, and vendor relationships for a satellite operator that both manufactures integrated satellite systems and sells hardware (terminals, modems, antennas) to end users worldwide. Unlike a general-purpose procurement system, Apogee must handle launch vehicle procurement --- a multi-hundred-million-dollar process involving launch service agreements, manifest slot allocation, milestone payments, and insurance --- as a first-class workflow rather than a bolt-on.
 
 Every item that flows through procurement carries export control implications. ITAR-controlled flight hardware and EAR-classified commercial components must be classified at the inventory item level, with that classification propagating automatically to purchase orders, goods receipts, and outbound shipments. Component genealogy must be maintained from raw material receipt through satellite integration, linking lot and serial numbers to build programs and ultimately to orbital assets. This traceability is not optional: it is a regulatory requirement for defense articles and a contractual requirement for most launch service providers.
 
@@ -362,7 +362,7 @@ BlanketPurchaseOrder 1──* PurchaseOrder (releases)
 
 1. **Genealogy granularity for commercial terminals**: Full component genealogy (SCM-008) is clearly required for flight hardware. Should the same granularity apply to commercial terminals (modems, antennas), or is lot-level traceability sufficient for non-flight hardware? This affects data volume and warehouse process complexity significantly.
 
-2. **MRP scope boundary with MES**: The PRD explicitly excludes Manufacturing Execution Systems (MES). Where exactly does MRP (SCM-012) end and MES begin? Specifically, does SatERP generate production orders and track their completion, or does it stop at planned production orders that are handed off to an external MES?
+2. **MRP scope boundary with MES**: The PRD explicitly excludes Manufacturing Execution Systems (MES). Where exactly does MRP (SCM-012) end and MES begin? Specifically, does Apogee generate production orders and track their completion, or does it stop at planned production orders that are handed off to an external MES?
 
 3. **Launch provider integration**: Should the system support API-based integration with launch providers for manifest updates and milestone status, or is manual entry sufficient? SpaceX and Arianespace have different (and largely proprietary) processes for manifest management.
 
@@ -370,7 +370,7 @@ BlanketPurchaseOrder 1──* PurchaseOrder (releases)
 
 5. **Bonded warehouse duty optimization**: Should the system support duty optimization logic (e.g., recommending which bonded stock to release based on duty rates and trade agreements), or is basic bonded tracking sufficient for Phase 1?
 
-6. **Vendor scorecard data sources**: Should vendor scorecards (SCM-007) be computed solely from SatERP transaction data (PO delivery dates, quality inspections), or should they integrate external data sources (D&B ratings, financial health indicators)?
+6. **Vendor scorecard data sources**: Should vendor scorecards (SCM-007) be computed solely from Apogee transaction data (PO delivery dates, quality inspections), or should they integrate external data sources (D&B ratings, financial health indicators)?
 
 7. **ITAR classification inheritance for assemblies**: When components with different ITAR classifications are assembled together, should the resulting assembly automatically inherit the most restrictive classification, or must a compliance officer explicitly classify each assembly? The ITAR "see-through rule" may apply in some cases but not others.
 

@@ -1,4 +1,4 @@
-/** Core SatERP shared types — isomorphic, no platform-specific dependencies */
+/** Core Apogee shared types — isomorphic, no platform-specific dependencies */
 
 /** UUID v4 primary key */
 export type UUID = string & { readonly __brand: "UUID" };

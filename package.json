@@ -1,5 +1,5 @@
 {
-	"name": "saterp",
+	"name": "apogee",
 	"version": "0.0.1",
 	"private": true,
 	"workspaces": ["packages/*"],

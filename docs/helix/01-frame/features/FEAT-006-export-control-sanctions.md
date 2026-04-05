@@ -9,7 +9,7 @@
 
 ## Overview
 
-Export Control & Sanctions Compliance is the most compliance-critical module in SatERP. Satellite hardware, components, and related technical data are heavily regulated under ITAR (International Traffic in Arms Regulations, 22 CFR 120-130) and EAR (Export Administration Regulations, 15 CFR 730-774). The operator conducts significant business in conflict areas -- notably Ukraine and Israel -- and must screen every transaction against multiple government-maintained denied-party and sanctions lists.
+Export Control & Sanctions Compliance is the most compliance-critical module in Apogee. Satellite hardware, components, and related technical data are heavily regulated under ITAR (International Traffic in Arms Regulations, 22 CFR 120-130) and EAR (Export Administration Regulations, 15 CFR 730-774). The operator conducts significant business in conflict areas -- notably Ukraine and Israel -- and must screen every transaction against multiple government-maintained denied-party and sanctions lists.
 
 The system must make it **difficult to accidentally violate regulations**. ITAR violations carry criminal penalties of up to $1M per violation and 20 years imprisonment; civil penalties up to $500K per violation. EAR violations carry comparable penalties. This module therefore enforces compliance -- it does not merely suggest it. Export compliance checks cannot be bypassed or disabled (Constraint C4).
 
@@ -473,7 +473,7 @@ Create License record (status: APPLIED)
   |── Attach supporting documents (technical specs, end-use certs)
   |
   v
-Submit to DDTC/BIS (manual, external to SatERP)
+Submit to DDTC/BIS (manual, external to Apogee)
   |
   v
 License received ──> Update status to ISSUED/ACTIVE
@@ -698,7 +698,7 @@ An ITAR-controlled item cannot complete the quote-to-delivery lifecycle without 
 
 5. **Multi-jurisdiction compliance.** The PRD mentions EU dual-use regulations. How deeply should Phase 1 support non-US export control regimes? Recommendation: Phase 1 focuses on US (ITAR/EAR/OFAC); the data model accommodates non-US regimes (EU, UK, Australia) as additional screening lists and classification schemes, with full support in Phase 2-3.
 
-6. **Screening engine build vs. buy.** Should SatERP build its own screening engine or integrate with a commercial screening service (e.g., Descartes Visual Compliance, Dow Jones Risk & Compliance)? Building ensures Constraint C5 compliance (no external dependencies) and avoids vendor lock-in, but commercial engines have decades of fuzzy-matching refinement. Recommendation: build a competent in-house engine for Phase 1 (offline-capable), with an adapter interface that allows plugging in a commercial engine for operators who prefer it.
+6. **Screening engine build vs. buy.** Should Apogee build its own screening engine or integrate with a commercial screening service (e.g., Descartes Visual Compliance, Dow Jones Risk & Compliance)? Building ensures Constraint C5 compliance (no external dependencies) and avoids vendor lock-in, but commercial engines have decades of fuzzy-matching refinement. Recommendation: build a competent in-house engine for Phase 1 (offline-capable), with an adapter interface that allows plugging in a commercial engine for operators who prefer it.
 
 7. **Compliance officer availability.** What happens if a hold is placed and no compliance officer is available to review it? The system needs an escalation path (compliance manager, then VP, then automatic notification to outside counsel). Define the escalation timing and fallback roles.
 

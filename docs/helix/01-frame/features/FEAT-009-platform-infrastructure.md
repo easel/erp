@@ -9,9 +9,9 @@
 
 ## Overview
 
-The platform layer provides the technical foundation on which every SatERP module operates. It is not a user-facing "feature" in the traditional sense but rather the set of cross-cutting capabilities that every module depends on: authentication, authorization, auditing, APIs, workflow orchestration, notifications, reporting, data import/export, localization, extensibility, and deployment infrastructure.
+The platform layer provides the technical foundation on which every Apogee module operates. It is not a user-facing "feature" in the traditional sense but rather the set of cross-cutting capabilities that every module depends on: authentication, authorization, auditing, APIs, workflow orchestration, notifications, reporting, data import/export, localization, extensibility, and deployment infrastructure.
 
-SatERP is self-hosted on operator infrastructure or GovCloud. It must handle ITAR-controlled and CUI data in compliance with NIST 800-171. Core functions must operate without external network dependencies. The platform must support 50+ legal entities, 10K+ contracts, and 1M+ SKUs without performance degradation.
+Apogee is self-hosted on operator infrastructure or GovCloud. It must handle ITAR-controlled and CUI data in compliance with NIST 800-171. Core functions must operate without external network dependencies. The platform must support 50+ legal entities, 10K+ contracts, and 1M+ SKUs without performance degradation.
 
 The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with a local-first architecture: client-side state is persisted in SQLite for offline operation, PostgreSQL is the server-side store (relational, document, and time-series data), and REST + GraphQL APIs handle all module interactions. Shared isomorphic packages ensure domain types, validation schemas, and business rules run identically on client and server.
 
@@ -50,19 +50,19 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 
 - **PLT-US-040:** As a user, I want to receive in-app notifications for workflow tasks, compliance alerts, and system events so that I am aware of items requiring my attention without checking email.
 - **PLT-US-041:** As a user, I want to configure my notification preferences (in-app, email, both, or none) per event type so that I control how I am notified.
-- **PLT-US-042:** As a system administrator, I want to configure webhook endpoints for notification delivery so that external systems can subscribe to SatERP events.
+- **PLT-US-042:** As a system administrator, I want to configure webhook endpoints for notification delivery so that external systems can subscribe to Apogee events.
 
 ### Reporting
 
 - **PLT-US-050:** As a finance analyst, I want to build reports with configurable filters, grouping, and column selection across any module's data so that I can answer ad-hoc business questions without developer support.
 - **PLT-US-051:** As a user, I want to drill down from summary report rows to the underlying source records so that I can investigate anomalies.
-- **PLT-US-052:** As a user, I want to export reports to CSV, PDF, and Excel so that I can share data with stakeholders who do not have SatERP access.
+- **PLT-US-052:** As a user, I want to export reports to CSV, PDF, and Excel so that I can share data with stakeholders who do not have Apogee access.
 - **PLT-US-053:** As a user, I want to save report configurations and schedule recurring report generation so that standard reports are available without manual rebuilding.
 
 ### Data Import/Export
 
 - **PLT-US-060:** As a system administrator, I want to import data from CSV and Excel files with column mapping, validation, and error reporting so that I can migrate data from legacy systems.
-- **PLT-US-061:** As a system administrator, I want to export any entity's data via API for ongoing integration with external systems so that SatERP is not a data silo.
+- **PLT-US-061:** As a system administrator, I want to export any entity's data via API for ongoing integration with external systems so that Apogee is not a data silo.
 - **PLT-US-062:** As a system administrator, I want import operations to run in preview mode (validate without committing) so that I can verify data quality before importing.
 
 ### Localization
@@ -72,12 +72,12 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 
 ### Extensions
 
-- **PLT-US-080:** As an operator developer, I want to register plugins that add custom fields, validation rules, or UI components without modifying core SatERP code so that operator-specific customizations survive upgrades.
+- **PLT-US-080:** As an operator developer, I want to register plugins that add custom fields, validation rules, or UI components without modifying core Apogee code so that operator-specific customizations survive upgrades.
 - **PLT-US-081:** As a system administrator, I want to enable or disable plugins per entity so that customizations can be scoped to specific legal entities.
 
 ### Deployment
 
-- **PLT-US-090:** As an IT administrator, I want to deploy SatERP using Docker containers with Kubernetes manifests so that deployment follows standard infrastructure-as-code practices.
+- **PLT-US-090:** As an IT administrator, I want to deploy Apogee using Docker containers with Kubernetes manifests so that deployment follows standard infrastructure-as-code practices.
 - **PLT-US-091:** As an IT administrator, I want to configure per-entity data residency (which database/region stores a given entity's data) so that national data sovereignty requirements are met.
 
 ## Acceptance Criteria
@@ -255,13 +255,13 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 
 *Traces to: PRD PLT-001, ADR-010*
 
-- [ ] All entity validation schemas are defined as Zod schemas in `@saterp/shared` and imported by both Pothos resolvers (server) and React Hook Form (client)
+- [ ] All entity validation schemas are defined as Zod schemas in `@apogee/shared` and imported by both Pothos resolvers (server) and React Hook Form (client)
 - [ ] Client-side form validation uses React Hook Form with `@hookform/resolvers/zod`, validating against the same Zod schemas used server-side
 - [ ] Server-side validation failures return a structured `ValidationError` response with `code`, `field`, `message`, `rule`, and `context` fields
 - [ ] Client maps server `ValidationError.field` to the corresponding form field for inline error display; errors without `field` display as form-level banners
 - [ ] When offline, Layer 1 (structural) validation runs normally; Layer 2 (state-dependent) validation is deferred until sync. A warning banner displays: "Compliance checks are pending until you reconnect."
 - [ ] On sync, server-rejected records surface in a resolution UI where the user can edit and resubmit or discard
-- [ ] Changing a Zod schema in @saterp/shared causes a TypeScript compile error in any form or resolver that doesn't handle the change — no silent drift
+- [ ] Changing a Zod schema in @apogee/shared causes a TypeScript compile error in any form or resolver that doesn't handle the change — no silent drift
 
 ### PLT-018: Domain-Specific ERP Components
 
@@ -291,7 +291,7 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 
 ### Core Entities
 
-- **User** - A person who accesses SatERP. Fields: id, username, email, display name, locale, timezone, MFA status, account status (active, locked, deactivated), last login.
+- **User** - A person who accesses Apogee. Fields: id, username, email, display name, locale, timezone, MFA status, account status (active, locked, deactivated), last login.
 - **Role** - A named set of permissions. Fields: id, name, description, scope (global, entity, program, ITAR compartment), built-in (boolean).
 - **Permission** - A granular access right. Fields: id, resource type, action (create, read, update, delete, execute), scope qualifier (entity ID, program ID, compartment ID, or wildcard).
 - **RoleAssignment** - Links a user to a role with optional scope and time bounds. Fields: id, user (ref), role (ref), scope qualifier, start date, end date.
@@ -320,10 +320,10 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 
 ### User Authentication (SSO + MFA)
 
-1. User navigates to SatERP; system redirects to configured IdP (SAML 2.0 or OIDC)
-2. User authenticates with IdP; IdP returns assertion/token to SatERP
-3. SatERP validates assertion, provisions or updates local user record (JIT provisioning)
-4. If MFA is required for the user's role, SatERP prompts for second factor (TOTP or WebAuthn)
+1. User navigates to Apogee; system redirects to configured IdP (SAML 2.0 or OIDC)
+2. User authenticates with IdP; IdP returns assertion/token to Apogee
+3. Apogee validates assertion, provisions or updates local user record (JIT provisioning)
+4. If MFA is required for the user's role, Apogee prompts for second factor (TOTP or WebAuthn)
 5. On success, session is created with configurable timeout; user lands on dashboard
 6. On failure or timeout, access is denied and the attempt is audit-logged
 
@@ -379,7 +379,7 @@ The following notes capture requirements-level architectural decisions. Detailed
 
 | External System / Module | Integration | Direction |
 |--------------------------|------------|-----------|
-| All SatERP modules | Every module uses PLT for auth, RBAC, audit, workflow, notifications, and reporting | Modules consume PLT services |
+| All Apogee modules | Every module uses PLT for auth, RBAC, audit, workflow, notifications, and reporting | Modules consume PLT services |
 | SSO Identity Providers | SAML 2.0 / OIDC for authentication | Inbound (IdP to PLT) |
 | Email service (SMTP) | Outbound email for notifications, reports, and workflow alerts | Outbound |
 | Carrier/logistics APIs | Webhook and REST integration for shipping carriers (via LOG module) | Outbound |

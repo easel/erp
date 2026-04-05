@@ -1,5 +1,5 @@
 {
-	"name": "@saterp/web",
+	"name": "@apogee/web",
 	"version": "0.0.1",
 	"private": true,
 	"type": "module",
@@ -11,6 +11,6 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@saterp/shared": "workspace:*"
+		"@apogee/shared": "workspace:*"
 	}
 }

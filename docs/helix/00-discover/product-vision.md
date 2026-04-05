@@ -1,4 +1,4 @@
-# Product Vision: SatERP
+# Product Vision: Apogee
 
 **Authority Level:** 1 (Governing)
 **Status:** Draft
@@ -21,7 +21,7 @@ International satellite operators sit at the intersection of aerospace manufactu
 
 Satellite operators end up with a patchwork of systems — ERP for finance, custom tools for spectrum and orbital mechanics, spreadsheets for export compliance, and manual processes for delivering hardware into sanctioned or conflict-adjacent territories like Ukraine and Israel.
 
-**SatERP eliminates this fragmentation** by providing a single system that understands the full lifecycle: from satellite design and manufacturing, through launch procurement and orbital operations, to hardware sales, capacity contracts, and end-user delivery — all with native support for multinational regulatory compliance, multi-currency consolidation, and complex export controls.
+**Apogee eliminates this fragmentation** by providing a single system that understands the full lifecycle: from satellite design and manufacturing, through launch procurement and orbital operations, to hardware sales, capacity contracts, and end-user delivery — all with native support for multinational regulatory compliance, multi-currency consolidation, and complex export controls.
 
 ## Market Context
 
@@ -167,4 +167,4 @@ Satellite operators end up with a patchwork of systems — ERP for finance, cust
 
 ---
 
-*This document is the governing authority for SatERP. All downstream artifacts (PRD, feature specs, design documents, implementation) must align with the mission, principles, and domain model defined here.*
+*This document is the governing authority for Apogee. All downstream artifacts (PRD, feature specs, design documents, implementation) must align with the mission, principles, and domain model defined here.*
