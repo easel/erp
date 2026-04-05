@@ -1,0 +1,39 @@
+{
+  "lockfileVersion": 1,
+  "configVersion": 1,
+  "workspaces": {
+    "": {
+      "name": "saterp",
+    },
+    "packages/server": {
+      "name": "@saterp/server",
+      "version": "0.0.1",
+      "dependencies": {
+        "@saterp/shared": "workspace:*",
+      },
+    },
+    "packages/shared": {
+      "name": "@saterp/shared",
+      "version": "0.0.1",
+      "dependencies": {
+        "zod": "^4.3.6",
+      },
+    },
+    "packages/web": {
+      "name": "@saterp/web",
+      "version": "0.0.1",
+      "dependencies": {
+        "@saterp/shared": "workspace:*",
+      },
+    },
+  },
+  "packages": {
+    "@saterp/server": ["@saterp/server@workspace:packages/server"],
+
+    "@saterp/shared": ["@saterp/shared@workspace:packages/shared"],
+
+    "@saterp/web": ["@saterp/web@workspace:packages/web"],
+
+    "zod": ["zod@4.3.6", "", {}, "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="],
+  }
+}
