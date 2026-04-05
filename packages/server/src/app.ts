@@ -197,14 +197,55 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 		graphiql: process.env.NODE_ENV !== "production",
 	});
 
-	// Mount GraphQL Yoga as a content-type-aware handler
+	// Mount GraphQL Yoga using the Fetch API adapter.
+	//
+	// `yoga.handleNodeRequestAndResponse` writes directly to the raw Node
+	// ServerResponse stream and leaves the Fastify lifecycle in an inconsistent
+	// state (the response is sent but Fastify still expects to finalise it).
+	// Instead we convert the Fastify request into a standard Fetch Request,
+	// dispatch it through yoga.fetch(), and write the result back through
+	// Fastify's reply API so the lifecycle completes normally.
 	app.route({
 		url: "/graphql",
 		method: ["GET", "POST", "OPTIONS"],
 		handler: async (req, reply) => {
-			const response = await yoga.handleNodeRequestAndResponse(req.raw, reply.raw, {});
-			reply.hijack();
-			return response;
+			// Build an absolute URL from the raw request
+			const protocol = (req.headers["x-forwarded-proto"] as string | undefined) ?? "http";
+			const host = req.headers.host ?? "localhost";
+			const url = `${protocol}://${host}${req.url}`;
+
+			// Collect the raw request body as a Uint8Array so we can pass it to
+			// the Fetch Request constructor.  Fastify has already consumed the
+			// stream into `req.body` (or left it unconsumed for non-JSON bodies),
+			// so we read from `req.raw` only when needed.
+			let bodyInit: BodyInit | null = null;
+			if (req.method !== "GET" && req.method !== "HEAD") {
+				// req.body is populated by Fastify's content-type parser for
+				// application/json; for other content types we pass the raw stream.
+				if (req.body !== undefined) {
+					bodyInit = JSON.stringify(req.body);
+				} else {
+					bodyInit = req.raw as unknown as BodyInit;
+				}
+			}
+
+			const fetchRequest = new Request(url, {
+				method: req.method,
+				headers: req.headers as Record<string, string>,
+				body: bodyInit,
+			});
+
+			const response = await yoga.fetch(fetchRequest);
+
+			// Forward status and headers
+			reply.status(response.status);
+			response.headers.forEach((value, key) => {
+				reply.header(key, value);
+			});
+
+			// Stream the body back
+			const responseBody = await response.arrayBuffer();
+			return reply.send(Buffer.from(responseBody));
 		},
 	});
 

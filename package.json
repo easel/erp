@@ -12,10 +12,13 @@
 		"build": "bun run --filter '*' build",
 		"migrate": "cd packages/server && bun run migrate",
 		"seed": "cd packages/server && bun run seed",
-		"demo": "bun run scripts/demo.ts"
+		"demo": "bun run scripts/demo.ts",
+		"test:e2e": "bunx playwright test",
+		"test:e2e:headed": "E2E_HEADED=1 bunx playwright test"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.0",
+		"@playwright/test": "^1.59.1",
 		"typescript": "^5.0.0"
 	}
 }
