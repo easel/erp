@@ -18,8 +18,9 @@
  * />
  */
 
-import React, { useCallback, useEffect, useId, useRef, useState } from "react";
 import type { CurrencyCode, UUID } from "@apogee/shared";
+import type React from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 
 export const ENTITY_SWITCHER_KEY = "apogee:activeEntityId";
 

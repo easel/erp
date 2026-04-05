@@ -19,8 +19,9 @@
  * />
  */
 
-import React, { useId } from "react";
 import type { FiscalPeriodStatus } from "@apogee/shared";
+import type React from "react";
+import { useId } from "react";
 import {
 	FISCAL_PERIOD_LABELS,
 	getFiscalPeriodWarning,
@@ -83,16 +84,12 @@ export function FiscalPeriodPicker({
 	const errorId = useId();
 
 	// Find the status of the currently selected period
-	const selectedPeriod = fiscalYears
-		.flatMap((y) => y.periods)
-		.find((p) => p.id === value);
+	const selectedPeriod = fiscalYears.flatMap((y) => y.periods).find((p) => p.id === value);
 
 	const warning = selectedPeriod ? getFiscalPeriodWarning(selectedPeriod.status) : null;
 
 	const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-		const selected = fiscalYears
-			.flatMap((y) => y.periods)
-			.find((p) => p.id === e.target.value);
+		const selected = fiscalYears.flatMap((y) => y.periods).find((p) => p.id === e.target.value);
 
 		if (!selected) return;
 		if (disableHardClosed && !isFiscalPeriodSelectable(selected.status)) return;
@@ -105,10 +102,7 @@ export function FiscalPeriodPicker({
 
 	return (
 		<div>
-			<label
-				htmlFor={id}
-				style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}
-			>
+			<label htmlFor={id} style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>
 				{label}
 				{required && (
 					<span aria-hidden="true" style={{ marginLeft: "0.25rem", color: "#dc2626" }}>
@@ -143,8 +137,7 @@ export function FiscalPeriodPicker({
 					<optgroup key={year.id} label={year.name}>
 						{year.periods.map((period) => {
 							const indicator = STATUS_INDICATORS[period.status];
-							const isDisabled =
-								disableHardClosed && !isFiscalPeriodSelectable(period.status);
+							const isDisabled = disableHardClosed && !isFiscalPeriodSelectable(period.status);
 							return (
 								<option
 									key={period.id}

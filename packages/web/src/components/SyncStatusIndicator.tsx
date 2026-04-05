@@ -19,8 +19,9 @@
  * />
  */
 
-import React, { useId, useRef, useState } from "react";
 import type { SyncStatus } from "@apogee/shared";
+import type React from "react";
+import { useId, useRef, useState } from "react";
 
 export type SyncConnectionState = SyncStatus | "offline";
 
@@ -154,14 +155,10 @@ export function SyncStatusIndicator({
 						fontSize: "0.875rem",
 					}}
 				>
-					<p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>
-						{config.label}
-					</p>
+					<p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{config.label}</p>
 
 					<p style={{ margin: "0.25rem 0 0", color: "#6b7280" }}>
-						{lastSyncedAt
-							? `Last synced ${formatRelativeTime(lastSyncedAt)}`
-							: "Never synced"}
+						{lastSyncedAt ? `Last synced ${formatRelativeTime(lastSyncedAt)}` : "Never synced"}
 					</p>
 
 					{pendingCount > 0 && (
@@ -197,8 +194,7 @@ export function SyncStatusIndicator({
 								fontSize: "0.75rem",
 							}}
 						>
-							You are offline. Changes will sync when you reconnect. Compliance
-							checks are pending.
+							You are offline. Changes will sync when you reconnect. Compliance checks are pending.
 						</p>
 					)}
 				</div>
@@ -233,8 +229,7 @@ export function OfflineBanner(): React.ReactElement {
 				textAlign: "center",
 			}}
 		>
-			⚠ You are offline. Changes will sync when you reconnect. Compliance checks are
-			pending.
+			⚠ You are offline. Changes will sync when you reconnect. Compliance checks are pending.
 		</div>
 	);
 }

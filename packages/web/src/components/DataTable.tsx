@@ -26,17 +26,18 @@
  * />
  */
 
-import React, { useMemo, useRef, useCallback } from "react";
 import {
 	type ColumnDef,
 	type OnChangeFn,
 	type PaginationState,
-	type SortingState,
 	type RowSelectionState,
+	type SortingState,
 	flexRender,
 	getCoreRowModel,
 	useReactTable,
 } from "@tanstack/react-table";
+import type React from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { downloadCSV, exportToCSV } from "../utils/csv.js";
 
 export const VIRTUALIZATION_THRESHOLD = 1_000;
@@ -81,9 +82,7 @@ export interface DataTableProps<TData extends Record<string, unknown>> {
 }
 
 /** Formats a sort direction for the aria-sort attribute. */
-function ariaSortValue(
-	isSorted: false | "asc" | "desc",
-): "none" | "ascending" | "descending" {
+function ariaSortValue(isSorted: false | "asc" | "desc"): "none" | "ascending" | "descending" {
 	if (!isSorted) return "none";
 	return isSorted === "asc" ? "ascending" : "descending";
 }
@@ -296,24 +295,13 @@ export function DataTable<TData extends Record<string, unknown>>({
 												left: colIndex === 0 ? 0 : undefined,
 												background: "#f9fafb",
 											}}
-											onClick={
-												canSort
-													? header.column.getToggleSortingHandler()
-													: undefined
-											}
+											onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
 										>
 											<span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-												{flexRender(
-													header.column.columnDef.header,
-													header.getContext(),
-												)}
+												{flexRender(header.column.columnDef.header, header.getContext())}
 												{canSort && (
 													<span aria-hidden="true" style={{ color: "#9ca3af" }}>
-														{isSorted === "asc"
-															? "↑"
-															: isSorted === "desc"
-																? "↓"
-																: "↕"}
+														{isSorted === "asc" ? "↑" : isSorted === "desc" ? "↓" : "↕"}
 													</span>
 												)}
 											</span>
@@ -383,8 +371,8 @@ export function DataTable<TData extends Record<string, unknown>>({
 							background: "#f9fafb",
 						}}
 					>
-						Showing {pagination.pageSize.toLocaleString()} of{" "}
-						{totalCount.toLocaleString()} rows — use pagination to navigate.
+						Showing {pagination.pageSize.toLocaleString()} of {totalCount.toLocaleString()} rows —
+						use pagination to navigate.
 					</p>
 				)}
 			</div>

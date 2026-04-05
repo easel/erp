@@ -22,8 +22,9 @@
  * />
  */
 
-import React, { useId, useState } from "react";
 import type { CurrencyCode } from "@apogee/shared";
+import type React from "react";
+import { useId, useState } from "react";
 import { formatMoneyDisplay, getDecimalPlaces, parseMoneyInput } from "../utils/money.js";
 
 /** Subset of ISO 4217 codes surfaced in the currency selector. */
@@ -105,9 +106,7 @@ export function MoneyInput({
 	);
 	const [hasError, setHasError] = useState(false);
 
-	const currencies = [
-		...new Set([...COMMON_CURRENCIES, ...(additionalCurrencies ?? [])]),
-	];
+	const currencies = [...new Set([...COMMON_CURRENCIES, ...(additionalCurrencies ?? [])])];
 
 	const handleAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const raw = e.target.value;
@@ -148,16 +147,11 @@ export function MoneyInput({
 
 	const decimals = getDecimalPlaces(currencyCode);
 	const showError = hasError || !!error;
-	const describedBy = [showError ? errorId : null, hint ? hintId : null]
-		.filter(Boolean)
-		.join(" ");
+	const describedBy = [showError ? errorId : null, hint ? hintId : null].filter(Boolean).join(" ");
 
 	return (
 		<div>
-			<label
-				htmlFor={id}
-				style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}
-			>
+			<label htmlFor={id} style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>
 				{label}
 				{required && (
 					<span aria-hidden="true" style={{ marginLeft: "0.25rem", color: "#dc2626" }}>
@@ -167,10 +161,7 @@ export function MoneyInput({
 			</label>
 
 			{hint && (
-				<p
-					id={hintId}
-					style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", color: "#6b7280" }}
-				>
+				<p id={hintId} style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", color: "#6b7280" }}>
 					{hint}
 				</p>
 			)}

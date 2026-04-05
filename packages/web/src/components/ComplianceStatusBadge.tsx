@@ -18,8 +18,8 @@
  * />
  */
 
-import React from "react";
 import type { ComplianceStatus } from "@apogee/shared";
+import type React from "react";
 
 export interface ComplianceTooltipInfo {
 	/** Summary from the most recent screening run. */

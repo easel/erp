@@ -1,10 +1,10 @@
 import { describe, expect, it } from "bun:test";
+import type { FiscalPeriodStatus } from "@apogee/shared";
 import {
 	FISCAL_PERIOD_LABELS,
 	getFiscalPeriodWarning,
 	isFiscalPeriodSelectable,
 } from "../src/utils/fiscalPeriod.js";
-import type { FiscalPeriodStatus } from "@apogee/shared";
 
 describe("isFiscalPeriodSelectable", () => {
 	it("returns true for FUTURE", () => {
