@@ -248,28 +248,25 @@ describe("rejectToDraft", () => {
 	});
 });
 
-// ── Default screening function (stub with known test patterns) ────────────────
+// ── Default screening function (no-op safe default) ──────────────────────────
+// The keyword stub has been replaced by the DB-backed screenParty service in
+// packages/server/src/compliance/export-control-service.ts.
+// The default screenVendorForPO is now a safe no-op that always returns CLEAR.
+// Production resolvers inject createDbScreeningFn(db, performedBy) instead.
 
-describe("Default compliance screening stub", () => {
-	test("vendor name with DENIED in it triggers CONFIRMED_MATCH hold", () => {
-		const po = makePO("PENDING_APPROVAL", "Acme DENIED Industries");
-		const result = approve(po, UUID_APPROVER);
-		expect(result.newStatus).toBe("ON_HOLD");
-		expect(result.screening.outcome).toBe("CONFIRMED_MATCH");
-	});
-
-	test("vendor name with SUSPECT in it triggers POTENTIAL_MATCH hold", () => {
-		const po = makePO("PENDING_APPROVAL", "SUSPECT Corp");
-		const result = approve(po, UUID_APPROVER);
-		expect(result.newStatus).toBe("ON_HOLD");
-		expect(result.screening.outcome).toBe("POTENTIAL_MATCH");
-	});
-
-	test("ordinary vendor name results in CLEAR outcome and APPROVED", () => {
-		const po = makePO("PENDING_APPROVAL", "Trusted Satellite Supplier Inc");
+describe("Default screening function — safe no-op (no DB)", () => {
+	test("any vendor name returns CLEAR when no DB is available", () => {
+		const po = makePO("PENDING_APPROVAL", "Any Vendor Name");
 		const result = approve(po, UUID_APPROVER);
 		expect(result.newStatus).toBe("APPROVED");
 		expect(result.screening.outcome).toBe("CLEAR");
+		expect(result.screening.holdRequired).toBe(false);
+	});
+
+	test("no-op screening never places a hold", () => {
+		const po = makePO("PENDING_APPROVAL", "Acme Industries International");
+		const result = approve(po, UUID_APPROVER);
+		expect(result.holdId).toBeNull();
 	});
 });
 
