@@ -1,0 +1,15 @@
+apiVersion: v2
+name: apogee
+description: Apogee ERP — satellite operator enterprise resource planning system
+type: application
+version: 0.1.0
+appVersion: "0.0.1"
+
+maintainers:
+  - name: Apogee Engineering
+
+dependencies:
+  - name: postgresql
+    version: "16.x.x"
+    repository: "oci://registry-1.docker.io/bitnamicharts"
+    condition: postgresql.enabled

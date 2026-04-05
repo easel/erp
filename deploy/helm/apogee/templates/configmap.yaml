@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "apogee.fullname" . }}-config
+  labels:
+    {{- include "apogee.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.app.nodeEnv | quote }}
+  PORT: {{ .Values.app.port | quote }}
+  HOST: {{ .Values.app.host | quote }}
+  LOG_LEVEL: {{ .Values.app.logLevel | quote }}
+  {{- if .Values.app.corsOrigin }}
+  CORS_ORIGIN: {{ .Values.app.corsOrigin | quote }}
+  {{- end }}
+  {{- if .Values.app.otelEndpoint }}
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.app.otelEndpoint | quote }}
+  {{- end }}
+  {{- if .Values.app.region }}
+  REGION: {{ .Values.app.region | quote }}
+  {{- end }}
+  {{- range $key, $value := .Values.app.extraEnv }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}

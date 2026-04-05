@@ -1,0 +1,47 @@
+# Development profile overrides.
+# Usage: helm install apogee ./deploy/helm/apogee -f deploy/helm/apogee/values-dev.yaml
+
+replicaCount: 1
+
+image:
+  pullPolicy: Always
+
+app:
+  nodeEnv: development
+  logLevel: debug
+  corsOrigin: "*"
+  region: us-dev-1
+
+secrets:
+  create: true
+  sessionSecret: "dev-session-secret-not-for-production"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: apogee.dev.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+autoscaling:
+  enabled: false
+
+postgresql:
+  enabled: true
+  auth:
+    username: apogee
+    password: apogee_dev
+    database: apogee_dev
+  primary:
+    persistence:
+      enabled: false

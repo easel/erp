@@ -1,0 +1,41 @@
+# Version control
+.git
+.gitignore
+
+# Dependencies (will be installed inside the image)
+node_modules
+**/node_modules
+
+# Build outputs
+dist
+**/dist
+*.tsbuildinfo
+
+# Development files
+.env
+.env.*
+!.env.example
+
+# IDE and editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# Test artifacts
+coverage
+**/.nyc_output
+
+# Documentation and non-runtime assets
+docs
+*.md
+!README.md
+
+# HELIX / DDX tracker
+.ddx
+.helix-logs
+
+# Docker files (not needed in build context)
+Dockerfile*
+docker-compose*.yml
+deploy/

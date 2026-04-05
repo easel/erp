@@ -1,0 +1,94 @@
+# Production profile overrides.
+# Usage: helm install apogee ./deploy/helm/apogee -f deploy/helm/apogee/values-prod.yaml
+#
+# REQUIRED overrides (must be supplied via --set or a secrets values file):
+#   secrets.create=false + secrets.existingSecret=<name>   (recommended)
+#   OR secrets.sessionSecret=<strong-random-value>
+#   externalDatabase.host, externalDatabase.password       (when postgresql.enabled=false)
+#   image.tag                                              (pin to a specific release)
+#   ingress.hosts[0].host                                  (production hostname)
+#   app.region                                             (e.g. us-east-1)
+
+replicaCount: 2
+
+image:
+  pullPolicy: IfNotPresent
+  # Pin to an explicit tag in production; do not use "latest".
+  tag: ""
+
+app:
+  nodeEnv: production
+  logLevel: info
+  # Set explicitly to the production origin; do not use "*".
+  corsOrigin: ""
+  # Set to the deployed OTLP collector endpoint.
+  otelEndpoint: ""
+  # Set to the cluster/cloud region for ITAR data-residency parameterisation.
+  region: ""
+
+# In production, manage secrets outside of Helm values:
+# 1. Create a Kubernetes Secret containing DATABASE_URL and SESSION_SECRET.
+# 2. Set secrets.create=false and secrets.existingSecret=<secret-name>.
+secrets:
+  create: false
+  existingSecret: "apogee-secrets"
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: apogee.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - secretName: apogee-tls
+      hosts:
+        - apogee.example.com
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+autoscaling:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+# Use an external managed PostgreSQL in production (RDS, Cloud SQL, etc.)
+postgresql:
+  enabled: false
+
+externalDatabase:
+  host: ""
+  port: 5432
+  user: apogee
+  password: ""
+  database: apogee
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "3000"
+  prometheus.io/path: "/metrics"
+
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                  - apogee
+          topologyKey: kubernetes.io/hostname

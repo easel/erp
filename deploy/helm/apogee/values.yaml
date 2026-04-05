@@ -1,0 +1,143 @@
+# Default values for the Apogee Helm chart.
+# Override with values-dev.yaml or values-prod.yaml.
+
+## -- Image configuration --------------------------------------------------
+image:
+  repository: apogee/server
+  pullPolicy: IfNotPresent
+  # Overrides the image tag; defaults to Chart.appVersion
+  tag: ""
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+## -- Replica count ---------------------------------------------------------
+# When autoscaling.enabled=true this value is ignored.
+replicaCount: 1
+
+## -- Application environment variables ------------------------------------
+app:
+  nodeEnv: production
+  port: 3000
+  host: "0.0.0.0"
+  logLevel: info
+  # Allowed CORS origin(s). Set to "*" in dev, explicit domain(s) in prod.
+  corsOrigin: ""
+  # OpenTelemetry collector endpoint (optional).
+  otelEndpoint: ""
+  # Region identifier — used for data-residency and ITAR isolation labelling
+  # per SD-003 §multi-region note. Set per cluster/environment.
+  region: ""
+  # Any additional environment variables to inject via ConfigMap.
+  extraEnv: {}
+
+## -- Secrets ---------------------------------------------------------------
+secrets:
+  # If true, create a Secret from the values below.
+  # For production, prefer secrets.create=false and secrets.existingSecret.
+  create: true
+  # Name of a pre-existing Secret to use instead of creating one.
+  existingSecret: ""
+  # Inline values (only used when secrets.create=true).
+  # WARNING: do not commit real credentials to source control.
+  # Use helm install --set secrets.sessionSecret=<value> or a values override file.
+  sessionSecret: "changeme-in-prod"
+  oidcClientSecret: ""
+  # Additional key/value pairs to add to the Secret.
+  extra: {}
+
+## -- Service ---------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+
+## -- Ingress ---------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: apogee.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+## -- Resources -------------------------------------------------------------
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+## -- Autoscaling -----------------------------------------------------------
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+## -- Service Account -------------------------------------------------------
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+
+## -- Pod settings ----------------------------------------------------------
+podAnnotations: {}
+podLabels: {}
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+## -- Scheduling ------------------------------------------------------------
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+## -- Volumes ---------------------------------------------------------------
+volumes: []
+volumeMounts: []
+
+## -- PostgreSQL (Bitnami sub-chart) ----------------------------------------
+# Set postgresql.enabled=false and configure externalDatabase to use an
+# external managed PostgreSQL (recommended for production).
+postgresql:
+  enabled: true
+  auth:
+    username: apogee
+    password: apogee_dev
+    database: apogee_dev
+  primary:
+    persistence:
+      enabled: true
+      size: 8Gi
+    resources:
+      requests:
+        cpu: 250m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+
+## -- External database (used when postgresql.enabled=false) ----------------
+externalDatabase:
+  host: ""
+  port: 5432
+  user: apogee
+  password: ""
+  database: apogee
