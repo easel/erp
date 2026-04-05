@@ -68,7 +68,8 @@ async function loadUser(db: AuthDbClient, userId: string): Promise<ApogeeUser | 
 		[userId],
 	);
 	if (result.rows.length === 0) return null;
-	const row = result.rows[0]!;
+	const row = result.rows[0];
+	if (!row) return null;
 	if (row.deleted_at !== null || !row.is_active) return null;
 	return {
 		id: row.id,
@@ -95,7 +96,7 @@ export function registerSessionAuthHook(app: FastifyInstance, opts: SessionAuthH
 	app.decorateRequest("user", null);
 	app.decorateRequest("session", null);
 
-	app.addHook("onRequest", async (req, reply) => {
+	app.addHook("onRequest", async (req, _reply) => {
 		if (bypass.some((re) => re.test(req.url))) return;
 
 		const sessionId = req.cookies?.apogee_session;

@@ -116,7 +116,9 @@ export class DbSessionManager implements SessionManager {
 				params.idpAccessTokenExpiresAt ?? null,
 			],
 		);
-		return rowToSession(result.rows[0]!);
+		const created = result.rows[0];
+		if (!created) throw new Error("Session insert returned no row");
+		return rowToSession(created);
 	}
 
 	async load(sessionId: string): Promise<Session | null> {
@@ -130,8 +132,9 @@ export class DbSessionManager implements SessionManager {
 			   AND last_activity > now() - ($2 || ' minutes')::interval`,
 			[sessionId, String(this.inactivityTimeoutMinutes)],
 		);
-		if (result.rows.length === 0) return null;
-		return rowToSession(result.rows[0]!);
+		const row = result.rows[0];
+		if (!row) return null;
+		return rowToSession(row);
 	}
 
 	async touch(sessionId: string): Promise<void> {
