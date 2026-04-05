@@ -70,6 +70,7 @@ class StubDb implements AuthDbClient {
 			return {
 				rows: rows.map((s) => ({
 					id: s.id,
+					// biome-ignore lint/style/noNonNullAssertion: filtered above to non-null
 					idp_refresh_token_enc: s.idp_refresh_token_enc!,
 					expires_at: s.expires_at,
 				})) as unknown as T[],
@@ -200,7 +201,11 @@ describe("runOidcTokenRefreshJob — near-expiry session", () => {
 		await runOidcTokenRefreshJob(makeOpts(db, adapter));
 
 		expect(db.updates.length).toBe(1);
-		const update = db.updates[0]!;
+		const update =
+			db.updates[0] ??
+			(() => {
+				throw new Error("no update recorded");
+			})();
 		expect(update.id).toBe(sessionId);
 
 		// Decrypt and verify the new token was stored
@@ -209,19 +214,33 @@ describe("runOidcTokenRefreshJob — near-expiry session", () => {
 	});
 
 	test("does NOT touch the Apogee session expires_at", async () => {
-		const originalExpiresAt = db.sessions.get(sessionId)!.expires_at.getTime();
+		const session =
+			db.sessions.get(sessionId) ??
+			(() => {
+				throw new Error("session not found");
+			})();
+		const originalExpiresAt = session.expires_at.getTime();
 
 		await runOidcTokenRefreshJob(makeOpts(db, adapter));
 
-		expect(db.sessions.get(sessionId)!.expires_at.getTime()).toBe(originalExpiresAt);
+		const after =
+			db.sessions.get(sessionId) ??
+			(() => {
+				throw new Error("session not found");
+			})();
+		expect(after.expires_at.getTime()).toBe(originalExpiresAt);
 	});
 
 	test("updates idp_access_token_expires_at to the new expiry", async () => {
 		await runOidcTokenRefreshJob(makeOpts(db, adapter));
 
-		const updated = db.sessions.get(sessionId)!;
+		const updated =
+			db.sessions.get(sessionId) ??
+			(() => {
+				throw new Error("session not found");
+			})();
 		expect(updated.idp_access_token_expires_at).not.toBeNull();
-		expect(updated.idp_access_token_expires_at!.getTime()).toBeGreaterThan(Date.now());
+		expect(updated.idp_access_token_expires_at?.getTime()).toBeGreaterThan(Date.now());
 	});
 });
 
@@ -250,7 +269,12 @@ describe("runOidcTokenRefreshJob — non-rotating refresh token", () => {
 
 		await runOidcTokenRefreshJob(makeOpts(db, adapter));
 
-		const decrypted = await decryptToken(db.updates[0]!.idp_refresh_token_enc, TEST_KEY);
+		const update0 =
+			db.updates[0] ??
+			(() => {
+				throw new Error("no update recorded");
+			})();
+		const decrypted = await decryptToken(update0.idp_refresh_token_enc, TEST_KEY);
 		expect(decrypted).toBe(ORIGINAL);
 	});
 });
@@ -380,7 +404,12 @@ describe("runOidcTokenRefreshJob — error handling", () => {
 
 		// Only session2 should have been updated
 		expect(db.updates.length).toBe(1);
-		expect(db.updates[0]!.id).toBe(session2);
+		const firstUpdate =
+			db.updates[0] ??
+			(() => {
+				throw new Error("no update recorded");
+			})();
+		expect(firstUpdate.id).toBe(session2);
 	});
 });
 
