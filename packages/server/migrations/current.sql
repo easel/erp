@@ -743,3 +743,182 @@ CREATE TABLE IF NOT EXISTS goods_receipt_line (
 	UNIQUE (goods_receipt_id, line_number),
 	CHECK (quantity_accepted + quantity_rejected <= quantity_received)
 );
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-6: Logistics Schema
+-- Tables: carrier, carrier_service, shipment, shipment_line,
+--         customs_document, tracking_event
+-- Ref: SD-002-data-model.md §9
+-- Issue: hx-5db7c4c0
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9.1 Carrier Master
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS carrier (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id               UUID          NOT NULL REFERENCES legal_entity(id),
+	code                    VARCHAR(20)   NOT NULL,
+	name                    VARCHAR(255)  NOT NULL,
+	carrier_type            VARCHAR(20)   NOT NULL
+		CHECK (carrier_type IN ('AIR', 'OCEAN', 'GROUND', 'COURIER', 'MULTIMODAL')),
+	account_number          VARCHAR(50),
+	website                 VARCHAR(500),
+	tracking_url_template   VARCHAR(500),
+	is_active               BOOLEAN       NOT NULL DEFAULT TRUE,
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by              UUID          NOT NULL REFERENCES user_account(id),
+	updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by              UUID          NOT NULL REFERENCES user_account(id),
+	version                 INTEGER       NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, code)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'carrier'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON carrier
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS carrier_service (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	carrier_id              UUID          NOT NULL REFERENCES carrier(id),
+	code                    VARCHAR(30)   NOT NULL,
+	name                    VARCHAR(100)  NOT NULL,
+	transit_days_estimate   INTEGER,
+	is_active               BOOLEAN       NOT NULL DEFAULT TRUE,
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by              UUID          NOT NULL REFERENCES user_account(id),
+	UNIQUE (carrier_id, code)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9.2 Shipment
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS shipment (
+	id                       UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id                UUID          NOT NULL REFERENCES legal_entity(id),
+	shipment_number          VARCHAR(30)   NOT NULL,
+	-- sales_order_id: FK to sales_order(id) — added in WP-5 Sales migration
+	sales_order_id           UUID,
+	-- customer_id: FK to customer(id) — added in WP-5 Sales migration
+	customer_id              UUID,
+	carrier_service_id       UUID          REFERENCES carrier_service(id),
+	tracking_number          VARCHAR(100),
+	ship_date                DATE,
+	expected_delivery_date   DATE,
+	actual_delivery_date     DATE,
+	ship_from_address        JSONB,
+	ship_to_address          JSONB         NOT NULL,
+	weight_kg                NUMERIC(12,4),
+	dimensions_cm            JSONB,
+	shipping_cost            NUMERIC(19,6),
+	shipping_cost_currency   CHAR(3),
+	insurance_value          NUMERIC(19,6),
+	insurance_currency       CHAR(3),
+	status                   VARCHAR(20)   NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'PACKED', 'SHIPPED', 'IN_TRANSIT', 'DELIVERED', 'RETURNED', 'CANCELLED')),
+	incoterm                 VARCHAR(10),
+	-- compliance_status: set by WP-3 Export Control engine on pre-shipment check
+	compliance_status        VARCHAR(10)   NOT NULL DEFAULT 'pending'
+		CHECK (compliance_status IN ('pending', 'cleared', 'held')),
+	itar_compartment_id      UUID          REFERENCES itar_compartment(id),
+	-- compliance_hold_id: FK to compliance_hold(id) — added in WP-3 Export Control migration
+	compliance_hold_id       UUID,
+	notes                    TEXT,
+	ext                      JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at               TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by               UUID          NOT NULL REFERENCES user_account(id),
+	updated_at               TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by               UUID          NOT NULL REFERENCES user_account(id),
+	version                  INTEGER       NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, shipment_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'shipment'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON shipment
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+-- Ref: SD-002 §10.2
+CREATE INDEX IF NOT EXISTS ix_ship_tracking
+	ON shipment (tracking_number)
+	WHERE tracking_number IS NOT NULL;
+
+CREATE INDEX IF NOT EXISTS ix_ship_entity_status
+	ON shipment (entity_id, status);
+
+CREATE TABLE IF NOT EXISTS shipment_line (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	shipment_id             UUID          NOT NULL REFERENCES shipment(id) ON DELETE CASCADE,
+	-- sales_order_line_id: FK to sales_order_line(id) — added in WP-5 Sales migration
+	sales_order_line_id     UUID,
+	inventory_item_id       UUID          REFERENCES inventory_item(id),
+	line_number             INTEGER       NOT NULL,
+	description             VARCHAR(500)  NOT NULL,
+	quantity                NUMERIC(16,4) NOT NULL CHECK (quantity > 0),
+	unit_of_measure         VARCHAR(20)   NOT NULL,
+	lot_id                  UUID          REFERENCES lot(id),
+	serial_number_id        UUID          REFERENCES serial_number(id),
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	UNIQUE (shipment_id, line_number)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9.3 Customs Documentation
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS customs_document (
+	id                       UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	shipment_id              UUID          NOT NULL REFERENCES shipment(id),
+	document_type            VARCHAR(30)   NOT NULL
+		CHECK (document_type IN (
+			'COMMERCIAL_INVOICE', 'PACKING_LIST', 'CERTIFICATE_OF_ORIGIN',
+			'EXPORT_LICENSE', 'AES_FILING', 'CUSTOMS_DECLARATION'
+		)),
+	document_number          VARCHAR(50),
+	filing_date              DATE,
+	status                   VARCHAR(20)   NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'FILED', 'ACCEPTED', 'REJECTED')),
+	document_data            JSONB,
+	file_reference           VARCHAR(500),
+	itn_number               VARCHAR(30),
+	hts_codes                TEXT[],
+	declared_value           NUMERIC(19,6),
+	declared_value_currency  CHAR(3),
+	notes                    TEXT,
+	created_at               TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by               UUID          NOT NULL REFERENCES user_account(id),
+	updated_at               TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by               UUID          NOT NULL REFERENCES user_account(id),
+	version                  INTEGER       NOT NULL DEFAULT 1
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 9.4 Tracking Events
+-- Partitioned by event_timestamp (range, monthly) per SD-002 §11.1
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS tracking_event (
+	id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	shipment_id      UUID          NOT NULL REFERENCES shipment(id),
+	event_timestamp  TIMESTAMPTZ   NOT NULL,
+	event_type       VARCHAR(30)   NOT NULL
+		CHECK (event_type IN (
+			'PICKED_UP', 'IN_TRANSIT', 'OUT_FOR_DELIVERY', 'DELIVERED',
+			'EXCEPTION', 'CUSTOMS_HOLD', 'CUSTOMS_CLEARED'
+		)),
+	location         VARCHAR(255),
+	description      VARCHAR(500),
+	source           VARCHAR(20)   NOT NULL DEFAULT 'MANUAL'
+		CHECK (source IN ('MANUAL', 'CARRIER_API', 'EDI')),
+	raw_data         JSONB,
+	created_at       TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
