@@ -3,6 +3,7 @@ import type { FastifyError, FastifyInstance, FastifyReply, FastifyRequest } from
 import Fastify from "fastify";
 import { createYoga } from "graphql-yoga";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
+import { registerAuthHook } from "./auth.js";
 import { schema } from "./schema.js";
 import { generateSpanId, generateTraceId, parseTraceparent } from "./telemetry.js";
 
@@ -16,6 +17,14 @@ export interface AppOptions {
 	 * that parallel test runs do not share metrics state.
 	 */
 	metricsRegistry?: Registry;
+	/**
+	 * JWT secret for HS256 token validation.  When set, an onRequest hook
+	 * enforces Bearer JWT authentication on all non-bypass routes.
+	 * Reads APP_JWT_SECRET from the environment if not supplied explicitly.
+	 * Pass an empty string to explicitly disable auth (e.g. in unit tests
+	 * that don't exercise the auth layer).
+	 */
+	authSecret?: string;
 }
 
 /** Consistent error response shape for all 4xx/5xx responses */
@@ -27,6 +36,9 @@ interface ErrorResponse {
 
 export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> {
 	const { corsOrigin = false, logLevel = "info" } = opts;
+	// Resolve auth secret: explicit option > env var > disabled
+	const authSecret =
+		opts.authSecret !== undefined ? opts.authSecret : (process.env.APP_JWT_SECRET ?? "");
 
 	const isTest = process.env.NODE_ENV === "test" || logLevel === "silent";
 
@@ -118,6 +130,11 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 		const elapsed = reply.elapsedTime / 1000; // ms → seconds
 		httpRequestDurationSeconds.observe(labels, elapsed);
 	});
+
+	// --- Auth ---
+	if (authSecret) {
+		registerAuthHook(app, { secret: authSecret });
+	}
 
 	// --- CORS ---
 	await app.register(cors, {

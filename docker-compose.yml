@@ -31,6 +31,27 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  # Keycloak — OIDC identity provider for local dev.
+  # Provides JWT tokens that the Apogee server validates on protected routes.
+  # Access the admin console at http://localhost:8080 (admin / admin_dev).
+  # Realm setup: create realm "apogee", client "apogee-api" (confidential),
+  # then set OIDC_ISSUER_URL and APP_JWT_SECRET in .env.
+  keycloak:
+    image: quay.io/keycloak/keycloak:24.0
+    command: start-dev
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin_dev}
+      KC_DB: dev-mem
+    ports:
+      - "${KEYCLOAK_PORT:-8080}:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/health/ready || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 60s
+
   # Redis is optional per ADR-008. The system functions without it:
   # sessions fall back to PostgreSQL, rate limiting falls back to in-memory.
   # Redis is recommended for multi-instance deployments.
