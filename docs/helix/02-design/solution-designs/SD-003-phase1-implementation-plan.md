@@ -82,7 +82,7 @@ Covers PRD requirements PLT-001 through PLT-006.
 - RBAC + ITAR compartment model complexity -- mitigate with a clear permission DSL and thorough test matrix
 - Multi-tenant data isolation bugs -- mitigate with mandatory entity-context middleware and integration tests that cross entity boundaries
 
-**Definition of Done:** Platform SDK package (`@apogee/platform`) is published, integration tests pass for all PLT requirements, and a second WP (WP-2 or WP-3) can build on it without touching platform internals.
+**Definition of Done:** Platform layer within `@apogee/server` is complete, integration tests pass for all PLT requirements, and a second WP (WP-2 or WP-3) can build on it without touching platform internals.
 
 ---
 
