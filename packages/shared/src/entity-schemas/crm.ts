@@ -271,6 +271,29 @@ export const CreateActivitySchema = z
 
 export type CreateActivityInput = z.infer<typeof CreateActivitySchema>;
 
+export const UpdateActivitySchema = z.object({
+	id: UUIDSchema,
+	activityType: z.enum(ACTIVITY_TYPES, { error: "Invalid activity type" }).optional(),
+	subject: z
+		.string()
+		.min(1, "Subject is required")
+		.max(255, "Subject must be 255 characters or fewer")
+		.optional(),
+	description: z
+		.string()
+		.max(10000, "Description must be 10000 characters or fewer")
+		.nullable()
+		.optional(),
+	ownerUserId: UUIDSchema.optional(),
+	dueDate: z
+		.string()
+		.datetime({ message: "Must be a valid ISO 8601 datetime" })
+		.nullable()
+		.optional(),
+});
+
+export type UpdateActivityInput = z.infer<typeof UpdateActivitySchema>;
+
 // ── Lead ────────────────────────────────────────────────────────────────────────
 
 export const LEAD_STATUSES = [
