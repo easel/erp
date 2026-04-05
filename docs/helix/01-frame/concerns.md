@@ -2,6 +2,9 @@
 
 ## Active Concerns
 - typescript-bun (tech-stack)
+- react-nextjs (tech-stack, ui)
+- ux-radix (quality-attribute, ui)
+- testing (quality-attribute)
 - o11y-otel (observability)
 - k8s-kind (infra)
 - e2e-kind (testing)
