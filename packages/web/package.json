@@ -11,6 +11,13 @@
 		"typecheck": "tsc --noEmit"
 	},
 	"dependencies": {
-		"@apogee/shared": "workspace:*"
+		"@apogee/shared": "workspace:*",
+		"@tanstack/react-table": "^8.21.3",
+		"react": "^19.2.4",
+		"react-dom": "^19.2.4"
+	},
+	"devDependencies": {
+		"@types/react": "^19.2.14",
+		"@types/react-dom": "^19.2.3"
 	}
 }
