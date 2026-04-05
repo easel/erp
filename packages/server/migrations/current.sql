@@ -1,7 +1,8 @@
 -- Platform schema: WP-1 foundation
 -- Tables: legal_entity, user_account, RBAC, ITAR compartments, audit_entry
+-- Audit trigger: audit_stamp() + trigger on legal_entity (sentinel)
 -- Ref: SD-002-data-model.md §3.1–3.3
--- Issue: hx-369c3437
+-- Issues: hx-369c3437, hx-c3e547b2
 
 -- ─────────────────────────────────────────────────────────────────────────────
 -- 3.1 Entity & Organization
@@ -318,4 +319,92 @@ BEGIN
 	FROM user_account u CROSS JOIN legal_entity e
 	WHERE u.id IN (user_admin_id, user_finance_id, user_sales_id, user_compliance_id, user_readonly_id)
 	ON CONFLICT (user_id, entity_id) DO NOTHING;
+END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- Audit trigger: audit_stamp()
+--
+-- Generic AFTER trigger that records every INSERT/UPDATE/DELETE into
+-- audit_entry.  The application layer must call set_config() to set actor
+-- context before any mutation:
+--
+--   SELECT set_config('app.actor_id',    '<uuid>', TRUE),
+--          set_config('app.actor_email', 'user@…', TRUE),
+--          set_config('app.entity_id',   '<uuid>', TRUE);
+--
+-- Use set_config(..., TRUE) so the settings are transaction-local (equivalent
+-- to SET LOCAL).  The helper setAuditContext() in audit-context.ts wraps this.
+--
+-- Trigger is applied to legal_entity as the sentinel platform table.
+-- All WP-2+ business tables should add the same trigger.
+--
+-- Issue: hx-c3e547b2
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE OR REPLACE FUNCTION audit_stamp() RETURNS TRIGGER LANGUAGE plpgsql AS $$
+DECLARE
+	v_actor_id       UUID;
+	v_actor_email    VARCHAR(255);
+	v_entity_id      UUID;
+	v_record_id      UUID;
+	v_old_value      JSONB;
+	v_new_value      JSONB;
+	v_changed_fields TEXT[];
+BEGIN
+	-- Read transaction-local actor context set by the application layer.
+	v_actor_id    := nullif(current_setting('app.actor_id',    TRUE), '')::UUID;
+	v_actor_email := nullif(current_setting('app.actor_email', TRUE), '');
+	v_entity_id   := nullif(current_setting('app.entity_id',   TRUE), '')::UUID;
+
+	IF v_actor_id IS NULL THEN
+		RAISE EXCEPTION
+			'audit_stamp: app.actor_id is not set — wrap mutation in setAuditContext() (hx-c3e547b2)';
+	END IF;
+
+	IF TG_OP = 'DELETE' THEN
+		v_record_id      := (row_to_json(OLD) ->> 'id')::UUID;
+		v_old_value      := to_jsonb(OLD);
+		v_new_value      := NULL;
+		v_changed_fields := NULL;
+	ELSIF TG_OP = 'INSERT' THEN
+		v_record_id      := (row_to_json(NEW) ->> 'id')::UUID;
+		v_old_value      := NULL;
+		v_new_value      := to_jsonb(NEW);
+		v_changed_fields := NULL;
+	ELSE  -- UPDATE
+		v_record_id := (row_to_json(NEW) ->> 'id')::UUID;
+		v_old_value := to_jsonb(OLD);
+		v_new_value := to_jsonb(NEW);
+		SELECT array_agg(key) INTO v_changed_fields
+		FROM   jsonb_each(to_jsonb(NEW)) AS n(key, val)
+		WHERE  to_jsonb(NEW) -> key IS DISTINCT FROM to_jsonb(OLD) -> key;
+	END IF;
+
+	INSERT INTO audit_entry (
+		entity_id, table_name, record_id, action,
+		old_value, new_value, changed_fields,
+		user_id, user_email
+	) VALUES (
+		v_entity_id, TG_TABLE_NAME, v_record_id, TG_OP,
+		v_old_value, v_new_value, v_changed_fields,
+		v_actor_id, v_actor_email
+	);
+
+	RETURN NULL;  -- AFTER trigger return value is ignored
+END;
+$$;
+
+-- Apply audit_stamp to legal_entity as the platform sentinel table.
+-- All downstream WP business tables should add the same trigger via:
+--   CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON <table>
+--   FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger
+		WHERE tgname = 'audit_stamp' AND tgrelid = 'legal_entity'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp
+			AFTER INSERT OR UPDATE OR DELETE ON legal_entity
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
 END $$;
