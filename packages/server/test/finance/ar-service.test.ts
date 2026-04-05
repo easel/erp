@@ -166,7 +166,13 @@ describe("buildInvoiceJournalEntry", () => {
 	const invoice = makeInvoiceSnapshot("SENT");
 
 	test("creates balanced journal entry: one debit line + two credit lines", () => {
-		const entry = buildInvoiceJournalEntry(invoice, lines, AR_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildInvoiceJournalEntry(
+			invoice,
+			lines,
+			AR_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 
 		expect(entry.lines.length).toBe(3);
 
@@ -183,12 +189,24 @@ describe("buildInvoiceJournalEntry", () => {
 	});
 
 	test("reference is AR-{invoiceNumber}", () => {
-		const entry = buildInvoiceJournalEntry(invoice, lines, AR_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildInvoiceJournalEntry(
+			invoice,
+			lines,
+			AR_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 		expect(entry.reference).toBe("AR-INV-2026-001");
 	});
 
 	test("legalEntityId comes from invoice.entityId", () => {
-		const entry = buildInvoiceJournalEntry(invoice, lines, AR_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildInvoiceJournalEntry(
+			invoice,
+			lines,
+			AR_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 		expect(entry.legalEntityId).toBe(ENTITY_ID);
 	});
 
@@ -218,8 +236,10 @@ describe("buildARPaymentJournalEntry", () => {
 
 		expect(entry.lines.length).toBe(2);
 
-		const debit = entry.lines.find((l) => l.type === "DEBIT")!;
-		const credit = entry.lines.find((l) => l.type === "CREDIT")!;
+		const debit = entry.lines.find((l) => l.type === "DEBIT");
+		if (!debit) throw new Error("Expected DEBIT line");
+		const credit = entry.lines.find((l) => l.type === "CREDIT");
+		if (!credit) throw new Error("Expected CREDIT line");
 
 		expect(debit.accountId).toBe(BANK_ACCOUNT_ID);
 		expect(credit.accountId).toBe(AR_CONTROL_ACCOUNT_ID);
@@ -346,11 +366,17 @@ describe("applyARPayment", () => {
 	});
 
 	test("throws INVOICE_NOT_RECEIVABLE for DRAFT status", () => {
-		expectARError(() => applyARPayment(makeInvoiceSnapshot("DRAFT"), "100.000000"), "INVOICE_NOT_RECEIVABLE");
+		expectARError(
+			() => applyARPayment(makeInvoiceSnapshot("DRAFT"), "100.000000"),
+			"INVOICE_NOT_RECEIVABLE",
+		);
 	});
 
 	test("throws INVOICE_NOT_RECEIVABLE for VOID status", () => {
-		expectARError(() => applyARPayment(makeInvoiceSnapshot("VOID"), "100.000000"), "INVOICE_NOT_RECEIVABLE");
+		expectARError(
+			() => applyARPayment(makeInvoiceSnapshot("VOID"), "100.000000"),
+			"INVOICE_NOT_RECEIVABLE",
+		);
 	});
 
 	test("throws INVOICE_NOT_RECEIVABLE for WRITTEN_OFF status", () => {

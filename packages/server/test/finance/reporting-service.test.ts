@@ -15,10 +15,10 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-	ReportingError,
 	type ExchangeRateSnapshot,
 	type GLBalanceRow,
 	type IntercompanyTransactionSnapshot,
+	ReportingError,
 	buildBalanceSheet,
 	buildConsolidatedTrialBalance,
 	buildEliminationEntry,
@@ -142,10 +142,7 @@ describe("lookupExchangeRate", () => {
 	});
 
 	test("throws EXCHANGE_RATE_NOT_FOUND for unknown pair", () => {
-		expectReportingError(
-			() => lookupExchangeRate("JPY", "EUR", rates),
-			"EXCHANGE_RATE_NOT_FOUND",
-		);
+		expectReportingError(() => lookupExchangeRate("JPY", "EUR", rates), "EXCHANGE_RATE_NOT_FOUND");
 	});
 });
 
@@ -155,9 +152,27 @@ describe("buildTrialBalance", () => {
 	// A balanced set: total debits = total credits
 	const balancedBalances: GLBalanceRow[] = [
 		// Cash DR 10000
-		makeBalance(ACC_CASH, "1000", "Cash", "ASSET", "DEBIT", "10000.000000", "0.000000", "10000.000000"),
+		makeBalance(
+			ACC_CASH,
+			"1000",
+			"Cash",
+			"ASSET",
+			"DEBIT",
+			"10000.000000",
+			"0.000000",
+			"10000.000000",
+		),
 		// Revenue CR 10000
-		makeBalance(ACC_REVENUE, "4000", "Service Revenue", "REVENUE", "CREDIT", "0.000000", "10000.000000", "-10000.000000"),
+		makeBalance(
+			ACC_REVENUE,
+			"4000",
+			"Service Revenue",
+			"REVENUE",
+			"CREDIT",
+			"0.000000",
+			"10000.000000",
+			"-10000.000000",
+		),
 	];
 
 	test("produces one row per balance entry", () => {
@@ -178,8 +193,26 @@ describe("buildTrialBalance", () => {
 
 	test("isBalanced is false when debits do not equal credits", () => {
 		const unbalanced = [
-			makeBalance(ACC_CASH, "1000", "Cash", "ASSET", "DEBIT", "10000.000000", "0.000000", "10000.000000"),
-			makeBalance(ACC_REVENUE, "4000", "Revenue", "REVENUE", "CREDIT", "0.000000", "9999.000000", "-9999.000000"),
+			makeBalance(
+				ACC_CASH,
+				"1000",
+				"Cash",
+				"ASSET",
+				"DEBIT",
+				"10000.000000",
+				"0.000000",
+				"10000.000000",
+			),
+			makeBalance(
+				ACC_REVENUE,
+				"4000",
+				"Revenue",
+				"REVENUE",
+				"CREDIT",
+				"0.000000",
+				"9999.000000",
+				"-9999.000000",
+			),
 		];
 		const report = buildTrialBalance(ENTITY_A, PERIOD_ID, "USD", unbalanced);
 		expect(report.isBalanced).toBe(false);
@@ -204,9 +237,36 @@ describe("buildTrialBalance", () => {
 
 describe("buildIncomeStatement", () => {
 	const balances: GLBalanceRow[] = [
-		makeBalance(ACC_CASH, "1000", "Cash", "ASSET", "DEBIT", "5000.000000", "0.000000", "5000.000000"),
-		makeBalance(ACC_REVENUE, "4000", "Service Revenue", "REVENUE", "CREDIT", "0.000000", "8000.000000", "-8000.000000"),
-		makeBalance(ACC_EXPENSE, "5000", "Salary Expense", "EXPENSE", "DEBIT", "3000.000000", "0.000000", "3000.000000"),
+		makeBalance(
+			ACC_CASH,
+			"1000",
+			"Cash",
+			"ASSET",
+			"DEBIT",
+			"5000.000000",
+			"0.000000",
+			"5000.000000",
+		),
+		makeBalance(
+			ACC_REVENUE,
+			"4000",
+			"Service Revenue",
+			"REVENUE",
+			"CREDIT",
+			"0.000000",
+			"8000.000000",
+			"-8000.000000",
+		),
+		makeBalance(
+			ACC_EXPENSE,
+			"5000",
+			"Salary Expense",
+			"EXPENSE",
+			"DEBIT",
+			"3000.000000",
+			"0.000000",
+			"3000.000000",
+		),
 	];
 
 	test("filters revenue and expense lines only", () => {
@@ -228,8 +288,26 @@ describe("buildIncomeStatement", () => {
 
 	test("net loss when expenses exceed revenue", () => {
 		const lossBalances: GLBalanceRow[] = [
-			makeBalance(ACC_REVENUE, "4000", "Revenue", "REVENUE", "CREDIT", "0.000000", "1000.000000", "-1000.000000"),
-			makeBalance(ACC_EXPENSE, "5000", "Expense", "EXPENSE", "DEBIT", "3000.000000", "0.000000", "3000.000000"),
+			makeBalance(
+				ACC_REVENUE,
+				"4000",
+				"Revenue",
+				"REVENUE",
+				"CREDIT",
+				"0.000000",
+				"1000.000000",
+				"-1000.000000",
+			),
+			makeBalance(
+				ACC_EXPENSE,
+				"5000",
+				"Expense",
+				"EXPENSE",
+				"DEBIT",
+				"3000.000000",
+				"0.000000",
+				"3000.000000",
+			),
 		];
 		const stmt = buildIncomeStatement(ENTITY_A, PERIOD_ID, "USD", lossBalances);
 		expect(stmt.netIncome).toBe("-2000.000000");
@@ -244,10 +322,58 @@ describe("buildBalanceSheet", () => {
 	// Equity: 12000 → total equity 12000
 	// Liabilities + Equity = 3000 + 12000 = 15000 ✓
 	const balances: GLBalanceRow[] = [
-		makeBalance(ACC_CASH, "1000", "Cash", "ASSET", "DEBIT", "10000.000000", "0.000000", "10000.000000", "10000.000000", "0.000000", "10000.000000"),
-		makeBalance(ACC_AR, "1200", "Accounts Receivable", "ASSET", "DEBIT", "5000.000000", "0.000000", "5000.000000", "5000.000000", "0.000000", "5000.000000"),
-		makeBalance(ACC_AP, "2000", "Accounts Payable", "LIABILITY", "CREDIT", "0.000000", "3000.000000", "-3000.000000", "0.000000", "3000.000000", "-3000.000000"),
-		makeBalance(ACC_EQUITY, "3000", "Retained Earnings", "EQUITY", "CREDIT", "0.000000", "12000.000000", "-12000.000000", "0.000000", "12000.000000", "-12000.000000"),
+		makeBalance(
+			ACC_CASH,
+			"1000",
+			"Cash",
+			"ASSET",
+			"DEBIT",
+			"10000.000000",
+			"0.000000",
+			"10000.000000",
+			"10000.000000",
+			"0.000000",
+			"10000.000000",
+		),
+		makeBalance(
+			ACC_AR,
+			"1200",
+			"Accounts Receivable",
+			"ASSET",
+			"DEBIT",
+			"5000.000000",
+			"0.000000",
+			"5000.000000",
+			"5000.000000",
+			"0.000000",
+			"5000.000000",
+		),
+		makeBalance(
+			ACC_AP,
+			"2000",
+			"Accounts Payable",
+			"LIABILITY",
+			"CREDIT",
+			"0.000000",
+			"3000.000000",
+			"-3000.000000",
+			"0.000000",
+			"3000.000000",
+			"-3000.000000",
+		),
+		makeBalance(
+			ACC_EQUITY,
+			"3000",
+			"Retained Earnings",
+			"EQUITY",
+			"CREDIT",
+			"0.000000",
+			"12000.000000",
+			"-12000.000000",
+			"0.000000",
+			"12000.000000",
+			"-12000.000000",
+		),
 	];
 
 	test("groups lines by account type", () => {
@@ -274,8 +400,32 @@ describe("buildBalanceSheet", () => {
 
 	test("isBalanced is false when out of balance", () => {
 		const unbalanced: GLBalanceRow[] = [
-			makeBalance(ACC_CASH, "1000", "Cash", "ASSET", "DEBIT", "10000.000000", "0.000000", "10000.000000", "10000.000000", "0.000000", "10000.000000"),
-			makeBalance(ACC_EQUITY, "3000", "Equity", "EQUITY", "CREDIT", "0.000000", "9000.000000", "-9000.000000", "0.000000", "9000.000000", "-9000.000000"),
+			makeBalance(
+				ACC_CASH,
+				"1000",
+				"Cash",
+				"ASSET",
+				"DEBIT",
+				"10000.000000",
+				"0.000000",
+				"10000.000000",
+				"10000.000000",
+				"0.000000",
+				"10000.000000",
+			),
+			makeBalance(
+				ACC_EQUITY,
+				"3000",
+				"Equity",
+				"EQUITY",
+				"CREDIT",
+				"0.000000",
+				"9000.000000",
+				"-9000.000000",
+				"0.000000",
+				"9000.000000",
+				"-9000.000000",
+			),
 		];
 		const sheet = buildBalanceSheet(ENTITY_A, PERIOD_ID, "USD", unbalanced);
 		expect(sheet.isBalanced).toBe(false);
@@ -343,7 +493,15 @@ describe("buildEliminationEntry", () => {
 			amount: "0.000000",
 		};
 		expectReportingError(
-			() => buildEliminationEntry(zeroTxn, ACC_REVENUE, ACC_EXPENSE, CONSOL_ENTITY, PERIOD_ID, "2026-04-30"),
+			() =>
+				buildEliminationEntry(
+					zeroTxn,
+					ACC_REVENUE,
+					ACC_EXPENSE,
+					CONSOL_ENTITY,
+					PERIOD_ID,
+					"2026-04-30",
+				),
 			"ELIMINATION_AMOUNT_ZERO",
 		);
 	});
@@ -354,13 +512,65 @@ describe("buildEliminationEntry", () => {
 describe("buildConsolidatedTrialBalance", () => {
 	// Entity A: revenue 8000 CR, expense 3000 DR
 	const entityABalances: GLBalanceRow[] = [
-		makeBalance(ACC_REVENUE, "4000", "Service Revenue", "REVENUE", "CREDIT", "0.000000", "8000.000000", "-8000.000000", "0.000000", "8000.000000", "-8000.000000", ENTITY_A),
-		makeBalance(ACC_EXPENSE, "5000", "Salary Expense", "EXPENSE", "DEBIT", "3000.000000", "0.000000", "3000.000000", "3000.000000", "0.000000", "3000.000000", ENTITY_A),
+		makeBalance(
+			ACC_REVENUE,
+			"4000",
+			"Service Revenue",
+			"REVENUE",
+			"CREDIT",
+			"0.000000",
+			"8000.000000",
+			"-8000.000000",
+			"0.000000",
+			"8000.000000",
+			"-8000.000000",
+			ENTITY_A,
+		),
+		makeBalance(
+			ACC_EXPENSE,
+			"5000",
+			"Salary Expense",
+			"EXPENSE",
+			"DEBIT",
+			"3000.000000",
+			"0.000000",
+			"3000.000000",
+			"3000.000000",
+			"0.000000",
+			"3000.000000",
+			ENTITY_A,
+		),
 	];
 	// Entity B: revenue 4000 CR, expense 1000 DR
 	const entityBBalances: GLBalanceRow[] = [
-		makeBalance(ACC_REVENUE, "4000", "Service Revenue", "REVENUE", "CREDIT", "0.000000", "4000.000000", "-4000.000000", "0.000000", "4000.000000", "-4000.000000", ENTITY_B),
-		makeBalance(ACC_EXPENSE, "5000", "Salary Expense", "EXPENSE", "DEBIT", "1000.000000", "0.000000", "1000.000000", "1000.000000", "0.000000", "1000.000000", ENTITY_B),
+		makeBalance(
+			ACC_REVENUE,
+			"4000",
+			"Service Revenue",
+			"REVENUE",
+			"CREDIT",
+			"0.000000",
+			"4000.000000",
+			"-4000.000000",
+			"0.000000",
+			"4000.000000",
+			"-4000.000000",
+			ENTITY_B,
+		),
+		makeBalance(
+			ACC_EXPENSE,
+			"5000",
+			"Salary Expense",
+			"EXPENSE",
+			"DEBIT",
+			"1000.000000",
+			"0.000000",
+			"1000.000000",
+			"1000.000000",
+			"0.000000",
+			"1000.000000",
+			ENTITY_B,
+		),
 	];
 
 	test("aggregates debits and credits across entities by account number", () => {
@@ -390,8 +600,34 @@ describe("buildConsolidatedTrialBalance", () => {
 	test("applies elimination balances to consolidated totals", () => {
 		// Elimination: DR revenue 2000, CR expense 2000 (cancels intercompany)
 		const elimBalances: GLBalanceRow[] = [
-			makeBalance(ACC_REVENUE, "4000", "Service Revenue", "REVENUE", "CREDIT", "2000.000000", "0.000000", "2000.000000", "2000.000000", "0.000000", "2000.000000", CONSOL_ENTITY),
-			makeBalance(ACC_EXPENSE, "5000", "Salary Expense", "EXPENSE", "DEBIT", "0.000000", "2000.000000", "-2000.000000", "0.000000", "2000.000000", "-2000.000000", CONSOL_ENTITY),
+			makeBalance(
+				ACC_REVENUE,
+				"4000",
+				"Service Revenue",
+				"REVENUE",
+				"CREDIT",
+				"2000.000000",
+				"0.000000",
+				"2000.000000",
+				"2000.000000",
+				"0.000000",
+				"2000.000000",
+				CONSOL_ENTITY,
+			),
+			makeBalance(
+				ACC_EXPENSE,
+				"5000",
+				"Salary Expense",
+				"EXPENSE",
+				"DEBIT",
+				"0.000000",
+				"2000.000000",
+				"-2000.000000",
+				"0.000000",
+				"2000.000000",
+				"-2000.000000",
+				CONSOL_ENTITY,
+			),
 		];
 
 		const report = buildConsolidatedTrialBalance(

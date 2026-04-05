@@ -104,11 +104,10 @@ export class DefaultAuthProvider implements AuthProvider {
 			[userId],
 		);
 
-		if (userResult.rows.length === 0) {
+		const row = userResult.rows[0];
+		if (!row) {
 			throw Object.assign(new Error("User not found after provisioning"), { statusCode: 401 });
 		}
-
-		const row = userResult.rows[0]!;
 		const accountStatus = deriveAccountStatus(row);
 
 		// 3. Deactivated accounts are always rejected

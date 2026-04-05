@@ -185,8 +185,8 @@ describe("OIDC routes", () => {
 			// Extract state value.
 			const stateMatch = /oidc_state=([^;]+)/.exec(stateCookie);
 			const nonceMatch = /oidc_nonce=([^;]+)/.exec(nonceCookie);
-			const state = stateMatch ? decodeURIComponent(stateMatch[1]!) : "";
-			const nonce = nonceMatch ? decodeURIComponent(nonceMatch[1]!) : "";
+			const state = stateMatch ? decodeURIComponent(stateMatch[1] ?? "") : "";
+			const nonce = nonceMatch ? decodeURIComponent(nonceMatch[1] ?? "") : "";
 
 			const cookieHeader = `oidc_state=${state}; oidc_nonce=${nonce}`;
 
@@ -215,8 +215,12 @@ describe("OIDC routes", () => {
 			const cookies = loginRes.headers["set-cookie"] as string[];
 			const stateCookie = cookies.find((c) => c.startsWith("oidc_state=")) ?? "";
 			const nonceCookie = cookies.find((c) => c.startsWith("oidc_nonce=")) ?? "";
-			const state = decodeURIComponent((/oidc_state=([^;]+)/.exec(stateCookie) ?? ["", ""])[1]!);
-			const nonce = decodeURIComponent((/oidc_nonce=([^;]+)/.exec(nonceCookie) ?? ["", ""])[1]!);
+			const state = decodeURIComponent(
+				(/oidc_state=([^;]+)/.exec(stateCookie) ?? ["", ""])[1] ?? "",
+			);
+			const nonce = decodeURIComponent(
+				(/oidc_nonce=([^;]+)/.exec(nonceCookie) ?? ["", ""])[1] ?? "",
+			);
 			const cookieHeader = `oidc_state=${state}; oidc_nonce=${nonce}`;
 
 			const res = await app.inject({

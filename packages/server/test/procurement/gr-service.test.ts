@@ -11,8 +11,8 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-	GRError,
 	type BillLineSnapshot,
+	GRError,
 	type GoodsReceiptLineSnapshot,
 	type GoodsReceiptSnapshot,
 	type POLineSnapshot,
@@ -85,7 +85,13 @@ const grLines: GoodsReceiptLineSnapshot[] = [
 
 describe("buildAPAccrualEntry", () => {
 	test("creates balanced accrual entry: two DR lines + one CR line", () => {
-		const entry = buildAPAccrualEntry(makeGR(), grLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			grLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 
 		expect(entry.lines.length).toBe(3);
 
@@ -100,7 +106,13 @@ describe("buildAPAccrualEntry", () => {
 	});
 
 	test("computes line amounts as qty × unit price", () => {
-		const entry = buildAPAccrualEntry(makeGR(), grLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			grLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 
 		const debits = entry.lines.filter((l) => l.type === "DEBIT");
 		// Line 1: 10 × 100 = 1000
@@ -110,7 +122,13 @@ describe("buildAPAccrualEntry", () => {
 	});
 
 	test("credit amount equals sum of debit amounts", () => {
-		const entry = buildAPAccrualEntry(makeGR(), grLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			grLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 
 		const totalDebits = entry.lines
 			.filter((l) => l.type === "DEBIT")
@@ -129,12 +147,24 @@ describe("buildAPAccrualEntry", () => {
 	});
 
 	test("reference is GR-{receiptNumber}", () => {
-		const entry = buildAPAccrualEntry(makeGR(), grLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			grLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 		expect(entry.reference).toBe("GR-GR-2026-001");
 	});
 
 	test("legalEntityId comes from receipt.entityId", () => {
-		const entry = buildAPAccrualEntry(makeGR(), grLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			grLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 		expect(entry.legalEntityId).toBe(ENTITY_ID);
 	});
 
@@ -153,7 +183,13 @@ describe("buildAPAccrualEntry", () => {
 				unitPrice: "100.000000",
 			},
 		];
-		const entry = buildAPAccrualEntry(makeGR(), fractionalLines, AP_ACCRUAL_ACCOUNT_ID, PERIOD_ID, "2026-04-10");
+		const entry = buildAPAccrualEntry(
+			makeGR(),
+			fractionalLines,
+			AP_ACCRUAL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-10",
+		);
 		const debit = entry.lines.find((l) => l.type === "DEBIT")!;
 		expect(debit.amount).toBe("250.000000");
 	});
@@ -291,8 +327,16 @@ describe("performThreeWayMatch", () => {
 
 	test("multiple GR lines aggregated for same PO line", () => {
 		// Two GRs each receiving 5 units (total 10 = PO qty)
-		const gr1: GoodsReceiptLineSnapshot = { ...grLine, id: GR_LINE_ID_1, quantityAccepted: "5.0000" };
-		const gr2: GoodsReceiptLineSnapshot = { ...grLine, id: GR_LINE_ID_2, quantityAccepted: "5.0000" };
+		const gr1: GoodsReceiptLineSnapshot = {
+			...grLine,
+			id: GR_LINE_ID_1,
+			quantityAccepted: "5.0000",
+		};
+		const gr2: GoodsReceiptLineSnapshot = {
+			...grLine,
+			id: GR_LINE_ID_2,
+			quantityAccepted: "5.0000",
+		};
 		const result = performThreeWayMatch(poLine, [gr1, gr2], billLine);
 
 		expect(result.totalQuantityReceived).toBe("10.000000");

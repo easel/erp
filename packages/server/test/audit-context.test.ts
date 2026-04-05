@@ -39,7 +39,9 @@ describe("setAuditContext()", () => {
 		await setAuditContext(client, ACTOR_ID, "admin@satco.example", ENTITY_ID);
 
 		expect(calls).toHaveLength(1);
-		const { sql, params } = calls[0]!;
+		const call0 = calls[0];
+		if (!call0) throw new Error("Expected call[0]");
+		const { sql, params } = call0;
 		expect(sql).toContain("set_config('app.actor_id'");
 		expect(sql).toContain("set_config('app.actor_email'");
 		expect(sql).toContain("set_config('app.entity_id'");
@@ -50,7 +52,9 @@ describe("setAuditContext()", () => {
 		const { client, calls } = mockClient();
 		await setAuditContext(client, ACTOR_ID, "system@apogee.internal", null);
 
-		const { params } = calls[0]!;
+		const call0 = calls[0];
+		if (!call0) throw new Error("Expected call[0]");
+		const { params } = call0;
 		// Third param must be '' not null so set_config receives a valid string
 		expect(params[2]).toBe("");
 	});
@@ -59,7 +63,9 @@ describe("setAuditContext()", () => {
 		const { client, calls } = mockClient();
 		await setAuditContext(client, ACTOR_ID, "system@apogee.internal");
 
-		const { params } = calls[0]!;
+		const call0b = calls[0];
+		if (!call0b) throw new Error("Expected call[0]");
+		const { params } = call0b;
 		expect(params[2]).toBe("");
 	});
 
@@ -68,7 +74,9 @@ describe("setAuditContext()", () => {
 		const email = "finance@satco.example";
 		await setAuditContext(client, ACTOR_ID, email, ENTITY_ID);
 
-		const { params } = calls[0]!;
+		const call0c = calls[0];
+		if (!call0c) throw new Error("Expected call[0]");
+		const { params } = call0c;
 		expect(params[0]).toBe(ACTOR_ID);
 		expect(params[1]).toBe(email);
 		expect(params[2]).toBe(ENTITY_ID);
@@ -79,6 +87,8 @@ describe("setAuditContext()", () => {
 		await setAuditContext(client, ACTOR_ID, "a@b.com");
 
 		// The SQL must pass TRUE as the third argument to set_config
-		expect(calls[0]!.sql).toContain("TRUE");
+		const call0d = calls[0];
+		if (!call0d) throw new Error("Expected call[0]");
+		expect(call0d.sql).toContain("TRUE");
 	});
 });

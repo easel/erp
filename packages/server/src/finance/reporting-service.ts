@@ -194,7 +194,8 @@ export function convertAmount(amount: string, rate: string): string {
 
 	const [rateInt = "0", rateDec = ""] = rate.split(".");
 	// Rate stored as 10dp; represent in 10dp units
-	const rateTenDp = BigInt(rateInt) * 10_000_000_000n + BigInt(rateDec.padEnd(10, "0").slice(0, 10));
+	const rateTenDp =
+		BigInt(rateInt) * 10_000_000_000n + BigInt(rateDec.padEnd(10, "0").slice(0, 10));
 
 	// product = amtMicro (6dp) × rateTenDp (10dp) → 16dp units
 	const product = amtMicro * rateTenDp;
@@ -283,7 +284,15 @@ export function buildTrialBalance(
 	const totalCredits = sumAmounts(rows.map((r) => r.creditTotal));
 	const isBalanced = compareAmounts(totalDebits, totalCredits) === 0;
 
-	return { entityId, fiscalPeriodId, reportingCurrency, rows, totalDebits, totalCredits, isBalanced };
+	return {
+		entityId,
+		fiscalPeriodId,
+		reportingCurrency,
+		rows,
+		totalDebits,
+		totalCredits,
+		isBalanced,
+	};
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

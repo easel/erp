@@ -168,7 +168,13 @@ describe("buildBillJournalEntry", () => {
 	const bill = makeBillSnapshot("APPROVED");
 
 	test("creates balanced journal entry: two debit lines + one credit line", () => {
-		const entry = buildBillJournalEntry(bill, lines, AP_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildBillJournalEntry(
+			bill,
+			lines,
+			AP_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 
 		expect(entry.lines.length).toBe(3);
 
@@ -185,12 +191,24 @@ describe("buildBillJournalEntry", () => {
 	});
 
 	test("reference is AP-{billNumber}", () => {
-		const entry = buildBillJournalEntry(bill, lines, AP_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildBillJournalEntry(
+			bill,
+			lines,
+			AP_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 		expect(entry.reference).toBe("AP-INV-2026-001");
 	});
 
 	test("legalEntityId comes from bill.entityId", () => {
-		const entry = buildBillJournalEntry(bill, lines, AP_CONTROL_ACCOUNT_ID, PERIOD_ID, "2026-04-01");
+		const entry = buildBillJournalEntry(
+			bill,
+			lines,
+			AP_CONTROL_ACCOUNT_ID,
+			PERIOD_ID,
+			"2026-04-01",
+		);
 		expect(entry.legalEntityId).toBe(ENTITY_ID);
 	});
 
@@ -287,7 +305,10 @@ describe("vendor bill workflow", () => {
 
 	test("invalid transition throws INVALID_BILL_TRANSITION", () => {
 		expect(() => submitBillForApproval(makeBillSnapshot("POSTED"))).toThrow(APError);
-		expectAPError(() => submitBillForApproval(makeBillSnapshot("POSTED")), "INVALID_BILL_TRANSITION");
+		expectAPError(
+			() => submitBillForApproval(makeBillSnapshot("POSTED")),
+			"INVALID_BILL_TRANSITION",
+		);
 	});
 
 	test("approveBill throws for DRAFT status", () => {

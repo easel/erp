@@ -187,7 +187,8 @@ describe("GET /api/v1/auth/sessions — list active sessions", () => {
 	test("response includes expected fields", async () => {
 		const res = await app.inject({ method: "GET", url: "/api/v1/auth/sessions" });
 		const body = res.json() as Record<string, unknown>[];
-		const s = body[0]!;
+		const s = body[0];
+		if (!s) throw new Error("Expected at least one session in body");
 		expect(s).toHaveProperty("id");
 		expect(s).toHaveProperty("createdAt");
 		expect(s).toHaveProperty("lastActivity");
@@ -202,7 +203,8 @@ describe("GET /api/v1/auth/sessions — list active sessions", () => {
 	test("does not include revoked sessions", async () => {
 		// Revoke the non-current session
 		const sessions = await sm.list("user-001");
-		const other = sessions.find((s) => s.id !== currentSession.id)!;
+		const other = sessions.find((s) => s.id !== currentSession.id);
+		if (!other) throw new Error("Expected a second session");
 		await sm.revoke(other.id);
 
 		const res = await app.inject({ method: "GET", url: "/api/v1/auth/sessions" });
@@ -266,7 +268,8 @@ describe("DELETE /api/v1/auth/sessions/:id — revoke single session", () => {
 			url: `/api/v1/auth/sessions/${otherOwnSession.id}`,
 		});
 		expect(db.entries.length).toBe(1);
-		const entry = db.entries[0]!;
+		const entry = db.entries[0];
+		if (!entry) throw new Error("Expected audit entry");
 		expect(entry.record_id).toBe(otherOwnSession.id);
 		expect(entry.user_id).toBe(ACTOR_USER.id);
 		expect((entry.new_value as { reason: string }).reason).toBe("user_revoke");
@@ -327,7 +330,8 @@ describe("DELETE /api/v1/admin/users/:userId/sessions — admin revoke all", () 
 		expect(sm.sessions.get(currentSession.id)?.revokedAt).toBeNull();
 
 		// unrelated user untouched
-		const unrelated = [...sm.sessions.values()].find((s) => s.userId === "user-other")!;
+		const unrelated = [...sm.sessions.values()].find((s) => s.userId === "user-other");
+		if (!unrelated) throw new Error("Expected unrelated session");
 		expect(unrelated.revokedAt).toBeNull();
 	});
 

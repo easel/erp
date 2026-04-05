@@ -277,10 +277,6 @@ describe("POST /auth/mfa/setup/confirm", () => {
 
 describe("POST /auth/mfa/verify", () => {
 	test("returns 200 with valid TOTP code", async () => {
-		const { generateTotpSecret: genSecret } = await import("../../src/auth/routes/mfa.js");
-		const { secret } = genSecret("Apogee ERP", "alice@example.com");
-
-		// Encrypt the secret for the stub DB.
 		// We need the encrypted form — use the encryption from mfa.ts indirectly.
 		// Since StubDb stores what the routes write, first run setup+confirm cycle.
 		const db = new StubDb();
