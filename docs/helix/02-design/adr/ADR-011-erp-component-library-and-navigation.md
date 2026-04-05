@@ -87,7 +87,7 @@ Built on shadcn/ui + Radix primitives, these components encode ERP business rule
 - Paired currency selector — amount and currency are always submitted together
 - Thousand separators in display, raw number in form value
 - Right-aligned (financial convention)
-- Supports negative amounts (credits, adjustments)
+- Amounts are always non-negative (unsigned); sign is encoded via debit/credit type fields or separate DB columns per SD-002 and ADR-003 addendum. MoneyInput does not accept negative values — credit/adjustment contexts use a `type: DEBIT | CREDIT` selector alongside a positive amount field.
 - Renders string representation internally (never JavaScript `number` per ADR-003)
 
 #### EntitySwitcher

@@ -19,8 +19,15 @@ export const UUIDSchema = z
 	.uuid("Must be a valid UUID v4")
 	.transform((v) => v as UUID);
 
-/** Monetary amount — string representation of NUMERIC(19,6). See ADR-003.
- * Allows up to 13 integer digits and 6 decimal digits (NUMERIC(19,6) = 19 total - 6 decimal). */
+/**
+ * Monetary amount — non-negative string representation of NUMERIC(19,6). See ADR-003.
+ * Allows up to 13 integer digits and 6 decimal digits (NUMERIC(19,6) = 19 total - 6 decimal).
+ *
+ * Design decision (erp-82b5cf50): amounts are always unsigned (non-negative). Sign is encoded
+ * via debit/credit type fields or separate debit/credit columns in the data model (SD-002).
+ * The `MoneyInput` UI component accepts only positive values; credit/adjustment contexts
+ * pair a positive amount with a DEBIT | CREDIT type selector. See ADR-011.
+ */
 export const MoneyAmountSchema = z
 	.string()
 	.regex(

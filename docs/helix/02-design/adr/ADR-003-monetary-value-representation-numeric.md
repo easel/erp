@@ -33,6 +33,24 @@ Use **NUMERIC(19,6)** for all monetary amount columns in PostgreSQL. Every monet
 
 Slightly larger storage than BIGINT. Application layer receives decimal strings from PostgreSQL, not integers. TypeScript must use string representation (not `number`) to avoid JavaScript floating-point issues. The shared `Money` type uses `amount: string`.
 
+## Addendum: Sign Convention (erp-82b5cf50, 2026-04-05)
+
+**Decision:** All monetary amounts in storage are **unsigned (non-negative)**. Sign is encoded via
+the data model, not the amount field:
+
+- **Double-entry accounting** (e.g., `journal_entry_line`): separate `debit_amount` and
+  `credit_amount` columns, both `>= 0`, with a check that a line is either debit or credit but not
+  both (SD-002).
+- **Document lines** (quotes, purchase orders, sales orders): `amount` is always the net positive
+  value after discount; debits vs. credits are represented by document type and line type.
+- **Adjustments**: represented by a signed `type` field (e.g., `DEBIT | CREDIT`) alongside a
+  positive amount, never by a negative amount value.
+
+`MoneyAmountSchema` correctly rejects negative values by design. The `MoneyInput` UI component
+accepts only non-negative amounts; credit/adjustment UI contexts pair a positive amount with a
+type selector. See ADR-011 § MoneyInput.
+
 ## Affected Artifacts
 
 - SD-001 (already updated from BIGINT to NUMERIC(19,6))
+- ADR-011 § MoneyInput (updated to correct negative-amount claim)
