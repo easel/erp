@@ -2,7 +2,7 @@
 
 Project root: /home/erik/Projects/erp
 Tracker: /home/erik/Projects/erp/.ddx/beads.jsonl
-Issue counts: ready=9, open=19, in-progress=0, closed=7
+Issue counts: ready=12, open=22, in-progress=0, closed=18
 
 ## Key Rules
 
