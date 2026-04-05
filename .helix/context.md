@@ -2,13 +2,7 @@
 
 Project root: /home/erik/Projects/erp
 Tracker: /home/erik/Projects/erp/.ddx/beads.jsonl
-Issue counts: ready=1, open=1, in-progress=0, closed=69
-
-## Current Epic
-
-ID: erp-ad813c80
-Title: Phase 1: Core ERP + Compliance Foundation
-Spec: SD-003-phase1
+Issue counts: ready=10, open=14, in-progress=1, closed=81
 
 ## Key Rules
 
