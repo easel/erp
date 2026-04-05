@@ -1012,8 +1012,8 @@ Exposed via `/metrics` endpoint on each pod (prom-client library):
 
 **Readiness probe** (`/health/ready`):
 - Checks PostgreSQL connectivity (simple query)
-- Checks Redis connectivity (PING)
-- Returns 503 if any critical dependency is unreachable
+- Checks Redis connectivity (PING) if configured
+- Returns 503 if any critical dependency is unreachable (PostgreSQL unavailability triggers 503; Redis is not a critical dependency)
 - Pod removed from load balancer rotation when not ready
 
 **Startup probe** (`/health/startup`):
