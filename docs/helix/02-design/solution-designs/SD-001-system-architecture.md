@@ -478,7 +478,7 @@ The audit system is append-only and tamper-evident. It records every create, upd
 ### Audit Entry Schema
 
 ```sql
-CREATE TABLE audit_log (
+CREATE TABLE audit_entry (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     timestamp       TIMESTAMPTZ NOT NULL DEFAULT now(),
     user_id         UUID NOT NULL,
@@ -514,7 +514,7 @@ CREATE TABLE audit_log (
 
 - **Cryptographic chaining:** Each audit entry includes a `chain_hash` — the SHA-256 hash of the previous entry's hash concatenated with the current entry's content. This creates a hash chain that detects any insertion, deletion, or modification of entries
 - **Partition-level checksums:** When a time partition is closed (e.g., monthly), a partition checksum is computed and stored separately. Periodic verification compares current checksums against stored values
-- **Write-once enforcement:** The `audit_log` table has no UPDATE or DELETE permissions granted to the application database role. Only INSERT and SELECT are permitted. Database superuser access is restricted and itself audit-logged at the infrastructure level
+- **Write-once enforcement:** The `audit_entry` table has no UPDATE or DELETE permissions granted to the application database role. Only INSERT and SELECT are permitted. Database superuser access is restricted and itself audit-logged at the infrastructure level
 
 ### Retention and Archival
 
@@ -925,7 +925,7 @@ Apogee is designed for environments handling CUI (Controlled Unclassified Inform
 - Partial indexes for "active records" queries: `CREATE INDEX ON sales_orders (entity_id) WHERE status NOT IN ('cancelled', 'archived')`
 
 **Partitioning:**
-- `audit_log`: Range-partitioned by month on `timestamp`
+- `audit_entry`: Range-partitioned by month on `occurred_at`
 - `exchange_rates`: Range-partitioned by year on `rate_date`
 - `screening_results`: Range-partitioned by month on `screened_at`
 - Large transaction tables (journal entries, invoice lines): Range-partitioned by year on `created_at` once volume warrants it
@@ -992,7 +992,7 @@ Exposed via `/metrics` endpoint on each pod (prom-client library):
 - `background_jobs_queue_depth` — gauge by job type
 
 **Business Metrics:**
-- `audit_log_entries_total` — counter by entity type, operation
+- `audit_entry_inserts_total` — counter by entity type, operation
 - `active_sessions` — gauge
 - `entity_count` — gauge (legal entities)
 
