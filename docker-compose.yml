@@ -31,6 +31,9 @@ services:
         condition: service_healthy
     restart: on-failure
 
+  # Redis is optional per ADR-008. The system functions without it:
+  # sessions fall back to PostgreSQL, rate limiting falls back to in-memory.
+  # Redis is recommended for multi-instance deployments.
   redis:
     image: redis:7-alpine
     ports:

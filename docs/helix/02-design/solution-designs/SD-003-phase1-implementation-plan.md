@@ -445,7 +445,7 @@ Testing:                                                                  [WP-7 
 ### Unit Tests
 
 - **Coverage target:** 90%+ for domain logic packages (GL engine, compliance screening, currency conversion)
-- **Framework:** Vitest
+- **Framework:** bun test — Bun's built-in test runner (`bun test`) — Jest-compatible API, zero-config, runs TypeScript natively without transpilation. Eliminates a test framework dependency per ADR-009's single-binary approach
 - **Focus areas:** Double-entry invariants, currency rounding, fuzzy name matching algorithms, RBAC permission evaluation, period close rules
 
 ### Integration Tests
