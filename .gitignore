@@ -6,6 +6,3 @@ dist/
 .DS_Store
 coverage/
 .ddx/agent-logs/
-# Playwright
-playwright-report/
-test-results/
