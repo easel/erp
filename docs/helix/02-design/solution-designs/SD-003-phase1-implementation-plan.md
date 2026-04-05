@@ -315,14 +315,29 @@ Covers PRD requirements LOG-001 through LOG-002.
 | Security audit | NIST 800-171 control checklist, penetration testing on API surface, RBAC bypass attempts, ITAR compartment leak tests |
 | Data migration dry run | Trial migration of COA, vendor/customer master, and open transactions from NetSuite export |
 
+**Demo Mode deliverables:**
+
+- `packages/server/src/seed/` — seed data scripts with realistic Orbital Dynamics Corp data
+- `bun run demo` script in root package.json — orchestrates docker-compose up + migrate + seed + server + web
+- `bun run seed` script — runs seed data independently
+
+**Playwright deliverables:**
+
+- `packages/web/e2e/` — Playwright test suite
+- Key test files: `auth.spec.ts`, `finance.spec.ts`, `sales.spec.ts`, `compliance.spec.ts`, `crm.spec.ts`, `entity-switching.spec.ts`
+- CI integration: Playwright runs against seeded app in GitHub Actions
+- Screenshot capture on every test completion
+
 **Acceptance Criteria:**
 
 - All E2E workflows pass without manual intervention (except compliance officer hold review)
 - Financial close produces balanced statements matching a manually verified baseline
 - All NIST 800-171 applicable controls documented with evidence
 - Performance targets met: 95th percentile API response under 500ms at target volume
+- `bun run demo` stands up a fully seeded environment from a fresh clone
+- Playwright tests pass headless in CI within 5 minutes
 
-**Definition of Done:** Phase 1 exit criteria met -- the reference operator scenario runs end-to-end, financial close is verified, and compliance screening is proven.
+**Definition of Done:** Phase 1 exit criteria met -- the reference operator scenario runs end-to-end, financial close is verified, compliance screening is proven, and `bun run demo` provides a one-command experience for stakeholder review.
 
 ---
 

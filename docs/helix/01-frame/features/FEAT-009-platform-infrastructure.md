@@ -287,6 +287,37 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 - [ ] Keyboard shortcuts: Cmd+K (search), Cmd+E (entity switch), G+F (Finance), G+S (Sales), Escape (close modals)
 - [ ] Components degrade gracefully offline per ADR-009: DataTable uses client-side pagination from SQLite cache, forms save locally with pending-sync indicator, search uses local FTS
 
+### PLT-020: Demo Mode and Seed Data
+
+*Traces to: PRD PLT-010, SD-003*
+
+- [ ] `bun run demo` starts the full stack (PostgreSQL, Redis, migrations, seed data, server, web) via docker-compose and opens the browser at http://localhost:3000
+- [ ] Seed data populates a fictional satellite operator "Orbital Dynamics Corp" with: 3 legal entities (US HQ, EU subsidiary, Asia-Pacific subsidiary), 5 satellites (3 GEO, 2 LEO constellation), 20+ customers including entities in Ukraine, Israel, and other conflict zones, 15+ vendors including launch providers and component suppliers, open sales orders with mixed compliance statuses (pending, cleared, held), active capacity contracts, ground stations across 4 continents, populated CRM pipeline with opportunities at various stages, fiscal periods with posted journal entries and a realistic trial balance
+- [ ] Seed data tells a coherent business story: one customer in Crimea has a compliance hold, one LEO terminal order to Israel is cleared, one GEO capacity contract is in renewal negotiation, month-end close is in progress (current period is SOFT_CLOSED)
+- [ ] Seed data is idempotent — running it twice does not create duplicates
+- [ ] Seed data includes a demo user account with admin access (email: demo@apogee.dev, password: apogee-demo)
+- [ ] `bun run seed` runs seed data independently without starting the full stack
+- [ ] Seed data script completes in under 30 seconds
+
+### PLT-021: Playwright Browser Tests
+
+*Traces to: PRD PLT-001, SD-003-WP7*
+
+- [ ] Playwright test suite exercises the real app running against seeded PostgreSQL — not mocks, not API-only
+- [ ] Tests cover key workflows: login with demo credentials, navigate to each module (Finance, Sales, Procurement, CRM, Compliance, Logistics), view a sales order with compliance status badge, view a compliance hold and its detail, switch between legal entities and verify data scopes correctly, view trial balance report, browse CRM pipeline
+- [ ] Each test captures a screenshot on completion and on failure
+- [ ] Tests run headless in CI (`bun run test:e2e`) and headed locally for debugging (`bun run test:e2e:headed`)
+- [ ] Playwright tests pass in CI within 5 minutes
+- [ ] Screenshot artifacts are uploaded as CI artifacts for visual review
+
+### PLT-022: Demo Data Scenarios
+
+*Traces to: PRD PLT-010, FEAT-006 E2E-COMPLIANCE-001*
+
+- [ ] Seed data includes at least one instance of each compliance scenario from E2E-COMPLIANCE-001: clean order (cleared), denied-party match (held), restricted region destination (held, Crimea), unclassified item (blocked at quote stage)
+- [ ] Seed data includes financial data sufficient to demonstrate: multi-currency transactions (USD, EUR, GBP, ILS, UAH), intercompany transactions between US and EU entities, a trial balance that reconciles to zero, AP aging with overdue invoices, AR aging with a customer on credit hold
+- [ ] Seed data includes procurement data: open POs with milestone payments for a launch vehicle, goods receipts with lot/serial tracking, a three-way match scenario (PO, receipt, invoice)
+
 ## Domain Model
 
 ### Core Entities
