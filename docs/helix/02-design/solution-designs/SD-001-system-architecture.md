@@ -60,9 +60,11 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 │                        DATA LAYER                                   │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐    │
 │  │  PostgreSQL 16 │  │  Redis 7       │  │ S3-Compatible      │    │
-│  │  (Primary +    │  │  (Cache,       │  │ Object Store       │    │
-│  │   Read Replicas│  │   Sessions,    │  │ (Documents,        │    │
-│  │   Partitioned) │  │   Rate Limits) │  │  Attachments)      │    │
+│  │  (Primary +    │  │  (optional,    │  │ Object Store       │    │
+│  │   Read Replicas│  │   recommended) │  │ (Documents,        │    │
+│  │   Partitioned) │  │  Cache,        │  │  Attachments)      │    │
+│  │                │  │  Sessions,     │  │                    │    │
+│  │                │  │  Rate Limits   │  │                    │    │
 │  └────────────────┘  └────────────────┘  └────────────────────┘    │
 └─────────────────────────────────────────────────────────────────────┘
 ```
@@ -122,9 +124,9 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Unit / Integration | **Vitest** | Fast, TypeScript-native, compatible with Jest API. Module-level integration tests run against real PostgreSQL (via testcontainers) |
+| Unit / Integration | **bun test** | Bun's built-in test runner (`bun test`) — Jest-compatible API, zero-config, runs TypeScript natively without transpilation. Eliminates a test framework dependency per ADR-009's single-binary approach. Module-level integration tests run against real PostgreSQL (via testcontainers) |
 | E2E | **Playwright** | Cross-browser testing for ERP UI workflows. Critical for financial forms where a misplaced decimal has real consequences |
-| API Testing | **Vitest + supertest** (for Fastify) | Request-level testing of REST and GraphQL endpoints with auth context |
+| API Testing | **bun test + supertest** (for Fastify) | Request-level testing of REST and GraphQL endpoints with auth context |
 | Compliance Testing | **Custom test harness** | Known-good and known-bad transaction scenarios for export control validation. Screening list test fixtures with expected match/no-match outcomes. This is not optional — it is a P0 deliverable per Risk R1 |
 
 ---
@@ -287,71 +289,44 @@ The internal event bus enables cross-module communication without direct service
 
 ### Monorepo Structure
 
-SatERP uses a **pnpm workspace monorepo** with the following package layout:
+SatERP uses a **Bun workspace monorepo** with the following package layout:
 
 ```
 saterp/
-├── apps/
-│   ├── api/                    # Fastify API server (composition root)
-│   │   ├── src/
-│   │   │   ├── server.ts       # Fastify instance, plugin registration
-│   │   │   ├── routes/         # Route definitions (thin — delegates to services)
-│   │   │   └── middleware/     # Auth, rate limiting, RBAC, request validation
-│   │   └── package.json
-│   └── web/                    # Next.js frontend
-│       ├── src/
-│       │   ├── app/            # App Router pages and layouts
-│       │   ├── components/     # Shared UI components
-│       │   └── modules/        # Module-specific UI (finance/, sales/, etc.)
-│       └── package.json
 ├── packages/
-│   ├── shared/                 # Shared types, constants, Zod schemas
+│   ├── server/                 # Fastify 5 + GraphQL Yoga + Pothos API server
+│   │   ├── migrations/         # graphile-migrate SQL migration files
 │   │   ├── src/
-│   │   │   ├── types/          # Entity interfaces, API contracts
-│   │   │   ├── schemas/        # Zod validation schemas
-│   │   │   ├── money.ts        # Money value object
-│   │   │   └── constants/      # Enums, status codes, error codes
-│   │   └── package.json
-│   ├── db/                     # Database schema, migrations, repositories
-│   │   ├── migrations/
+│   │   │   ├── index.ts        # Entry point
+│   │   │   ├── app.ts          # Fastify instance and plugin registration
+│   │   │   └── schema.ts       # GraphQL/Pothos schema definition
+│   │   ├── test/               # Server tests
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   ├── shared/                 # Shared types, Zod schemas, value objects (zero deps)
 │   │   ├── src/
-│   │   │   ├── schema.ts       # Kysely type definitions
-│   │   │   ├── repositories/   # Per-entity repository classes
-│   │   │   ├── queries/        # Complex query builders
-│   │   │   └── seed/           # Development and test seed data
-│   │   └── package.json
-│   ├── platform/               # Cross-cutting platform services
-│   │   ├── src/
-│   │   │   ├── auth/           # Authentication, SSO, MFA, session
-│   │   │   ├── rbac/           # Authorization, permission evaluation
-│   │   │   ├── audit/          # Audit log service
-│   │   │   ├── workflow/       # Workflow engine
-│   │   │   ├── notification/   # Notification dispatch
-│   │   │   ├── events/         # Event bus implementation
-│   │   │   └── compliance/     # Compliance service (screening, holds)
-│   │   └── package.json
-│   ├── finance/                # Financial management domain + services
-│   │   ├── src/
-│   │   │   ├── domain/         # Entity models, business rules
-│   │   │   ├── services/       # GL, AP, AR, currency services
-│   │   │   └── queries/        # Financial report query builders
-│   │   └── package.json
-│   ├── sales/                  # Sales module
-│   ├── procurement/            # Procurement module
-│   ├── crm/                    # CRM module
-│   ├── export-control/         # Export control domain logic
-│   ├── logistics/              # Logistics module
-│   └── config/                 # Shared configs (tsconfig, eslint, vitest)
-├── docker/                     # Docker and Compose files
-├── helm/                       # Kubernetes Helm charts
-├── pnpm-workspace.yaml
-├── turbo.json                  # Turborepo build configuration
-└── package.json
+│   │   │   ├── index.ts        # Public API
+│   │   │   ├── types.ts        # Entity interfaces, API contracts
+│   │   │   └── schemas.ts      # Zod validation schemas
+│   │   ├── test/               # Shared package tests
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   └── web/                    # Frontend (placeholder)
+│       ├── src/
+│       ├── test/
+│       ├── package.json
+│       └── tsconfig.json
+├── docs/                       # HELIX planning artifacts
+├── docker-compose.yml          # Local PostgreSQL + Redis
+├── Dockerfile.migrate          # Migration runner container
+├── biome.json                  # Biome lint + format configuration
+├── tsconfig.json               # Root TypeScript project references
+└── package.json                # Bun workspace root (workspaces: ["packages/*"])
 ```
 
 ### Module Boundaries and Dependency Rules
 
-Modules follow strict dependency rules enforced by eslint-plugin-boundaries:
+Modules follow strict dependency rules enforced by import linting (Biome rules):
 
 ```
                     ┌──────────────────────┐
@@ -377,7 +352,7 @@ Modules follow strict dependency rules enforced by eslint-plugin-boundaries:
 3. **Domain modules** (`finance`, `sales`, `procurement`, `crm`, `export-control`, `logistics`) depend on `shared` and `platform`. They never import directly from each other.
 4. **Cross-module communication** happens exclusively through the event bus or through the platform compliance service. If Sales needs financial data, it calls through a defined platform interface, not by importing finance internals.
 5. **`db`** depends only on `shared`. Repositories are defined here but services that use them live in their respective module packages.
-6. **`apps/api`** is the composition root. It wires together all modules, registers routes, and handles dependency injection.
+6. **`packages/server`** is the composition root. It wires together all modules, registers routes, and handles dependency injection.
 
 ### Shared Kernel
 
@@ -777,7 +752,7 @@ All monetary values are stored as `NUMERIC(19,6)` in the database. Every monetar
 **Docker Compose (small deployments, development)**
 - Single-node deployment with all services in one Docker Compose stack
 - Suitable for small operators (1-5 entities, <100 concurrent users)
-- Includes: API, Web, Worker, PostgreSQL, Redis, MinIO, PgBouncer
+- Includes: API, Web, Worker, PostgreSQL, Redis (optional per ADR-008 — system functions without it using PostgreSQL-backed sessions and in-memory rate limiting), MinIO, PgBouncer
 
 **Kubernetes (production, GovCloud)**
 - Helm chart with configurable values for all components
@@ -911,11 +886,11 @@ SatERP is designed for environments handling CUI (Controlled Unclassified Inform
 
 ### Dependency Management
 
-- All dependencies pinned to exact versions (pnpm lockfile)
-- Automated vulnerability scanning in CI via `npm audit` and Trivy (container images)
+- All dependencies pinned to exact versions (Bun lockfile)
+- Automated vulnerability scanning in CI via `bun audit` and Trivy (container images)
 - Renovate bot for automated dependency update PRs with CI gate
 - No dependencies with known CVEs allowed in production builds (CI fails on critical/high vulnerabilities)
-- Supply chain security: `package-lock.json` integrity verification, consideration of `npm` provenance verification
+- Supply chain security: `bun.lock` integrity verification, consideration of provenance verification
 
 ---
 
@@ -1066,54 +1041,33 @@ Exposed via `/metrics` endpoint on each pod (prom-client library):
 
 ### Monorepo Tooling
 
-- **Package manager:** pnpm 9 (strict, hoisted node_modules are not allowed — catches missing dependency declarations)
-- **Build orchestration:** Turborepo (parallel builds, remote caching, task dependency graph)
-- **Node version management:** `.node-version` file, enforced in CI
+- **Runtime and package manager:** Bun (workspaces defined in root `package.json` via `"workspaces": ["packages/*"]`)
+- **Linting and formatting:** Biome (configured in `biome.json`, replaces ESLint + Prettier)
+- **Type checking:** TypeScript project references via `tsc --noEmit` per package
 
 ### Package Structure (per module)
 
 ```
-packages/finance/
+packages/server/
+├── migrations/                 # graphile-migrate SQL migration files
 ├── src/
-│   ├── domain/
-│   │   ├── entities/           # Entity interfaces and classes
-│   │   │   ├── journal-entry.ts
-│   │   │   ├── account.ts
-│   │   │   └── ...
-│   │   ├── rules/              # Business rule functions
-│   │   │   ├── journal-entry-rules.ts
-│   │   │   └── ...
-│   │   ├── events/             # Domain event types
-│   │   │   └── finance-events.ts
-│   │   └── index.ts
-│   ├── services/
-│   │   ├── gl-service.ts
-│   │   ├── ap-service.ts
-│   │   ├── ar-service.ts
-│   │   ├── currency-service.ts
-│   │   └── index.ts
-│   ├── queries/
-│   │   ├── trial-balance.ts    # Complex query builders
-│   │   ├── aging-report.ts
-│   │   ├── consolidation.ts
-│   │   └── index.ts
-│   └── index.ts                # Public API of the package
+│   ├── index.ts                # Entry point
+│   ├── app.ts                  # Fastify instance and plugin registration
+│   └── schema.ts               # GraphQL/Pothos schema definition
 ├── test/
-│   ├── unit/                   # Pure function tests (domain rules)
-│   ├── integration/            # Tests against real PostgreSQL
-│   └── fixtures/               # Test data factories
+│   ├── app.test.ts             # Server integration tests (bun:test)
+│   └── ...
 ├── package.json
-├── tsconfig.json
-└── vitest.config.ts
+└── tsconfig.json
 ```
 
 ### Testing Strategy
 
 | Level | Scope | Tools | Database | Coverage Target |
 |-------|-------|-------|----------|----------------|
-| **Unit** | Domain rules, value objects, pure functions | Vitest | None | 90%+ for domain logic |
-| **Integration** | Service layer with real database | Vitest + testcontainers | PostgreSQL (containerized) | 80%+ for services |
-| **API** | REST/GraphQL endpoints with auth context | Vitest + supertest | PostgreSQL (containerized) | 80%+ for routes |
+| **Unit** | Domain rules, value objects, pure functions | bun:test | None | 90%+ for domain logic |
+| **Integration** | Service layer with real database | bun:test | PostgreSQL (via Docker Compose) | 80%+ for services |
+| **API** | REST/GraphQL endpoints with auth context | bun:test | PostgreSQL (via Docker Compose) | 80%+ for routes |
 | **E2E** | Full user workflows through the browser | Playwright | Full stack (Docker Compose) | Critical paths: financial close, order-to-ship, compliance hold/release |
 | **Compliance** | Export control scenarios | Custom harness | PostgreSQL with test screening lists | 100% of known-good and known-bad scenarios |
 | **Performance** | Load testing at target scale | k6 | Production-like environment | Must meet latency targets at target concurrency |
@@ -1123,23 +1077,15 @@ packages/finance/
 ```
 Push / PR
     │
-    ├── Lint (ESLint + Prettier check)
-    ├── Type Check (tsc --noEmit across all packages)
-    ├── Unit Tests (Vitest, parallelized per package)
-    │
-    ├── Integration Tests (Vitest + testcontainers)
-    │   └── PostgreSQL container spun up per test suite
-    │
-    ├── API Tests (Vitest + supertest)
-    │
-    ├── Build (Turborepo, all packages)
+    ├── Lint + Format (Biome check)
+    ├── Type Check (tsc --noEmit per package)
+    ├── Unit + Integration Tests (bun test)
     │
     ├── Container Image Build (multi-stage Dockerfile)
     │
     ├── Security Scan
-    │   ├── npm audit (dependency vulnerabilities)
-    │   ├── Trivy (container image vulnerabilities)
-    │   └── ESLint security plugin (code patterns)
+    │   ├── bun audit (dependency vulnerabilities)
+    │   └── Trivy (container image vulnerabilities)
     │
     ├── E2E Tests (Playwright against Docker Compose stack)
     │
@@ -1151,21 +1097,18 @@ Push / PR
 
 ### Database Migration Strategy
 
-- Migrations are plain SQL files in `packages/db/migrations/`
+- Migrations are plain SQL files managed by graphile-migrate in `packages/server/migrations/`
 - Each migration is a numbered file: `000001_create_users.sql`, `000002_create_entities.sql`, etc.
 - Migrations are forward-only. To undo a change, write a new migration
-- Migrations are applied automatically on application startup (before the API accepts traffic)
-- CI runs migrations against a production-like database snapshot to catch issues early
-- Large data migrations (backfills) are written as Graphile Worker jobs, not inline in migration files, to avoid blocking deployments
+- Migrations are applied via `bun run migrate` (runs `graphile-migrate migrate`)
+- CI runs migrations against a test database before running integration tests
 - Schema changes and RLS policy updates are always paired in the same migration
 
 ### Code Quality
 
-- **Linting:** ESLint with `typescript-eslint` strict configuration. Custom rules for: no direct database access outside repositories, no cross-module imports violating dependency rules (eslint-plugin-boundaries)
-- **Formatting:** Prettier (opinionated defaults, no debates). Enforced in CI, auto-fixed on save
-- **Type Checking:** `tsc --noEmit` in CI. Strict mode with `noUncheckedIndexedAccess`. No `any` allowed outside explicit `// eslint-disable` with justification comment
-- **Commit Conventions:** Conventional Commits (`feat:`, `fix:`, `chore:`, etc.) enforced by commitlint
-- **Pre-commit Hooks:** lint-staged + husky for lint and format checks on staged files
+- **Linting and Formatting:** Biome (configured in `biome.json`). Enforced in CI via `bun run lint`, auto-fixed with `bun run lint:fix`
+- **Type Checking:** `tsc --noEmit` per package in CI. Strict mode with `noUncheckedIndexedAccess` and `exactOptionalPropertyTypes`. No `any` types
+- **Commit Conventions:** Conventional Commits (`feat:`, `fix:`, `chore:`, etc.)
 - **Code Review:** All changes require PR review. Changes to compliance, auth, or audit code require review from two approvers
 
 ---
