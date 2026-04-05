@@ -17,16 +17,15 @@ services:
       start_period: 10s
 
   migrate:
-    image: node:20-alpine
+    build:
+      context: .
+      dockerfile: Dockerfile.migrate
     working_dir: /app
     volumes:
       - ./packages/server/migrations:/app/migrations:ro
       - ./packages/server/.gmrc:/app/.gmrc:ro
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-saterp}:${POSTGRES_PASSWORD:-saterp_dev}@postgres:5432/${POSTGRES_DB:-saterp_dev}
-    command: >
-      sh -c "npm install -g graphile-migrate@1.4.1 --quiet &&
-             graphile-migrate migrate"
     depends_on:
       postgres:
         condition: service_healthy

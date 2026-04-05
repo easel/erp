@@ -1,0 +1,7 @@
+FROM node:20-alpine
+
+RUN npm install -g graphile-migrate@1.4.1 --quiet
+
+WORKDIR /app
+
+CMD ["graphile-migrate", "migrate"]

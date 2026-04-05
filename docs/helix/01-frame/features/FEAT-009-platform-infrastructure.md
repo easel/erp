@@ -251,6 +251,42 @@ The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with
 - [ ] Incremental sync: < 10 seconds for up to 1,000 changed records
 - [ ] Offline-to-online transition: < 3 seconds to detect connectivity and resume sync
 
+### PLT-017: Frontend Validation Architecture
+
+*Traces to: PRD PLT-001, ADR-010*
+
+- [ ] All entity validation schemas are defined as Zod schemas in `@saterp/shared` and imported by both Pothos resolvers (server) and React Hook Form (client)
+- [ ] Client-side form validation uses React Hook Form with `@hookform/resolvers/zod`, validating against the same Zod schemas used server-side
+- [ ] Server-side validation failures return a structured `ValidationError` response with `code`, `field`, `message`, `rule`, and `context` fields
+- [ ] Client maps server `ValidationError.field` to the corresponding form field for inline error display; errors without `field` display as form-level banners
+- [ ] When offline, Layer 1 (structural) validation runs normally; Layer 2 (state-dependent) validation is deferred until sync. A warning banner displays: "Compliance checks are pending until you reconnect."
+- [ ] On sync, server-rejected records surface in a resolution UI where the user can edit and resubmit or discard
+- [ ] Changing a Zod schema in @saterp/shared causes a TypeScript compile error in any form or resolver that doesn't handle the change — no silent drift
+
+### PLT-018: Domain-Specific ERP Components
+
+*Traces to: PRD PLT-001, PLT-011, ADR-011*
+
+- [ ] MoneyInput component formats per ISO 4217 decimal places (2 for USD, 0 for JPY, 3 for KWD), validates against MoneyAmountSchema, and stores string representation (never JavaScript number)
+- [ ] EntitySwitcher in root layout shows all entities the user has access to; switching scopes all data queries to the selected entity; persists selection in localStorage
+- [ ] ComplianceStatusBadge displays pending (yellow), cleared (green), held (red) on sales orders, POs, shipments, and quotes with tooltip detail
+- [ ] DataTable supports: server-side pagination (25/50/100/250), column sorting, type-aware filtering, inline editing, row selection with bulk actions, CSV/Excel export, virtualization for 1,000+ rows
+- [ ] FiscalPeriodPicker shows period status visually (FUTURE/OPEN/SOFT_CLOSED/HARD_CLOSED per ADR-007) and prevents selection of HARD_CLOSED periods for posting forms
+- [ ] CountryRegionSelector triggers sub-region selection for countries with sub-national sanctions (e.g., Ukraine) and displays inline compliance warnings for restricted destinations
+- [ ] SyncStatusIndicator shows connected/syncing/offline state with last sync timestamp and pending item count; expanding shows sync queue detail
+- [ ] All domain components meet WCAG 2.1 AA accessibility requirements
+
+### PLT-019: Navigation Architecture
+
+*Traces to: PRD PLT-001, ADR-011*
+
+- [ ] Next.js App Router with module-based layouts: root layout (auth, entity switcher, global search) and per-module layouts (Finance, Sales, Procurement, CRM, Compliance, Settings) with persistent sidebars
+- [ ] Navigating within a module preserves sidebar state; module switch via top nav
+- [ ] Breadcrumbs auto-generated from route segments showing entity context
+- [ ] Global search (Cmd+K) searches across all modules; when offline, searches local SQLite cache
+- [ ] Keyboard shortcuts: Cmd+K (search), Cmd+E (entity switch), G+F (Finance), G+S (Sales), Escape (close modals)
+- [ ] Components degrade gracefully offline per ADR-009: DataTable uses client-side pagination from SQLite cache, forms save locally with pending-sync indicator, search uses local FTS
+
 ## Domain Model
 
 ### Core Entities
