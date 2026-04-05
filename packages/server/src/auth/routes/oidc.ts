@@ -113,9 +113,7 @@ export const defaultOidcAdapter: OidcAdapter = {
 		const refreshToken =
 			typeof tokens.refresh_token === "string" ? tokens.refresh_token : undefined;
 		const expiresIn = typeof tokens.expires_in === "number" ? tokens.expires_in : undefined;
-		const accessTokenExpiresAt = expiresIn
-			? new Date(Date.now() + expiresIn * 1000)
-			: undefined;
+		const accessTokenExpiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
 
 		return { ...claims, sub, email, refreshToken, accessTokenExpiresAt };
 	},

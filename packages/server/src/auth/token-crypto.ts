@@ -12,9 +12,7 @@
 
 /** Import a 32-byte hex key as a Web Crypto AES-GCM CryptoKey. */
 async function importAesKey(hexKey: string): Promise<CryptoKey> {
-	const keyBytes = Uint8Array.from(
-		hexKey.match(/.{2}/g)?.map((b) => Number.parseInt(b, 16)) ?? [],
-	);
+	const keyBytes = Uint8Array.from(hexKey.match(/.{2}/g)?.map((b) => Number.parseInt(b, 16)) ?? []);
 	if (keyBytes.length !== 32) throw new Error("Encryption key must be 32 bytes (64 hex chars)");
 	return crypto.subtle.importKey("raw", keyBytes, "AES-GCM", false, ["encrypt", "decrypt"]);
 }

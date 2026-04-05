@@ -14,8 +14,8 @@
  * Issue: hx-c757d0df
  */
 
-import { decryptToken, encryptToken } from "../token-crypto.js";
 import type { AuthDbClient } from "../provider.js";
+import { decryptToken, encryptToken } from "../token-crypto.js";
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -119,9 +119,7 @@ export const defaultOidcRefreshAdapter: OidcRefreshAdapter = {
  * Sessions where the refresh fails are skipped (not revoked) so the user
  * can still authenticate manually.
  */
-export async function runOidcTokenRefreshJob(
-	opts: RefreshJobOptions,
-): Promise<RefreshJobResult> {
+export async function runOidcTokenRefreshJob(opts: RefreshJobOptions): Promise<RefreshJobResult> {
 	const windowSecs = opts.refreshWindowSeconds ?? 300;
 
 	// Find active OIDC sessions with a stored refresh token whose IdP access

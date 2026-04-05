@@ -12,9 +12,9 @@
  * Issue: hx-c90fbc0a
  */
 
-import type { FastifyInstance } from "fastify";
 // Pull in @fastify/cookie type augmentation so req.cookies is typed.
 import type {} from "@fastify/cookie";
+import type { FastifyInstance } from "fastify";
 import type { AuthDbClient } from "./provider.js";
 import type { SessionManager } from "./session-manager.js";
 import type { ApogeeUser, Session } from "./types.js";
@@ -89,10 +89,7 @@ async function loadUser(db: AuthDbClient, userId: string): Promise<ApogeeUser | 
  *
  * Must be called after `app.register(cookie)` (@fastify/cookie).
  */
-export function registerSessionAuthHook(
-	app: FastifyInstance,
-	opts: SessionAuthHookOptions,
-): void {
+export function registerSessionAuthHook(app: FastifyInstance, opts: SessionAuthHookOptions): void {
 	const bypass = opts.bypass ?? DEFAULT_BYPASS;
 
 	app.decorateRequest("user", null);

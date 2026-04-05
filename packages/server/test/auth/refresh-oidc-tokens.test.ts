@@ -87,7 +87,11 @@ class StubDb implements AuthDbClient {
 				session.idp_access_token_expires_at = newExpiry;
 			}
 
-			this.updates.push({ id, idp_refresh_token_enc: newEnc, idp_access_token_expires_at: newExpiry });
+			this.updates.push({
+				id,
+				idp_refresh_token_enc: newEnc,
+				idp_access_token_expires_at: newExpiry,
+			});
 			return { rows: [] };
 		}
 
@@ -143,10 +147,7 @@ function sessionExpiry(): Date {
 
 // ── Default options ───────────────────────────────────────────────────────────
 
-function makeOpts(
-	db: StubDb,
-	adapter: StubRefreshAdapter,
-): RefreshJobOptions {
+function makeOpts(db: StubDb, adapter: StubRefreshAdapter): RefreshJobOptions {
 	return {
 		db,
 		refreshAdapter: adapter,

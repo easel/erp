@@ -14,7 +14,14 @@ import {
 	SendPurchaseOrderSchema,
 	SubmitPurchaseOrderSchema,
 } from "@apogee/shared";
+import type { UUID } from "@apogee/shared";
 import SchemaBuilder from "@pothos/core";
+import {
+	type FiscalPeriodSnapshot,
+	type GLAccountSnapshot,
+	type GLRepository,
+	postJournalEntry,
+} from "./finance/gl-engine.js";
 import {
 	type POSnapshot,
 	approve,
@@ -22,6 +29,39 @@ import {
 	submitForApproval,
 } from "./procurement/po-approval-workflow.js";
 import { validateInput } from "./validation.js";
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Stub GL repository — accepts all valid-looking periods and accounts.
+// Replaced by a DB-backed implementation when the database layer is wired.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const stubGLRepository: GLRepository = {
+	async findPeriod(_entityId, periodId): Promise<FiscalPeriodSnapshot | null> {
+		return {
+			id: periodId,
+			entityId: _entityId,
+			status: "OPEN",
+			periodLabel: "Current Period",
+		};
+	},
+	async findAccounts(entityId, accountIds) {
+		const result = new Map<(typeof accountIds)[number], GLAccountSnapshot>();
+		for (const id of accountIds) {
+			result.set(id, {
+				id,
+				entityId,
+				accountNumber: id.slice(0, 8),
+				isHeader: false,
+				isActive: true,
+				currencyCode: null,
+			});
+		}
+		return result;
+	},
+	async findEntry(_entityId, _entryId) {
+		return null;
+	},
+};
 
 export const builder = new SchemaBuilder<{
 	Context: Record<string, never>;
@@ -195,15 +235,22 @@ builder.mutationType({
 		}),
 
 		/**
-		 * createJournalEntry — Layer 1 validation via CreateJournalEntrySchema.
-		 * Includes balance check: debits must equal credits (enforced in shared schema).
+		 * createJournalEntry — posts a double-entry journal entry to the GL.
+		 *
+		 * Validation layers:
+		 * - Layer 1 (structural): CreateJournalEntrySchema (Zod) — balance, line types, etc.
+		 * - Layer 2 (business):   GLEngine — period open check, account validation.
+		 *
+		 * The GL engine uses the stub GLRepository until the DB layer is wired.
+		 *
+		 * Ref: SD-003-WP2 FIN-002, hx-152c4f71
 		 */
 		createJournalEntry: t.field({
 			type: JournalEntryResult,
 			args: {
 				input: t.arg({ type: CreateJournalEntryInput_GQL, required: true }),
 			},
-			resolve: (_root, args) => {
+			resolve: async (_root, args) => {
 				const rawInput = {
 					...args.input,
 					lines: (args.input.lines as JournalLineGQLInput[]).map((l) => ({
@@ -218,9 +265,23 @@ builder.mutationType({
 					CreateJournalEntrySchema,
 					rawInput,
 				);
+
+				let entryCounter = 0;
+				const ctx = {
+					actorId: crypto.randomUUID() as UUID,
+					actorEmail: "system@apogee.internal",
+					entityCurrencyCode: "USD",
+					generateEntryNumber: async () => {
+						entryCounter += 1;
+						const year = new Date().getFullYear();
+						return `JE-${year}-${entryCounter.toString().padStart(5, "0")}`;
+					},
+				};
+
+				const result = await postJournalEntry(validated, ctx, stubGLRepository);
 				return {
 					id: crypto.randomUUID(),
-					reference: validated.reference,
+					reference: result.entry.reference,
 				};
 			},
 		}),
