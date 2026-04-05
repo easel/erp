@@ -4,8 +4,10 @@ import Fastify from "fastify";
 import { createYoga } from "graphql-yoga";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 import { registerAuthHook } from "./auth.js";
+import { closePool, getPool } from "./db.js";
 import { registerEntityContext } from "./entity-context.js";
-import { schema } from "./schema.js";
+import { createGLRepository } from "./finance/gl-repository.js";
+import { buildSchema } from "./schema.js";
 import { generateSpanId, generateTraceId, parseTraceparent } from "./telemetry.js";
 
 export interface AppOptions {
@@ -26,6 +28,12 @@ export interface AppOptions {
 	 * that don't exercise the auth layer).
 	 */
 	authSecret?: string;
+	/**
+	 * PostgreSQL connection string for wiring real DB repositories.
+	 * When omitted, reads DATABASE_URL from the environment.
+	 * Pass an empty string to disable DB wiring (e.g. unit tests without a DB).
+	 */
+	databaseUrl?: string;
 }
 
 /** Consistent error response shape for all 4xx/5xx responses */
@@ -40,6 +48,25 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 	// Resolve auth secret: explicit option > env var > disabled
 	const authSecret =
 		opts.authSecret !== undefined ? opts.authSecret : (process.env.APP_JWT_SECRET ?? "");
+
+	// ------------------------------------------------------------------ //
+	// Database pool + GraphQL schema
+	// Resolve the DB connection string: explicit option > env var > disabled.
+	// When databaseUrl is empty string, DB wiring is skipped and the GraphQL
+	// schema uses the in-memory stub repositories (unit tests without a DB).
+	// ------------------------------------------------------------------ //
+	const dbUrl =
+		opts.databaseUrl !== undefined ? opts.databaseUrl : (process.env.DATABASE_URL ?? "");
+
+	let schema: ReturnType<typeof buildSchema>;
+	if (dbUrl) {
+		const pool = getPool(dbUrl);
+		const glRepo = createGLRepository(pool);
+		schema = buildSchema(glRepo);
+	} else {
+		// No DB configured — use stub repositories (tests / build-time checks).
+		schema = buildSchema();
+	}
 
 	const isTest = process.env.NODE_ENV === "test" || logLevel === "silent";
 
@@ -207,6 +234,13 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 			message: "Route not found",
 		};
 		return reply.status(404).send(body);
+	});
+
+	// Close DB pool when the server shuts down gracefully.
+	app.addHook("onClose", async () => {
+		if (dbUrl) {
+			await closePool();
+		}
 	});
 
 	return app;
