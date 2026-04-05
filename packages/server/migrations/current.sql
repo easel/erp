@@ -2554,7 +2554,10 @@ CREATE TABLE IF NOT EXISTS authn_sessions (
 	provider      TEXT        NOT NULL CHECK (provider IN ('oidc', 'saml')),
 	revoked_at    TIMESTAMPTZ NULL,
 	-- Optional: encrypted IdP refresh token for background OIDC token refresh
-	idp_refresh_token_enc TEXT NULL
+	idp_refresh_token_enc      TEXT        NULL,
+	-- When the IdP access token expires; used by the background refresh job
+	-- to find sessions that need their access token renewed
+	idp_access_token_expires_at TIMESTAMPTZ NULL
 );
 
 -- Fast lookup of active sessions for a user (session list UI + revokeAll)

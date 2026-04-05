@@ -25,6 +25,7 @@ import {
 import type { OidcProviderConfig } from "../config.js";
 import type { AuthProvider } from "../provider.js";
 import type { SessionManager } from "../session-manager.js";
+import { encryptToken } from "../token-crypto.js";
 
 // ── Public interface ───────────────────────────────────────────────────────────
 
@@ -42,6 +43,15 @@ export interface OidcRouteOptions {
 	 * openid-client implementation.  Override in tests to avoid network calls.
 	 */
 	adapter?: OidcAdapter;
+	/**
+	 * AES-256-GCM encryption key (64 hex chars / 32 bytes) for storing refresh
+	 * tokens at rest.  When provided, the refresh token from the IdP is encrypted
+	 * and stored in authn_sessions.idp_refresh_token_enc so the background job
+	 * can refresh near-expiry access tokens automatically.
+	 *
+	 * Reads from APP_SESSION_ENCRYPTION_KEY env var if not supplied explicitly.
+	 */
+	encryptionKey?: string;
 }
 
 /**
@@ -71,6 +81,10 @@ export interface OidcClaims {
 	sub: string;
 	email: string;
 	name?: string;
+	/** Refresh token returned by the IdP, if present. */
+	refreshToken?: string;
+	/** When the access token expires. Undefined if the IdP did not provide expires_in. */
+	accessTokenExpiresAt?: Date;
 	[key: string]: unknown;
 }
 
@@ -95,7 +109,15 @@ export const defaultOidcAdapter: OidcAdapter = {
 		const sub = claims.sub;
 		const email = claims.email as string | undefined;
 		if (!email) throw new Error("OIDC id_token missing email claim");
-		return { ...claims, sub, email };
+
+		const refreshToken =
+			typeof tokens.refresh_token === "string" ? tokens.refresh_token : undefined;
+		const expiresIn = typeof tokens.expires_in === "number" ? tokens.expires_in : undefined;
+		const accessTokenExpiresAt = expiresIn
+			? new Date(Date.now() + expiresIn * 1000)
+			: undefined;
+
+		return { ...claims, sub, email, refreshToken, accessTokenExpiresAt };
 	},
 };
 
@@ -138,6 +160,10 @@ export async function registerOidcRoutes(
 ): Promise<void> {
 	const { providerConfig, authProvider, sessionManager, serverBaseUrl } = opts;
 	const adapter = opts.adapter ?? defaultOidcAdapter;
+	const encryptionKey =
+		opts.encryptionKey !== undefined
+			? opts.encryptionKey
+			: (process.env.APP_SESSION_ENCRYPTION_KEY ?? "");
 	const scopes = providerConfig.scopes ?? ["openid", "email", "profile"];
 
 	// Perform OIDC discovery once at registration time so the routes are ready
@@ -217,12 +243,25 @@ export async function registerOidcRoutes(
 		// browser is redirected to /auth/mfa/verify before getting full access.
 		const mfaVerified = !user.mfaEnabled;
 
+		// Encrypt and store the IdP refresh token when the IdP provides one and
+		// an encryption key is configured.
+		let idpRefreshTokenEnc: string | undefined;
+		if (claims.refreshToken && encryptionKey) {
+			try {
+				idpRefreshTokenEnc = await encryptToken(claims.refreshToken, encryptionKey);
+			} catch {
+				req.log.warn("Failed to encrypt OIDC refresh token — storing session without it");
+			}
+		}
+
 		const session = await sessionManager.create({
 			userId: user.id,
 			mfaVerified,
 			provider: "oidc",
 			ipAddress: req.ip,
 			userAgent: req.headers["user-agent"] ?? "",
+			idpRefreshTokenEnc,
+			idpAccessTokenExpiresAt: claims.accessTokenExpiresAt,
 		});
 
 		reply.header(

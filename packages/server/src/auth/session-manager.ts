@@ -22,6 +22,10 @@ export interface SessionManager {
 		provider: "oidc" | "saml";
 		ipAddress: string;
 		userAgent: string;
+		/** AES-256-GCM encrypted IdP refresh token (store when OIDC provides one). */
+		idpRefreshTokenEnc?: string;
+		/** When the IdP access token expires (for background refresh scheduling). */
+		idpAccessTokenExpiresAt?: Date;
 	}): Promise<Session>;
 
 	/** Load and validate session. Returns null if missing, expired, or revoked. */
@@ -90,12 +94,15 @@ export class DbSessionManager implements SessionManager {
 		provider: "oidc" | "saml";
 		ipAddress: string;
 		userAgent: string;
+		idpRefreshTokenEnc?: string;
+		idpAccessTokenExpiresAt?: Date;
 	}): Promise<Session> {
 		const expiresAt = new Date(Date.now() + this.absoluteTimeoutHours * 60 * 60 * 1000);
 		const result = await this.db.query<SessionRow>(
 			`INSERT INTO authn_sessions
-			   (user_id, expires_at, ip_address, user_agent, mfa_verified, provider)
-			 VALUES ($1, $2, $3, $4, $5, $6)
+			   (user_id, expires_at, ip_address, user_agent, mfa_verified, provider,
+			    idp_refresh_token_enc, idp_access_token_expires_at)
+			 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 			 RETURNING id, user_id, created_at, last_activity, expires_at,
 			           ip_address, user_agent, mfa_verified, provider`,
 			[
@@ -105,6 +112,8 @@ export class DbSessionManager implements SessionManager {
 				params.userAgent,
 				params.mfaVerified,
 				params.provider,
+				params.idpRefreshTokenEnc ?? null,
+				params.idpAccessTokenExpiresAt ?? null,
 			],
 		);
 		return rowToSession(result.rows[0]!);
