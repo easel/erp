@@ -392,7 +392,16 @@ BEGIN
 		v_actor_id, v_actor_email
 	);
 
-	RETURN NULL;  -- AFTER trigger return value is ignored
+	-- For BEFORE triggers: return NEW (or OLD for DELETE) so the DML proceeds.
+	-- For AFTER triggers: return value is ignored; NULL is fine.
+	IF TG_WHEN = 'BEFORE' THEN
+		IF TG_OP = 'DELETE' THEN
+			RETURN OLD;
+		ELSE
+			RETURN NEW;
+		END IF;
+	END IF;
+	RETURN NULL;
 END;
 $$;
 

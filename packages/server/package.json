@@ -9,7 +9,8 @@
 		"start": "bun src/index.ts",
 		"test": "bun test",
 		"typecheck": "tsc --noEmit",
-		"migrate": "graphile-migrate migrate"
+		"migrate": "graphile-migrate migrate",
+		"seed": "bun run src/seed.ts"
 	},
 	"dependencies": {
 		"@apogee/shared": "workspace:*",

@@ -10,7 +10,8 @@
 		"lint:fix": "biome check --write .",
 		"format": "biome format --write .",
 		"build": "bun run --filter '*' build",
-		"migrate": "cd packages/server && bun run migrate"
+		"migrate": "cd packages/server && bun run migrate",
+		"seed": "cd packages/server && bun run seed"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "1.9.0",
