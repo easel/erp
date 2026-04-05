@@ -52,19 +52,15 @@ jobs:
         run: bun test
 
   ci-node:
-    # NOTE: This job validates that lint and typecheck pass using Node.js LTS
-    # tooling (npx, tsc). It does NOT execute tests on the Node.js runtime
-    # because the test suite imports from 'bun:test' (a Bun-only module) and
-    # cannot run under Node.js without a separate test runner.
+    # Validates Node.js runtime compatibility per ADR-009.
+    # packages/shared tests use vitest (runtime-agnostic) so they can execute
+    # under Node.js LTS without any Bun-only dependencies.
     #
-    # Per ADR-009, shared packages must not use Bun-only APIs in production
-    # code; the test-runner import is test-infrastructure only. True Node.js
-    # runtime test execution is tracked in a follow-on issue.
-    #
-    # What this job genuinely validates on Node.js LTS:
+    # What this job validates on Node.js LTS:
     #   - Biome lint/format (invoked via Bun CLI, but checks source portability)
     #   - TypeScript type-checking (tsc runs on Node.js via npx)
-    name: CI (Node.js LTS — lint and typecheck only)
+    #   - packages/shared test suite via vitest under Node.js (ADR-009 dual-runtime requirement)
+    name: CI (Node.js LTS)
     runs-on: ubuntu-latest
 
     steps:
@@ -89,3 +85,6 @@ jobs:
 
       - name: Typecheck (tsc)
         run: bun run typecheck
+
+      - name: Test shared package (vitest — Node.js runtime)
+        run: cd packages/shared && node --version && npx vitest run
