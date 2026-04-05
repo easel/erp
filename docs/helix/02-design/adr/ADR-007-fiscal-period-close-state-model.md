@@ -20,7 +20,7 @@ Fiscal period status uses a **four-state model**:
 - `SOFT_CLOSED` — only journal entries marked as `is_adjusting = true` are accepted; regular postings are rejected.
 - `HARD_CLOSED` — no postings of any kind are accepted; period is locked for audit.
 
-State transitions are strictly ordered: `FUTURE -> OPEN -> SOFT_CLOSED -> HARD_CLOSED`. Reverse transitions require an explicit "reopen" action with audit trail and approval workflow. The separate `period_status` table in SD-002 should be removed — status belongs directly on `fiscal_period`.
+State transitions are strictly ordered: `FUTURE -> OPEN -> SOFT_CLOSED -> HARD_CLOSED`. Reverse transitions require an explicit "reopen" action with audit trail and approval workflow. The separate `period_status` table in SD-002 should be deprecated and removed in a future schema revision. During the transition, it may be retained with a deprecation notice for module-level override granularity, but `fiscal_period.status` is the authoritative period state.
 
 ## Rationale
 
@@ -34,7 +34,7 @@ The four-state model matches standard month-end close procedures: (1) open for b
 
 ## Consequences
 
-SD-002's `fiscal_period.status` enum needs updating to four values. The separate `period_status` table should be removed or repurposed. `journal_entry` INSERT trigger must check period status and entry type. Controllers gain clear audit trail of who closed/reopened each period.
+SD-002's `fiscal_period.status` enum needs updating to four values. The separate `period_status` table is deprecated (retained temporarily for module-level override granularity, to be removed in a future revision). `journal_entry` INSERT trigger must check period status and entry type. Controllers gain clear audit trail of who closed/reopened each period.
 
 ## Affected Artifacts
 

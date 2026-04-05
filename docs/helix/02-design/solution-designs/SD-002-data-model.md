@@ -50,11 +50,26 @@ Transactional tables include:
 
 Row-level security policies enforce entity isolation where required.
 
-### 2.4 Enum Strategy
+### 2.4 Sync Metadata (Local-First, per ADR-009)
+
+Offline-capable tables include additional sync columns:
+
+| Column | Type | Description |
+|--------|------|-------------|
+| sync_version | BIGINT NOT NULL DEFAULT 0 | Monotonically increasing version, incremented on each mutation. Used by sync protocol for change detection. |
+| last_synced_at | TIMESTAMPTZ | Timestamp of last successful sync to/from server. NULL for records created server-side that have not been pulled by any client. |
+| sync_status | VARCHAR(20) DEFAULT 'synced' | CHECK (sync_status IN ('synced', 'pending_push', 'conflict')). Status of this record's sync state. |
+
+**Offline tier assignments:**
+- **Tier 1 (always offline):** customer, vendor, product, crm_company, crm_contact, inventory_item, inventory_level, screening_list_entry, country_restriction, restricted_region
+- **Tier 2 (eventual sync):** quote, sales_order, purchase_order, journal_entry, customer_invoice, vendor_bill, activity, opportunity, lead
+- **Tier 3 (online-only, no sync columns):** audit_entry, payment, payment_batch, shipment (compliance_status requires live verification)
+
+### 2.5 Enum Strategy
 
 Small, stable value sets use PostgreSQL `ENUM` types. Larger or user-extensible sets use reference tables with a `code` / `label` pattern.
 
-### 2.5 JSONB Extension Fields
+### 2.6 JSONB Extension Fields
 
 Tables that need user-extensible metadata include an `ext` column of type `JSONB DEFAULT '{}'::jsonb`.
 

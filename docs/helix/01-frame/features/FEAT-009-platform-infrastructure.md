@@ -13,7 +13,7 @@ The platform layer provides the technical foundation on which every SatERP modul
 
 SatERP is self-hosted on operator infrastructure or GovCloud. It must handle ITAR-controlled and CUI data in compliance with NIST 800-171. Core functions must operate without external network dependencies. The platform must support 50+ legal entities, 10K+ contracts, and 1M+ SKUs without performance degradation.
 
-The technology stack is TypeScript + Node.js for the backend, PostgreSQL for persistence (relational, document, and time-series data), and REST + GraphQL APIs for all module interactions.
+The technology stack is Isomorphic TypeScript on Bun (Node.js LTS fallback) with a local-first architecture: client-side state is persisted in SQLite for offline operation, PostgreSQL is the server-side store (relational, document, and time-series data), and REST + GraphQL APIs handle all module interactions. Shared isomorphic packages ensure domain types, validation schemas, and business rules run identically on client and server.
 
 ## User Stories
 
@@ -82,11 +82,11 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ## Acceptance Criteria
 
-### PLT-001: TypeScript + Node.js Backend with REST and GraphQL APIs
+### PLT-001: Isomorphic TypeScript on Bun with REST and GraphQL APIs
 
 *Traces to: PRD PLT-001*
 
-- [ ] Backend is implemented in TypeScript running on Node.js (LTS version)
+- [ ] Backend is implemented in TypeScript running on Bun as the primary runtime. Node.js LTS is supported as a fallback runtime. CI tests run on both runtimes.
 - [ ] Every module exposes REST endpoints following OpenAPI 3.x specification
 - [ ] Every module exposes GraphQL queries and mutations via a unified schema
 - [ ] All endpoints support pagination (cursor-based and offset), filtering, and sorting
@@ -229,6 +229,27 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 - [ ] Cross-entity queries that span data residency boundaries are handled transparently (with latency trade-off documented)
 - [ ] Data residency configuration is enforced at the data layer, not just the application layer
 - [ ] Migration tooling supports relocating an entity's data between residency zones
+
+### PLT-015: Local-First Architecture
+
+*Traces to: PRD PLT-001, ADR-009*
+
+- [ ] Client-side state is persisted in SQLite (via Bun's native SQLite on desktop, sql.js in browser) for offline operation
+- [ ] Offline Tier 1 (always available): Read access to recently-synced data, draft creation (quotes, POs, activities), compliance screening against locally-cached screening lists. Cached screening lists display a staleness warning after 24 hours (configurable).
+- [ ] Offline Tier 2 (requires eventual sync): Order submission, invoice creation, journal entry posting are created locally with status 'pending_sync'. They are committed on the server upon sync. Server rejection (e.g., compliance hold) surfaces as a sync error with resolution UI.
+- [ ] Offline Tier 3 (online-only): Real-time denied-party screening against live lists, payment execution, report generation against full dataset. Attempting a Tier 3 operation while offline returns a clear error: "This operation requires a server connection."
+- [ ] Sync protocol: Clients record mutations locally, then push/pull against the server when connected. Conflict resolution uses last-write-wins (LWW) for most entities. Journal entries and compliance decisions use explicit merge UI on conflict.
+- [ ] Sync status is visible in the UI: connected/disconnected indicator, last sync timestamp, count of pending-sync items.
+- [ ] Shared isomorphic packages contain domain types, Zod validation schemas, and business rule functions that run identically on client and server. Server-side validation is authoritative; client-side is for UX responsiveness.
+- [ ] Shared packages have zero platform-specific dependencies (no `fs`, no `window`, no Bun-only APIs).
+
+### PLT-016: Sync Performance NFRs
+
+*Traces to: PRD PLT-001, ADR-009*
+
+- [ ] Initial sync (full dataset for one entity): < 5 minutes for up to 100,000 records
+- [ ] Incremental sync: < 10 seconds for up to 1,000 changed records
+- [ ] Offline-to-online transition: < 3 seconds to detect connectivity and resume sync
 
 ## Domain Model
 

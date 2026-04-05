@@ -28,8 +28,8 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 ┌─────────────────────────▼───────────────────────────────────────────┐
 │                        API LAYER                                    │
 │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────┐    │
-│  │  REST (Fastify) │  │ GraphQL (Mercur│  │ Auth Middleware    │    │
-│  │  OpenAPI 3.1    │  │ ius + Yoga)    │  │ (OIDC/SAML/JWT)   │    │
+│  │  REST (Fastify) │  │ GraphQL (Yoga  │  │ Auth Middleware    │    │
+│  │  OpenAPI 3.1    │  │  + Pothos)     │  │ (OIDC/SAML/JWT)   │    │
 │  └────────────────┘  └────────────────┘  └────────────────────┘    │
 │  ┌────────────────────────────────────────────────────────────┐    │
 │  │ Rate Limiting · Request Validation · RBAC Enforcement      │    │
@@ -212,7 +212,7 @@ The domain layer defines entity models, business rules, and validation logic. It
 **Entity Models**
 - TypeScript interfaces and classes representing business entities
 - Immutable value objects for money (amount + currency), addresses, exchange rates
-- Entity identity via UUIDs (v7 preferred for sortability; v4 acceptable) — widely supported across the PostgreSQL ecosystem and ORMs, avoids the tooling gaps of ULIDs. Auto-increment integers are avoided because they leak information about record counts
+- Entity identity via UUID v4 (per ADR-002); generated via PostgreSQL `gen_random_uuid()` — widely supported across the PostgreSQL ecosystem and ORMs, avoids the tooling gaps of ULIDs. Auto-increment integers are avoided because they leak information about record counts
 - Shared `Money` type enforces that arithmetic never mixes currencies without explicit conversion
 
 **Business Rules**

@@ -31,7 +31,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 
 | Deliverable | Detail |
 |---|---|
-| Monorepo scaffold | pnpm workspaces, turborepo pipeline, shared `tsconfig` with strict mode |
+| Monorepo scaffold | Bun workspaces, Bun workspace scripts, shared `tsconfig` with strict mode |
 | Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Mailpit |
 | CI pipeline | GitHub Actions: lint, typecheck, unit test, build, container image push |
 | Database migration framework | graphile-migrate (SQL-first migrations, no ORM lock-in) |
@@ -40,8 +40,10 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Authentication scaffolding | OIDC client integration (Keycloak dev instance), session store in Redis |
 | Deployment manifests | Dockerfile (multi-stage), Helm chart with values for dev/staging/prod |
 | Observability baseline | Structured JSON logging, OpenTelemetry traces, `/health/live` + `/health/ready` endpoints |
+| Dual-runtime CI pipeline | Bun primary, Node.js fallback — CI runs test suite on both runtimes |
+| Local-first infrastructure | SQLite client-side schema mirroring, sync protocol scaffolding, offline tier configuration |
 
-**Definition of Done:** A contributor can clone the repo, run `pnpm install && docker compose up`, and hit the GraphQL playground with a valid JWT from the dev Keycloak instance.
+**Definition of Done:** A contributor can clone the repo, run `bun install && docker compose up`, and hit the GraphQL playground with a valid JWT from the dev Keycloak instance.
 
 ---
 
@@ -237,7 +239,7 @@ Covers PRD requirements SLS-001 through SLS-004 and CRM-001 through CRM-003.
 | SLS-002 | Sales orders | Order from quote (or direct entry), compliance screening trigger, approval workflow, status tracking (draft/confirmed/in-fulfillment/shipped/invoiced) |
 | SLS-003 | Customer master | Customer records (extends CRM company), billing/shipping addresses, payment terms, credit limits, tax identifiers |
 | SLS-004 | Product catalog | Product records, ECCN classification link, pricing tiers, unit of measure, BOM (bill of materials) for assemblies |
-| SLS-005 | RMA / return processing | Return merchandise authorization workflow, credit memo generation, inventory return receipt, compliance re-screening on inbound returns |
+| SLS-002-RMA | RMA / return processing | Return merchandise authorization workflow, credit memo generation, inventory return receipt, compliance re-screening on inbound returns |
 
 **Integration points:**
 
