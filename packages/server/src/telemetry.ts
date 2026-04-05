@@ -1,14 +1,16 @@
 /**
- * OpenTelemetry trace context propagation scaffolding.
+ * OpenTelemetry trace context propagation and SDK initialisation.
  *
- * This module provides the minimal structure needed for distributed tracing.
- * A full OTel SDK initialisation (OTLP exporter, BatchSpanProcessor, etc.)
- * can be wired in here once the collector endpoint is available.
- *
- * Usage: call `initTelemetry()` before `buildApp()` in the server entrypoint.
+ * Call `initTelemetry()` before `buildApp()` in the server entrypoint.
  * The trace context is propagated via the `traceparent` / `tracestate` headers
  * (W3C Trace Context spec) on every inbound request.
+ *
+ * SDK initialisation is skipped when OTEL_ENDPOINT is not set, making the
+ * module safe to import in unit tests without side-effects.
  */
+
+import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
+import { NodeSDK } from "@opentelemetry/sdk-node";
 
 /** Minimal span-context shape — matches @opentelemetry/api SpanContext. */
 export interface SpanContext {
@@ -48,19 +50,33 @@ export function generateSpanId(): string {
 }
 
 /**
- * Initialise telemetry.
+ * Initialise the OpenTelemetry SDK.
  *
- * Currently a no-op stub — replace the body with full OTel SDK initialisation
- * when a collector is available:
+ * Reads OTEL_ENDPOINT from the environment. When the variable is absent or
+ * empty, this function is a no-op so unit tests and development environments
+ * without a collector work without side-effects.
  *
- * ```ts
- * import { NodeSDK } from '@opentelemetry/sdk-node';
- * import { OTLPTraceExporter } from '@opentelemetry/exporter-trace-otlp-http';
- * const sdk = new NodeSDK({ traceExporter: new OTLPTraceExporter() });
- * sdk.start();
- * ```
+ * The SDK is configured with:
+ * - OTLPTraceExporter pointing at OTEL_ENDPOINT
+ * - BatchSpanProcessor (bundled inside NodeSDK by default)
+ * - Automatic process shutdown on SIGTERM via sdk.shutdown()
  */
 export function initTelemetry(): void {
-	// Stub: OTel SDK initialisation goes here.
-	// Trace context is propagated per-request in app.ts via parseTraceparent().
+	const endpoint = process.env.OTEL_ENDPOINT;
+	if (!endpoint) {
+		// No-op when collector endpoint is not configured.
+		return;
+	}
+
+	const traceExporter = new OTLPTraceExporter({ url: endpoint });
+	const sdk = new NodeSDK({ traceExporter });
+
+	sdk.start();
+
+	// Flush and shut down the SDK on process exit so spans are not lost.
+	process.on("SIGTERM", () => {
+		sdk.shutdown().catch(() => {
+			// Best-effort shutdown — ignore errors on exit.
+		});
+	});
 }

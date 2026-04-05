@@ -7,6 +7,9 @@ export type { AppOptions } from "./app.js";
 // Bun sets import.meta.main = true on the entry module; cast through unknown for TS compat
 // since @types/bun is not installed.
 if ((import.meta as unknown as { main?: boolean }).main === true) {
+	const { initTelemetry } = await import("./telemetry.js");
+	initTelemetry();
+
 	const { buildApp } = await import("./app.js");
 
 	const port = Number(process.env.PORT ?? 3000);
