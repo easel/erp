@@ -1,0 +1,107 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  ci-bun:
+    name: CI (Bun primary)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: saterp
+          POSTGRES_PASSWORD: saterp
+          POSTGRES_DB: saterp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U saterp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://saterp:saterp@localhost:5432/saterp_test
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: bun run lint
+
+      - name: Typecheck (tsc)
+        run: bun run typecheck
+
+      - name: Test (bun test)
+        run: bun test
+
+  ci-node:
+    name: CI (Node.js LTS fallback)
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: saterp
+          POSTGRES_PASSWORD: saterp
+          POSTGRES_DB: saterp_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U saterp"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgres://saterp:saterp@localhost:5432/saterp_test
+      NODE_ENV: test
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js LTS
+        uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Lint (Biome)
+        run: bun run lint
+
+      - name: Typecheck (tsc)
+        run: bun run typecheck
+
+      - name: Test (bun test on Node.js LTS)
+        # Runs bun test with NODE_PATH set to validate Node.js compatibility.
+        # Per ADR-009, shared packages must not use Bun-only APIs; this job
+        # verifies the test suite passes in an environment where the active
+        # Node.js is the LTS version, catching any Bun-exclusive API drift.
+        env:
+          BUN_RUNTIME_TRANSPILER_CACHE_PATH: /tmp/bun-cache
+        run: bun test

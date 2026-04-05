@@ -1,15 +1,19 @@
 {
-  "name": "saterp",
-  "version": "0.0.1",
-  "private": true,
-  "workspaces": ["packages/*"],
-  "scripts": {
-    "test": "bun test",
-    "typecheck": "tsc --build --noEmit",
-    "lint": "biome check .",
-    "lint:fix": "biome check --write .",
-    "format": "biome format --write .",
-    "build": "bun run --filter '*' build",
-    "migrate": "cd packages/server && bun run migrate"
-  }
+	"name": "saterp",
+	"version": "0.0.1",
+	"private": true,
+	"workspaces": ["packages/*"],
+	"scripts": {
+		"test": "bun test",
+		"typecheck": "tsc -p packages/shared/tsconfig.json --noEmit && tsc -p packages/server/tsconfig.json --noEmit && tsc -p packages/web/tsconfig.json --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"format": "biome format --write .",
+		"build": "bun run --filter '*' build",
+		"migrate": "cd packages/server && bun run migrate"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "1.9.0",
+		"typescript": "^5.0.0"
+	}
 }

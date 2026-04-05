@@ -1,25 +1,25 @@
 {
-  "name": "@saterp/server",
-  "version": "0.0.1",
-  "private": true,
-  "type": "module",
-  "main": "src/index.ts",
-  "scripts": {
-    "dev": "bun --watch src/index.ts",
-    "start": "bun src/index.ts",
-    "test": "bun test",
-    "typecheck": "tsc --noEmit",
-    "migrate": "graphile-migrate migrate"
-  },
-  "dependencies": {
-    "@fastify/cors": "^11.2.0",
-    "@graphql-yoga/plugin-response-cache": "^3.23.0",
-    "@pothos/core": "^4.12.0",
-    "@saterp/shared": "workspace:*",
-    "fastify": "^5.8.4",
-    "graphile-migrate": "^1.4.1",
-    "graphql": "^16.13.2",
-    "graphql-yoga": "^5.21.0",
-    "zod": "^4.3.6"
-  }
+	"name": "@saterp/server",
+	"version": "0.0.1",
+	"private": true,
+	"type": "module",
+	"main": "src/index.ts",
+	"scripts": {
+		"dev": "bun --watch src/index.ts",
+		"start": "bun src/index.ts",
+		"test": "bun test",
+		"typecheck": "tsc --noEmit",
+		"migrate": "graphile-migrate migrate"
+	},
+	"dependencies": {
+		"@fastify/cors": "^11.2.0",
+		"@graphql-yoga/plugin-response-cache": "^3.23.0",
+		"@pothos/core": "^4.12.0",
+		"@saterp/shared": "workspace:*",
+		"fastify": "^5.8.4",
+		"graphile-migrate": "^1.4.1",
+		"graphql": "^16.13.2",
+		"graphql-yoga": "^5.21.0",
+		"zod": "^4.3.6"
+	}
 }

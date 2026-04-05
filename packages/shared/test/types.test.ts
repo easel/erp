@@ -1,12 +1,10 @@
 import { describe, expect, test } from "bun:test";
 import type {
-	AuditColumns,
 	ComplianceStatus,
 	CurrencyCode,
 	FiscalPeriodStatus,
 	Money,
 	SyncStatus,
-	UUID,
 } from "../src/index.js";
 
 describe("shared types", () => {

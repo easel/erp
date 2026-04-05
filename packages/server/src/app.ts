@@ -21,7 +21,7 @@ interface ErrorResponse {
 export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> {
 	const { corsOrigin = false, logLevel = "info" } = opts;
 
-	const isTest = process.env["NODE_ENV"] === "test" || logLevel === "silent";
+	const isTest = process.env.NODE_ENV === "test" || logLevel === "silent";
 
 	const app = Fastify({
 		logger: isTest
@@ -52,7 +52,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 	const yoga = createYoga({
 		schema,
 		logging: false,
-		graphiql: process.env["NODE_ENV"] !== "production",
+		graphiql: process.env.NODE_ENV !== "production",
 	});
 
 	// Mount GraphQL Yoga as a content-type-aware handler
@@ -72,8 +72,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 		const body: ErrorResponse = {
 			statusCode,
 			error: statusCode >= 500 ? "Internal Server Error" : (error.name ?? "Error"),
-			message:
-				statusCode >= 500 ? "An unexpected error occurred" : (error.message ?? "Error"),
+			message: statusCode >= 500 ? "An unexpected error occurred" : (error.message ?? "Error"),
 		};
 
 		if (statusCode >= 500) {
