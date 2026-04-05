@@ -115,7 +115,10 @@ export const defaultOidcAdapter: OidcAdapter = {
 		const expiresIn = typeof tokens.expires_in === "number" ? tokens.expires_in : undefined;
 		const accessTokenExpiresAt = expiresIn ? new Date(Date.now() + expiresIn * 1000) : undefined;
 
-		return { ...claims, sub, email, refreshToken, accessTokenExpiresAt };
+		const result: OidcClaims = { ...claims, sub, email };
+		if (refreshToken !== undefined) result.refreshToken = refreshToken;
+		if (accessTokenExpiresAt !== undefined) result.accessTokenExpiresAt = accessTokenExpiresAt;
+		return result;
 	},
 };
 
@@ -252,15 +255,17 @@ export async function registerOidcRoutes(
 			}
 		}
 
-		const session = await sessionManager.create({
+		const createParams: Parameters<typeof sessionManager.create>[0] = {
 			userId: user.id,
 			mfaVerified,
 			provider: "oidc",
 			ipAddress: req.ip,
 			userAgent: req.headers["user-agent"] ?? "",
-			idpRefreshTokenEnc,
-			idpAccessTokenExpiresAt: claims.accessTokenExpiresAt,
-		});
+		};
+		if (idpRefreshTokenEnc !== undefined) createParams.idpRefreshTokenEnc = idpRefreshTokenEnc;
+		if (claims.accessTokenExpiresAt !== undefined)
+			createParams.idpAccessTokenExpiresAt = claims.accessTokenExpiresAt;
+		const session = await sessionManager.create(createParams);
 
 		reply.header(
 			"Set-Cookie",
