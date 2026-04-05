@@ -32,7 +32,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Deliverable | Detail |
 |---|---|
 | Monorepo scaffold | Bun workspaces, Bun workspace scripts, shared `tsconfig` with strict mode |
-| Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Mailpit |
+| Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Keycloak |
 | CI pipeline | GitHub Actions: lint, typecheck, unit test, build, container image push |
 | Database migration framework | graphile-migrate (SQL-first migrations, no ORM lock-in) |
 | Shared kernel package | `@apogee/kernel` -- base types, Result/Error types, audit context, pagination primitives |
