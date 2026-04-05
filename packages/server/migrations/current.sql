@@ -1615,3 +1615,241 @@ CREATE INDEX IF NOT EXISTS ix_gl_balance_account_period
 	ON gl_balance (account_id, fiscal_period_id);
 CREATE INDEX IF NOT EXISTS ix_exchange_rate_lookup
 	ON exchange_rate (from_currency, to_currency, effective_date DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-3: Export Control Schema
+-- Tables: product_classification, screening_list, screening_list_entry,
+--         screening_result (partitioned), denied_party_match, compliance_hold,
+--         country_restriction, country_restriction_rule, restricted_region
+-- Ref: SD-002-data-model.md §8
+-- Issues: erp-61c3650b
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ── Product Classification ────────────────────────────────────────────────────
+-- ITAR/EAR classification for a product. Phase 1: explicit per-item only
+-- (ADR-001: no automatic inheritance — pending ITAR counsel review).
+
+CREATE TABLE IF NOT EXISTS product_classification (
+	id                    UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	product_id            UUID         NOT NULL,
+	jurisdiction          VARCHAR(20)  NOT NULL CHECK (jurisdiction IN ('ITAR', 'EAR', 'NOT_CONTROLLED')),
+	classification_basis  VARCHAR(100),
+	usml_category         VARCHAR(20),
+	eccn                  VARCHAR(20),
+	license_requirement   VARCHAR(50),
+	notes                 TEXT,
+	classified_by         UUID         NOT NULL REFERENCES user_account(id),
+	classified_at         TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	reviewed_by           UUID         REFERENCES user_account(id),
+	reviewed_at           TIMESTAMPTZ,
+	effective_from        DATE         NOT NULL,
+	effective_to          DATE,
+	created_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by            UUID         NOT NULL REFERENCES user_account(id),
+	updated_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by            UUID         NOT NULL REFERENCES user_account(id),
+	version               INTEGER      NOT NULL DEFAULT 1
+);
+
+CREATE TRIGGER product_classification_audit_stamp
+	BEFORE INSERT OR UPDATE ON product_classification
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+-- ── Screening List ────────────────────────────────────────────────────────────
+-- Reference table of denied-party and restricted-entity lists.
+
+CREATE TABLE IF NOT EXISTS screening_list (
+	id               UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	code             VARCHAR(30)  NOT NULL UNIQUE,
+	name             VARCHAR(255) NOT NULL,
+	source_authority VARCHAR(100) NOT NULL,
+	source_url       VARCHAR(500),
+	last_updated_at  TIMESTAMPTZ,
+	is_active        BOOLEAN      NOT NULL DEFAULT TRUE,
+	created_at       TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by       UUID         NOT NULL REFERENCES user_account(id)
+);
+
+-- ── Screening List Entry ──────────────────────────────────────────────────────
+-- Individual entry on a screening list (a denied or restricted party).
+
+CREATE TABLE IF NOT EXISTS screening_list_entry (
+	id                 UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	screening_list_id  UUID         NOT NULL REFERENCES screening_list(id),
+	entry_name         VARCHAR(500) NOT NULL,
+	aliases            TEXT[],
+	entity_type        VARCHAR(20),
+	country_codes      CHAR(2)[],
+	identifiers        JSONB,
+	remarks            TEXT,
+	source_id          VARCHAR(100),
+	listed_date        DATE,
+	delisted_date      DATE,
+	created_at         TIMESTAMPTZ  NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_sle_list
+	ON screening_list_entry (screening_list_id);
+CREATE INDEX IF NOT EXISTS ix_sle_entry_name
+	ON screening_list_entry (entry_name);
+
+-- ── Screening Result ──────────────────────────────────────────────────────────
+-- Result of screening a party against lists. Range-partitioned monthly (7yr retention).
+
+CREATE TABLE IF NOT EXISTS screening_result (
+	id                  UUID         NOT NULL DEFAULT gen_random_uuid(),
+	entity_id           UUID         NOT NULL REFERENCES legal_entity(id),
+	screened_table      VARCHAR(50)  NOT NULL,
+	screened_record_id  UUID         NOT NULL,
+	screened_name       VARCHAR(500) NOT NULL,
+	screening_date      TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	screening_type      VARCHAR(20)  NOT NULL CHECK (screening_type IN ('AUTOMATED', 'MANUAL')),
+	overall_result      VARCHAR(20)  NOT NULL CHECK (overall_result IN ('CLEAR', 'POTENTIAL_MATCH', 'CONFIRMED_MATCH')),
+	match_count         INTEGER      NOT NULL DEFAULT 0,
+	reviewed_by         UUID         REFERENCES user_account(id),
+	reviewed_at         TIMESTAMPTZ,
+	review_decision     VARCHAR(20)  CHECK (review_decision IN ('CLEARED', 'ESCALATED', 'BLOCKED')),
+	review_notes        TEXT,
+	created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by          UUID         NOT NULL REFERENCES user_account(id),
+	PRIMARY KEY (id, screening_date)
+) PARTITION BY RANGE (screening_date);
+
+-- Initial monthly partitions (2026 Q2)
+CREATE TABLE IF NOT EXISTS screening_result_2026_04
+	PARTITION OF screening_result
+	FOR VALUES FROM ('2026-04-01') TO ('2026-05-01');
+
+CREATE TABLE IF NOT EXISTS screening_result_2026_05
+	PARTITION OF screening_result
+	FOR VALUES FROM ('2026-05-01') TO ('2026-06-01');
+
+CREATE TABLE IF NOT EXISTS screening_result_2026_06
+	PARTITION OF screening_result
+	FOR VALUES FROM ('2026-06-01') TO ('2026-07-01');
+
+CREATE INDEX IF NOT EXISTS ix_sr_screened_record
+	ON screening_result (screened_table, screened_record_id);
+CREATE INDEX IF NOT EXISTS ix_sr_entity_date
+	ON screening_result (entity_id, screening_date DESC);
+
+-- ── Denied Party Match ────────────────────────────────────────────────────────
+-- Individual match detail within a screening result.
+
+CREATE TABLE IF NOT EXISTS denied_party_match (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	screening_result_id     UUID          NOT NULL,
+	screening_list_entry_id UUID          NOT NULL REFERENCES screening_list_entry(id),
+	match_score             NUMERIC(5,4)  NOT NULL CHECK (match_score BETWEEN 0 AND 1),
+	match_algorithm         VARCHAR(30),
+	matched_fields          JSONB,
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_dpm_screening_result
+	ON denied_party_match (screening_result_id);
+
+-- ── Compliance Hold ───────────────────────────────────────────────────────────
+-- Places a transaction on hold pending export control review.
+
+CREATE TABLE IF NOT EXISTS compliance_hold (
+	id                   UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID         NOT NULL REFERENCES legal_entity(id),
+	held_table           VARCHAR(50)  NOT NULL,
+	held_record_id       UUID         NOT NULL,
+	hold_reason          VARCHAR(50)  NOT NULL CHECK (hold_reason IN ('SCREENING_MATCH', 'CLASSIFICATION_REQUIRED', 'COUNTRY_RESTRICTION', 'AMBIGUOUS_REGION', 'MANUAL')),
+	screening_result_id  UUID,
+	status               VARCHAR(20)  NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'RELEASED', 'REJECTED')),
+	placed_by            UUID         NOT NULL REFERENCES user_account(id),
+	placed_at            TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	resolved_by          UUID         REFERENCES user_account(id),
+	resolved_at          TIMESTAMPTZ,
+	resolution_notes     TEXT,
+	created_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by           UUID         NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by           UUID         NOT NULL REFERENCES user_account(id),
+	version              INTEGER      NOT NULL DEFAULT 1
+);
+
+CREATE TRIGGER compliance_hold_audit_stamp
+	BEFORE INSERT OR UPDATE ON compliance_hold
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+-- Partial index: active holds for compliance dashboard
+CREATE INDEX IF NOT EXISTS ix_ch_active
+	ON compliance_hold (entity_id, held_table, held_record_id) WHERE status = 'ACTIVE';
+
+-- ── Country Restriction ───────────────────────────────────────────────────────
+-- Named set of export restriction rules for product categories to countries.
+
+CREATE TABLE IF NOT EXISTS country_restriction (
+	id          UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id   UUID         NOT NULL REFERENCES legal_entity(id),
+	name        VARCHAR(255) NOT NULL,
+	description TEXT,
+	is_active   BOOLEAN      NOT NULL DEFAULT TRUE,
+	created_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by  UUID         NOT NULL REFERENCES user_account(id),
+	updated_at  TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by  UUID         NOT NULL REFERENCES user_account(id),
+	version     INTEGER      NOT NULL DEFAULT 1
+);
+
+CREATE TRIGGER country_restriction_audit_stamp
+	BEFORE INSERT OR UPDATE ON country_restriction
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+-- ── Country Restriction Rule ──────────────────────────────────────────────────
+-- Individual rules within a country restriction set (five-level model per FEAT-006).
+
+CREATE TABLE IF NOT EXISTS country_restriction_rule (
+	id                     UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
+	country_restriction_id UUID        NOT NULL REFERENCES country_restriction(id),
+	country_code           CHAR(2)     NOT NULL,
+	classification_type    VARCHAR(20),
+	restriction_type       VARCHAR(20) NOT NULL CHECK (restriction_type IN ('EMBARGOED', 'HEAVILY_RESTRICTED', 'LICENSE_REQUIRED', 'CAUTION', 'UNRESTRICTED')),
+	effective_from         DATE        NOT NULL,
+	effective_to           DATE,
+	notes                  TEXT,
+	created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+	created_by             UUID        NOT NULL REFERENCES user_account(id),
+	UNIQUE (country_restriction_id, country_code, classification_type, effective_from)
+);
+
+CREATE INDEX IF NOT EXISTS ix_crr_restriction_id
+	ON country_restriction_rule (country_restriction_id);
+CREATE INDEX IF NOT EXISTS ix_crr_country_code
+	ON country_restriction_rule (country_code);
+
+-- ── Restricted Region ─────────────────────────────────────────────────────────
+-- Sub-national sanctioned regions (EXP-012): e.g., Crimea, Donetsk within Ukraine.
+
+CREATE TABLE IF NOT EXISTS restricted_region (
+	id                UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	country_code      CHAR(2)      NOT NULL,
+	region_name       VARCHAR(255) NOT NULL,
+	region_code       VARCHAR(20),
+	sanctions_regime  VARCHAR(100) NOT NULL,
+	effective_date    TIMESTAMPTZ  NOT NULL,
+	expiration_date   TIMESTAMPTZ,
+	source_authority  VARCHAR(100) NOT NULL,
+	admin_divisions   JSONB,
+	geojson_boundary  JSONB,
+	boundary_type     VARCHAR(20)  CHECK (boundary_type IN ('ADMIN_DIVISION', 'GEOJSON', 'BOTH')),
+	created_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by        UUID         NOT NULL REFERENCES user_account(id),
+	updated_at        TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by        UUID         NOT NULL REFERENCES user_account(id),
+	version           INTEGER      NOT NULL DEFAULT 1,
+	deleted_at        TIMESTAMPTZ,
+	UNIQUE (country_code, region_code, sanctions_regime),
+	CHECK (expiration_date IS NULL OR expiration_date > effective_date)
+);
+
+CREATE TRIGGER restricted_region_audit_stamp
+	BEFORE INSERT OR UPDATE ON restricted_region
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_rr_country_code
+	ON restricted_region (country_code) WHERE deleted_at IS NULL;

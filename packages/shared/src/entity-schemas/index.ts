@@ -16,3 +16,5 @@ export * from "./fiscal-period.js";
 export * from "./currency.js";
 export * from "./vendor-bill.js";
 export * from "./customer-invoice.js";
+// WP-3: Export Control
+export * from "./export-control.js";
