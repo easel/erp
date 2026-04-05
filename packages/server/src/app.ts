@@ -7,6 +7,7 @@ import { registerAuthHook } from "./auth.js";
 import { closePool, getPool } from "./db.js";
 import { registerEntityContext } from "./entity-context.js";
 import { createGLRepository } from "./finance/gl-repository.js";
+import { type RateLimitConfig, registerRateLimit } from "./rate-limit.js";
 import { buildSchema } from "./schema.js";
 import { generateSpanId, generateTraceId, parseTraceparent } from "./telemetry.js";
 
@@ -34,6 +35,12 @@ export interface AppOptions {
 	 * Pass an empty string to disable DB wiring (e.g. unit tests without a DB).
 	 */
 	databaseUrl?: string;
+	/**
+	 * Rate limiting configuration.  When omitted, sensible defaults apply
+	 * (1000 req/min global, in-memory store).  Pass `rateLimitConfig: false`
+	 * to disable rate limiting entirely (e.g. tests that do not exercise it).
+	 */
+	rateLimitConfig?: RateLimitConfig | false;
 }
 
 /** Consistent error response shape for all 4xx/5xx responses */
@@ -158,6 +165,13 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 		const elapsed = reply.elapsedTime / 1000; // ms → seconds
 		httpRequestDurationSeconds.observe(labels, elapsed);
 	});
+
+	// --- Rate limiting ---
+	// Registered before auth so the 429 fires before any credential work.
+	// Disabled when rateLimitConfig is explicitly false (unit tests).
+	if (opts.rateLimitConfig !== false) {
+		registerRateLimit(app, opts.rateLimitConfig ?? {});
+	}
 
 	// --- Auth ---
 	if (authSecret) {
