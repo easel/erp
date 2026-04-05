@@ -21,6 +21,9 @@ const DEFAULT_BYPASS: RegExp[] = [/^\/health\//, /^\/metrics$/];
 export function registerAuthHook(app: FastifyInstance, config: AuthConfig): void {
 	const bypass = config.bypass ?? DEFAULT_BYPASS;
 
+	// Decorate request so Fastify allows the user property to be set per-request.
+	app.decorateRequest("user", null);
+
 	app.addHook("onRequest", async (req: FastifyRequest, _reply) => {
 		// Bypass auth for excluded routes
 		if (bypass.some((re) => re.test(req.url))) return;
@@ -46,6 +49,9 @@ export function registerAuthHook(app: FastifyInstance, config: AuthConfig): void
 				name: "Unauthorized",
 			});
 		}
+
+		// Store verified payload so downstream hooks (entity-context) can read it.
+		(req as unknown as { user: Record<string, unknown> }).user = payload;
 	});
 }
 
