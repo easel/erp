@@ -1,51 +1,81 @@
 /**
  * Zod schemas for Vendor entity — shared by Pothos resolvers and React Hook Form.
  * Single source of truth per ADR-010 §Single Schema Source of Truth.
+ * Matches SD-002-data-model.md §5.2 vendor table.
  *
- * Layer 1 (structural) validation only. Layer 2 (state-dependent) runs server-side.
+ * Layer 1 (structural) validation only. Layer 2 (state-dependent: compliance
+ * screening, duplicate vendor_code check) runs server-side.
  */
 import { z } from "zod";
 import { CountryCodeSchema, CurrencyCodeSchema, UUIDSchema } from "../schemas.js";
 
-const VENDOR_TYPES = ["SUPPLIER", "CONTRACTOR", "CONSULTANT", "PARTNER"] as const;
-const PAYMENT_TERMS = ["NET_15", "NET_30", "NET_45", "NET_60", "NET_90", "IMMEDIATE"] as const;
+const PAYMENT_METHODS = ["CHECK", "WIRE", "ACH"] as const;
+const RISK_RATINGS = ["LOW", "MEDIUM", "HIGH"] as const;
 
 export const CreateVendorSchema = z.object({
-	name: z
+	entityId: UUIDSchema,
+	vendorCode: z
 		.string()
-		.min(1, "Vendor name is required")
-		.max(255, "Name must be 255 characters or fewer"),
+		.min(1, "Vendor code is required")
+		.max(20, "Vendor code must be 20 characters or fewer")
+		.regex(
+			/^[A-Z0-9_-]+$/,
+			"Vendor code must be uppercase alphanumeric with hyphens or underscores",
+		),
 	legalName: z
 		.string()
 		.min(1, "Legal name is required")
 		.max(255, "Legal name must be 255 characters or fewer"),
-	vendorType: z.enum(VENDOR_TYPES, { error: "Invalid vendor type" }),
-	taxId: z.string().max(50, "Tax ID must be 50 characters or fewer").optional(),
+	tradeName: z.string().max(255, "Trade name must be 255 characters or fewer").optional(),
 	countryCode: CountryCodeSchema,
-	currencyCode: CurrencyCodeSchema,
-	paymentTerms: z.enum(PAYMENT_TERMS, { error: "Invalid payment terms" }),
+	taxId: z.string().max(50, "Tax ID must be 50 characters or fewer").optional(),
+	paymentTerms: z.string().max(30, "Payment terms must be 30 characters or fewer").optional(),
+	defaultCurrencyCode: CurrencyCodeSchema,
+	defaultPaymentMethod: z.enum(PAYMENT_METHODS, { error: "Invalid payment method" }).optional(),
+	riskRating: z.enum(RISK_RATINGS, { error: "Invalid risk rating" }).optional(),
+	website: z.string().url("Must be a valid URL").max(500).optional(),
+	notes: z.string().max(5000, "Notes must be 5000 characters or fewer").optional(),
+});
+
+export type CreateVendorInput = z.infer<typeof CreateVendorSchema>;
+
+export const UpdateVendorSchema = CreateVendorSchema.omit({ entityId: true, vendorCode: true })
+	.partial()
+	.extend({ id: UUIDSchema });
+
+export type UpdateVendorInput = z.infer<typeof UpdateVendorSchema>;
+
+// ── Vendor Contact ────────────────────────────────────────────────────────────
+
+export const CreateVendorContactSchema = z.object({
+	vendorId: UUIDSchema,
+	firstName: z.string().min(1).max(100),
+	lastName: z.string().min(1).max(100),
 	email: z.string().email("Must be a valid email address").optional(),
 	phone: z
 		.string()
 		.regex(/^\+?[\d\s\-().]{7,25}$/, "Must be a valid phone number")
 		.optional(),
-	address: z
-		.object({
-			line1: z.string().min(1, "Address line 1 is required").max(255),
-			line2: z.string().max(255).optional(),
-			city: z.string().min(1, "City is required").max(100),
-			region: z.string().max(100).optional(),
-			postalCode: z.string().max(20, "Postal code must be 20 characters or fewer").optional(),
-			countryCode: CountryCodeSchema,
-		})
-		.optional(),
-	notes: z.string().max(2000, "Notes must be 2000 characters or fewer").optional(),
+	roleTitle: z.string().max(100).optional(),
+	isPrimary: z.boolean().optional(),
 });
 
-export type CreateVendorInput = z.infer<typeof CreateVendorSchema>;
+export type CreateVendorContactInput = z.infer<typeof CreateVendorContactSchema>;
 
-export const UpdateVendorSchema = CreateVendorSchema.partial().extend({
-	id: UUIDSchema,
+// ── Vendor Address ────────────────────────────────────────────────────────────
+
+const ADDRESS_TYPES = ["BILLING", "REMITTANCE", "SHIPPING"] as const;
+
+export const CreateVendorAddressSchema = z.object({
+	vendorId: UUIDSchema,
+	addressType: z.enum(ADDRESS_TYPES, { error: "Invalid address type" }),
+	addressLine1: z.string().min(1).max(255),
+	addressLine2: z.string().max(255).optional(),
+	city: z.string().min(1).max(100),
+	stateProvince: z.string().max(100).optional(),
+	postalCode: z.string().max(20).optional(),
+	countryCode: CountryCodeSchema,
+	isPrimary: z.boolean().optional(),
 });
 
-export type UpdateVendorInput = z.infer<typeof UpdateVendorSchema>;
+export type CreateVendorAddressInput = z.infer<typeof CreateVendorAddressSchema>;

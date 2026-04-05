@@ -408,3 +408,338 @@ DO $$ BEGIN
 			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
 	END IF;
 END $$;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-4: Procurement Schema
+-- Tables: inventory_item, inventory_location, lot, serial_number,
+--         inventory_level, vendor, vendor_contact, vendor_address,
+--         vendor_bank_account, purchase_order, purchase_order_line,
+--         goods_receipt, goods_receipt_line
+-- Ref: SD-002-data-model.md §5
+-- Issue: hx-a6806af7
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5.1 Inventory Master
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS inventory_item (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	item_code            VARCHAR(30)   NOT NULL,
+	name                 VARCHAR(255)  NOT NULL,
+	description          TEXT,
+	category             VARCHAR(50),
+	unit_of_measure      VARCHAR(20)   NOT NULL,
+	is_serialized        BOOLEAN       NOT NULL DEFAULT FALSE,
+	is_lot_tracked       BOOLEAN       NOT NULL DEFAULT FALSE,
+	standard_cost        NUMERIC(19,6),
+	cost_currency_code   CHAR(3),
+	reorder_point        NUMERIC(16,4),
+	reorder_quantity     NUMERIC(16,4),
+	itar_compartment_id  UUID          REFERENCES itar_compartment(id),
+	is_active            BOOLEAN       NOT NULL DEFAULT TRUE,
+	ext                  JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by           UUID          NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by           UUID          NOT NULL REFERENCES user_account(id),
+	version              INTEGER       NOT NULL DEFAULT 1,
+	deleted_at           TIMESTAMPTZ,
+	UNIQUE (entity_id, item_code)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'inventory_item'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON inventory_item
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS inventory_location (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	location_code        VARCHAR(30)   NOT NULL,
+	name                 VARCHAR(255)  NOT NULL,
+	address              JSONB,
+	is_active            BOOLEAN       NOT NULL DEFAULT TRUE,
+	itar_compartment_id  UUID          REFERENCES itar_compartment(id),
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by           UUID          NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by           UUID          NOT NULL REFERENCES user_account(id),
+	version              INTEGER       NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, location_code)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'inventory_location'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON inventory_location
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+-- lot must be created before inventory_level and serial_number (FK targets)
+CREATE TABLE IF NOT EXISTS lot (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	inventory_item_id    UUID          NOT NULL REFERENCES inventory_item(id),
+	lot_number           VARCHAR(50)   NOT NULL,
+	manufacture_date     DATE,
+	expiry_date          DATE,
+	supplier_lot_number  VARCHAR(50),
+	status               VARCHAR(20)   NOT NULL DEFAULT 'AVAILABLE'
+		CHECK (status IN ('AVAILABLE', 'QUARANTINED', 'EXPIRED', 'CONSUMED')),
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by           UUID          NOT NULL REFERENCES user_account(id),
+	UNIQUE (entity_id, inventory_item_id, lot_number)
+);
+
+CREATE TABLE IF NOT EXISTS serial_number (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	inventory_item_id    UUID          NOT NULL REFERENCES inventory_item(id),
+	serial_number        VARCHAR(100)  NOT NULL,
+	lot_id               UUID          REFERENCES lot(id),
+	location_id          UUID          REFERENCES inventory_location(id),
+	status               VARCHAR(20)   NOT NULL DEFAULT 'IN_STOCK'
+		CHECK (status IN ('IN_STOCK', 'RESERVED', 'SHIPPED', 'RETURNED', 'SCRAPPED')),
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by           UUID          NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by           UUID          NOT NULL REFERENCES user_account(id),
+	UNIQUE (entity_id, inventory_item_id, serial_number)
+);
+
+CREATE TABLE IF NOT EXISTS inventory_level (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	inventory_item_id    UUID          NOT NULL REFERENCES inventory_item(id),
+	location_id          UUID          NOT NULL REFERENCES inventory_location(id),
+	lot_id               UUID          REFERENCES lot(id),
+	quantity_on_hand     NUMERIC(16,4) NOT NULL DEFAULT 0 CHECK (quantity_on_hand >= 0),
+	quantity_reserved    NUMERIC(16,4) NOT NULL DEFAULT 0 CHECK (quantity_reserved >= 0),
+	quantity_available   NUMERIC(16,4) NOT NULL DEFAULT 0,
+	last_count_date      DATE,
+	updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now()
+);
+-- Functional unique index: one stock level per (entity, item, location, lot).
+-- COALESCE handles nullable lot_id so that lot-less stock is also unique.
+-- Ref: SD-002 §5 inventory_level UNIQUE constraint.
+CREATE UNIQUE INDEX IF NOT EXISTS inventory_level_unique_idx
+	ON inventory_level (entity_id, inventory_item_id, location_id,
+	                    COALESCE(lot_id, '00000000-0000-0000-0000-000000000000'::uuid));
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5.2 Vendor Master
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS vendor (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id               UUID          NOT NULL REFERENCES legal_entity(id),
+	vendor_code             VARCHAR(20)   NOT NULL,
+	legal_name              VARCHAR(255)  NOT NULL,
+	trade_name              VARCHAR(255),
+	country_code            CHAR(2)       NOT NULL,
+	tax_id                  VARCHAR(50),
+	payment_terms           VARCHAR(30)   NOT NULL DEFAULT 'NET30',
+	default_currency_code   CHAR(3)       NOT NULL,
+	default_payment_method  VARCHAR(20)
+		CHECK (default_payment_method IN ('CHECK', 'WIRE', 'ACH')),
+	is_active               BOOLEAN       NOT NULL DEFAULT TRUE,
+	risk_rating             VARCHAR(10)
+		CHECK (risk_rating IN ('LOW', 'MEDIUM', 'HIGH')),
+	website                 VARCHAR(500),
+	notes                   TEXT,
+	ext                     JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by              UUID          NOT NULL REFERENCES user_account(id),
+	updated_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by              UUID          NOT NULL REFERENCES user_account(id),
+	version                 INTEGER       NOT NULL DEFAULT 1,
+	deleted_at              TIMESTAMPTZ,
+	UNIQUE (entity_id, vendor_code)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'vendor'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON vendor
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS vendor_contact (
+	id          UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	vendor_id   UUID          NOT NULL REFERENCES vendor(id) ON DELETE CASCADE,
+	first_name  VARCHAR(100)  NOT NULL,
+	last_name   VARCHAR(100)  NOT NULL,
+	email       VARCHAR(255),
+	phone       VARCHAR(50),
+	role_title  VARCHAR(100),
+	is_primary  BOOLEAN       NOT NULL DEFAULT FALSE,
+	created_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by  UUID          NOT NULL REFERENCES user_account(id),
+	updated_at  TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by  UUID          NOT NULL REFERENCES user_account(id),
+	version     INTEGER       NOT NULL DEFAULT 1,
+	deleted_at  TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS vendor_address (
+	id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	vendor_id       UUID          NOT NULL REFERENCES vendor(id) ON DELETE CASCADE,
+	address_type    VARCHAR(20)   NOT NULL
+		CHECK (address_type IN ('BILLING', 'REMITTANCE', 'SHIPPING')),
+	address_line_1  VARCHAR(255)  NOT NULL,
+	address_line_2  VARCHAR(255),
+	city            VARCHAR(100)  NOT NULL,
+	state_province  VARCHAR(100),
+	postal_code     VARCHAR(20),
+	country_code    VARCHAR(2)    NOT NULL,
+	is_primary      BOOLEAN       NOT NULL DEFAULT FALSE,
+	created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by      UUID          NOT NULL REFERENCES user_account(id),
+	updated_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by      UUID          NOT NULL REFERENCES user_account(id),
+	version         INTEGER       NOT NULL DEFAULT 1,
+	deleted_at      TIMESTAMPTZ
+);
+
+-- Bank account numbers are encrypted at rest; the application layer encrypts
+-- before INSERT and decrypts on SELECT using the DB encryption key (ADR-TBD).
+CREATE TABLE IF NOT EXISTS vendor_bank_account (
+	id                        UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	vendor_id                 UUID          NOT NULL REFERENCES vendor(id) ON DELETE CASCADE,
+	bank_name                 VARCHAR(255)  NOT NULL,
+	account_number_encrypted  BYTEA         NOT NULL,
+	routing_number            VARCHAR(50),
+	swift_bic                 VARCHAR(11),
+	iban                      VARCHAR(34),
+	currency_code             VARCHAR(3)    NOT NULL,
+	is_primary                BOOLEAN       NOT NULL DEFAULT FALSE,
+	created_at                TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by                UUID          NOT NULL REFERENCES user_account(id),
+	updated_at                TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by                UUID          NOT NULL REFERENCES user_account(id),
+	version                   INTEGER       NOT NULL DEFAULT 1,
+	deleted_at                TIMESTAMPTZ
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5.3 Purchase Orders
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS purchase_order (
+	id                     UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id              UUID          NOT NULL REFERENCES legal_entity(id),
+	vendor_id              UUID          NOT NULL REFERENCES vendor(id),
+	po_number              VARCHAR(30)   NOT NULL,
+	po_date                DATE          NOT NULL,
+	expected_delivery_date DATE,
+	currency_code          CHAR(3)       NOT NULL,
+	exchange_rate          NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	subtotal_amount        NUMERIC(19,6) NOT NULL DEFAULT 0,
+	tax_amount             NUMERIC(19,6) NOT NULL DEFAULT 0,
+	total_amount           NUMERIC(19,6) NOT NULL DEFAULT 0,
+	base_total_amount      NUMERIC(19,6) NOT NULL DEFAULT 0,
+	status                 VARCHAR(20)   NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'PENDING_APPROVAL', 'APPROVED', 'SENT',
+		                  'PARTIALLY_RECEIVED', 'RECEIVED', 'CLOSED', 'CANCELLED')),
+	ship_to_address        JSONB,
+	payment_terms          VARCHAR(30),
+	notes                  TEXT,
+	-- compliance_status is set by WP-3 Export Control engine on PO approval
+	compliance_status      VARCHAR(10)   NOT NULL DEFAULT 'pending'
+		CHECK (compliance_status IN ('pending', 'cleared', 'held')),
+	itar_compartment_id    UUID          REFERENCES itar_compartment(id),
+	ext                    JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at             TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by             UUID          NOT NULL REFERENCES user_account(id),
+	updated_at             TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by             UUID          NOT NULL REFERENCES user_account(id),
+	version                INTEGER       NOT NULL DEFAULT 1,
+	deleted_at             TIMESTAMPTZ,
+	UNIQUE (entity_id, po_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'purchase_order'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON purchase_order
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS purchase_order_line (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	purchase_order_id    UUID          NOT NULL REFERENCES purchase_order(id) ON DELETE CASCADE,
+	line_number          INTEGER       NOT NULL,
+	inventory_item_id    UUID          REFERENCES inventory_item(id),
+	description          VARCHAR(500)  NOT NULL,
+	quantity_ordered     NUMERIC(16,4) NOT NULL CHECK (quantity_ordered > 0),
+	quantity_received    NUMERIC(16,4) NOT NULL DEFAULT 0,
+	unit_of_measure      VARCHAR(20)   NOT NULL,
+	unit_price           NUMERIC(19,6) NOT NULL,
+	amount               NUMERIC(19,6) NOT NULL,
+	currency_code        CHAR(3)       NOT NULL,
+	tax_code             VARCHAR(20),
+	tax_amount           NUMERIC(19,6) NOT NULL DEFAULT 0,
+	-- account_id FK to account(id) will be added in WP-2 Finance migration
+	account_id           UUID,
+	required_date        DATE,
+	ext                  JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	UNIQUE (purchase_order_id, line_number)
+);
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- 5.4 Goods Receipt
+-- ─────────────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS goods_receipt (
+	id                  UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID          NOT NULL REFERENCES legal_entity(id),
+	purchase_order_id   UUID          NOT NULL REFERENCES purchase_order(id),
+	receipt_number      VARCHAR(30)   NOT NULL,
+	receipt_date        DATE          NOT NULL,
+	status              VARCHAR(20)   NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'POSTED', 'CANCELLED')),
+	received_by         UUID          NOT NULL REFERENCES user_account(id),
+	location_id         UUID          REFERENCES inventory_location(id),
+	notes               TEXT,
+	ext                 JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by          UUID          NOT NULL REFERENCES user_account(id),
+	updated_at          TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by          UUID          NOT NULL REFERENCES user_account(id),
+	version             INTEGER       NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, receipt_number)
+);
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_trigger WHERE tgname = 'audit_stamp' AND tgrelid = 'goods_receipt'::regclass
+	) THEN
+		CREATE TRIGGER audit_stamp AFTER INSERT OR UPDATE OR DELETE ON goods_receipt
+			FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+	END IF;
+END $$;
+
+CREATE TABLE IF NOT EXISTS goods_receipt_line (
+	id                      UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	goods_receipt_id        UUID          NOT NULL REFERENCES goods_receipt(id) ON DELETE CASCADE,
+	purchase_order_line_id  UUID          NOT NULL REFERENCES purchase_order_line(id),
+	line_number             INTEGER       NOT NULL,
+	quantity_received       NUMERIC(16,4) NOT NULL CHECK (quantity_received > 0),
+	quantity_accepted       NUMERIC(16,4) NOT NULL,
+	quantity_rejected       NUMERIC(16,4) NOT NULL DEFAULT 0,
+	lot_id                  UUID          REFERENCES lot(id),
+	serial_number_id        UUID          REFERENCES serial_number(id),
+	location_id             UUID          REFERENCES inventory_location(id),
+	notes                   TEXT,
+	created_at              TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	UNIQUE (goods_receipt_id, line_number),
+	CHECK (quantity_accepted + quantity_rejected <= quantity_received)
+);

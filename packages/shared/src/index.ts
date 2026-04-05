@@ -7,3 +7,6 @@ export * from "./platform.js";
 export * from "./entity-schemas/vendor.js";
 export * from "./entity-schemas/quote.js";
 export * from "./entity-schemas/journal-entry.js";
+export * from "./entity-schemas/purchase-order.js";
+export * from "./entity-schemas/inventory.js";
+export * from "./entity-schemas/goods-receipt.js";

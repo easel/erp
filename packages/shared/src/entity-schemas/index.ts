@@ -6,3 +6,6 @@
 export * from "./vendor.js";
 export * from "./quote.js";
 export * from "./journal-entry.js";
+export * from "./purchase-order.js";
+export * from "./inventory.js";
+export * from "./goods-receipt.js";
