@@ -52,27 +52,20 @@ jobs:
         run: bun test
 
   ci-node:
-    name: CI (Node.js LTS fallback)
+    # NOTE: This job validates that lint and typecheck pass using Node.js LTS
+    # tooling (npx, tsc). It does NOT execute tests on the Node.js runtime
+    # because the test suite imports from 'bun:test' (a Bun-only module) and
+    # cannot run under Node.js without a separate test runner.
+    #
+    # Per ADR-009, shared packages must not use Bun-only APIs in production
+    # code; the test-runner import is test-infrastructure only. True Node.js
+    # runtime test execution is tracked in a follow-on issue.
+    #
+    # What this job genuinely validates on Node.js LTS:
+    #   - Biome lint/format (invoked via Bun CLI, but checks source portability)
+    #   - TypeScript type-checking (tsc runs on Node.js via npx)
+    name: CI (Node.js LTS — lint and typecheck only)
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_USER: saterp
-          POSTGRES_PASSWORD: saterp
-          POSTGRES_DB: saterp_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U saterp"
-          --health-interval 10s
-          --health-timeout 5s
-          --health-retries 5
-
-    env:
-      DATABASE_URL: postgres://saterp:saterp@localhost:5432/saterp_test
-      NODE_ENV: test
 
     steps:
       - name: Checkout
@@ -96,12 +89,3 @@ jobs:
 
       - name: Typecheck (tsc)
         run: bun run typecheck
-
-      - name: Test (bun test on Node.js LTS)
-        # Runs bun test with NODE_PATH set to validate Node.js compatibility.
-        # Per ADR-009, shared packages must not use Bun-only APIs; this job
-        # verifies the test suite passes in an environment where the active
-        # Node.js is the LTS version, catching any Bun-exclusive API drift.
-        env:
-          BUN_RUNTIME_TRANSPILER_CACHE_PATH: /tmp/bun-cache
-        run: bun test
