@@ -87,7 +87,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 
 ## Acceptance Criteria
 
-### FIN-001: Multi-Entity Chart of Accounts
+### FIN-001: Multi-Entity Chart of Accounts `Traces to: PRD FIN-001`
 
 - [ ] System supports creating multiple legal entities, each with an independent chart of accounts.
 - [ ] Account structures are configurable per entity with user-defined segments (e.g., entity, department, cost center, satellite program, location).
@@ -98,8 +98,11 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Deactivated accounts cannot receive new postings but remain visible for historical queries.
 - [ ] The system prevents deletion of any account that has posted transactions.
 - [ ] Import/export of chart-of-accounts structures is supported in CSV and JSON formats.
+- [ ] Creating a legal entity with a duplicate entity code returns a 409 Conflict error identifying the existing entity.
+- [ ] Creating or modifying an account with missing required fields returns a 400 error with a list of the missing fields.
+- [ ] The system supports at least 50 concurrent legal entities without degradation.
 
-### FIN-002: General Ledger
+### FIN-002: General Ledger `Traces to: PRD FIN-002`
 
 - [ ] All financial transactions are recorded as double-entry journal entries (total debits equal total credits per entry).
 - [ ] Journal entries support header-level metadata: date, description, source module, reference number, posting period, and preparer.
@@ -110,14 +113,15 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Accounting periods can be opened, closed, and locked independently per entity.
 - [ ] A soft-close state allows only adjusting entries by authorized users; a hard-close state prevents all postings.
 - [ ] The system maintains a complete, immutable audit trail: posted entries cannot be edited or deleted; corrections require new entries.
-- [ ] The GL trial balance reconciles to zero (total debits minus total credits) at all times.
+- [ ] Every posted journal entry must have total debits equal to total credits; the system rejects any journal entry where debits and credits do not balance, returning an error with the imbalance amount. A trial balance report for any period shows a zero difference between total debits and total credits.
+- [ ] Period status enforcement per ADR-007: FUTURE periods reject all postings; OPEN periods accept all valid entries; SOFT_CLOSED periods accept only entries marked is_adjusting=true; HARD_CLOSED periods reject all postings.
 
-### FIN-003: Accounts Payable
+### FIN-003: Accounts Payable `Traces to: PRD FIN-003`
 
 - [ ] Vendor master records store payment terms, default payment method, tax residence, bank details, and withholding-tax configuration.
 - [ ] Vendor bills can be entered manually or imported from electronic invoice formats (e.g., UBL, Peppol).
 - [ ] 3-way matching compares vendor invoice line items against purchase order lines and goods-receipt lines.
-- [ ] Matching tolerances for price and quantity variances are configurable per entity or vendor.
+- [ ] Matching tolerances for price and quantity variances are configurable per entity or vendor; defaults are 2% for price and 5% for quantity. Invoices within tolerance auto-approve; invoices exceeding tolerance route to the AP exception queue with variance amount and percentage displayed.
 - [ ] Invoices that pass matching are approved automatically; exceptions are routed to a review queue.
 - [ ] Payment runs can be scheduled or triggered manually, selecting invoices by due date, vendor, entity, or currency.
 - [ ] Payment methods supported: ACH, domestic wire, international SWIFT.
@@ -125,7 +129,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] AP aging reports are available with grouping by vendor, entity, currency, and aging bucket (current, 30, 60, 90, 120+ days).
 - [ ] Withholding tax is calculated and applied automatically on eligible payments based on vendor tax-residence rules and treaty rates.
 
-### FIN-004: Accounts Receivable
+### FIN-004: Accounts Receivable `Traces to: PRD FIN-004`
 
 - [ ] Customer master records store payment terms, credit limit, default dunning profile, tax registration, and billing addresses.
 - [ ] Customer invoices can be generated from contract billing schedules, manual entry, or integration with the Contract Management module.
@@ -137,7 +141,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Credit-limit enforcement prevents new invoices from being issued to customers who have exceeded their limit, with override by authorized users.
 - [ ] Interest on overdue balances can be calculated and invoiced automatically where contractually or legally required.
 
-### FIN-005: Multi-Currency
+### FIN-005: Multi-Currency `Traces to: PRD FIN-005`
 
 - [ ] Each legal entity has a defined functional currency; the system also supports a group reporting currency.
 - [ ] Exchange rates are stored with an effective date and source identifier.
@@ -148,8 +152,10 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Unrealized FX gain/loss is calculated during period-end revaluation of open foreign-currency balances and posted to the GL.
 - [ ] Unrealized gain/loss entries from the prior period are automatically reversed at the start of the new period.
 - [ ] FX exposure reports show net open position by currency across all entities.
+- [ ] Currency amounts are stored per ISO 4217 decimal places (2 for most currencies, 0 for JPY/KRW, 3 for KWD/BHD/OMR). Rounding uses banker's rounding (round half to even).
+- [ ] When no exchange rate exists for a transaction date and currency pair, the system returns an error identifying the missing rate and does not allow the transaction to post.
 
-### FIN-006: Intercompany Transactions
+### FIN-006: Intercompany Transactions `Traces to: PRD FIN-006`
 
 - [ ] Intercompany transactions (sales, services, loans, allocations) are recorded simultaneously in both entities with offsetting intercompany receivable/payable accounts.
 - [ ] The system enforces that intercompany journal entries balance in both entities.
@@ -158,7 +164,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Elimination entries are generated in a dedicated consolidation entity/journal for auditability.
 - [ ] Intercompany netting is supported to reduce the number of cross-border cash settlements.
 
-### FIN-007: Financial Reporting
+### FIN-007: Financial Reporting `Traces to: PRD FIN-007`
 
 - [ ] The system generates a balance sheet (statement of financial position) per entity and consolidated.
 - [ ] The system generates an income statement (profit & loss) per entity and consolidated, with period and year-to-date columns.
@@ -170,8 +176,9 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Reports can be exported to PDF, Excel, and CSV formats.
 - [ ] A report-builder interface allows users to create custom financial reports using GL account ranges and segment filters.
 - [ ] Row and column definitions are configurable so that report layouts can match the operator's specific disclosure requirements.
+- [ ] Standard financial reports (balance sheet, income statement, trial balance) for a single entity generate within 5 seconds for periods containing up to 500,000 journal entry lines. Consolidated reports across 10 entities generate within 30 seconds.
 
-### FIN-008: Revenue Recognition (ASC 606 / IFRS 15)
+### FIN-008: Revenue Recognition (ASC 606 / IFRS 15) `Traces to: PRD FIN-008`
 
 - [ ] Contracts can be decomposed into distinct performance obligations (e.g., transponder capacity lease, managed service, ground equipment).
 - [ ] Standalone selling price (SSP) can be determined using the adjusted-market-assessment approach, expected-cost-plus-margin approach, or residual approach as configured per obligation type.
@@ -179,12 +186,12 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Variable consideration (e.g., usage-based fees, SLA penalties) is estimated and constrained per ASC 606 guidance.
 - [ ] Revenue is recognized over time for obligations satisfied over time (e.g., capacity leases), using an appropriate measure of progress (time-elapsed, output, or input method).
 - [ ] Revenue is recognized at a point in time for obligations satisfied at a point in time (e.g., equipment delivery), when control transfers.
-- [ ] Contract modifications (upgrades, downgrades, extensions) are handled as either a separate contract, a termination-and-creation, or a cumulative catch-up as appropriate.
+- [ ] Contract modifications (upgrades, downgrades, extensions) are classified as: (a) adds distinct goods/services at standalone selling price -- treated as a separate contract; (b) adds distinct goods/services not at standalone selling price -- terminate existing contract and create a new contract; (c) does not add distinct goods/services -- cumulative catch-up adjustment to revenue. Classification is recorded on the modification record.
 - [ ] Revenue recognition schedules generate GL journal entries automatically for recognized revenue and the corresponding deferred-revenue release.
 - [ ] A contract-level waterfall report shows the opening deferred-revenue balance, new bookings, recognized revenue, and closing deferred-revenue balance for each period.
 - [ ] Disclosure reports support the ASC 606 and IFRS 15 quantitative and qualitative requirements (disaggregation of revenue, remaining performance obligations, significant judgments).
 
-### FIN-009: Fixed Asset Management
+### FIN-009: Fixed Asset Management `Traces to: PRD FIN-009`
 
 - [ ] Assets are recorded with acquisition cost, acquisition date, asset class, location, and responsible entity.
 - [ ] Depreciation methods supported: straight-line, declining balance, double-declining balance, sum-of-years-digits, and units-of-production.
@@ -196,7 +203,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] A fixed-asset register report shows cost, accumulated depreciation, and net book value by asset, class, entity, and location.
 - [ ] Assets can be transferred between entities with automatic intercompany entries and restatement of basis if required by local GAAP.
 
-### FIN-010: Multi-Jurisdictional Tax Engine
+### FIN-010: Multi-Jurisdictional Tax Engine `Traces to: PRD FIN-010`
 
 - [ ] Tax rates and rules are configurable per jurisdiction (country, state/province, municipality).
 - [ ] VAT/GST is calculated automatically on sales and purchase transactions based on the tax determination rules (place of supply, reverse charge, exempt, zero-rated).
@@ -206,7 +213,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] A tax audit report provides a complete listing of all transactions with their tax treatment for a given period and jurisdiction.
 - [ ] The system flags transactions involving sanctioned or conflict-affected jurisdictions for compliance review before processing.
 
-### FIN-011: Budgeting and Forecasting
+### FIN-011: Budgeting and Forecasting `Traces to: PRD FIN-011`
 
 - [ ] Annual budgets can be created at the account, cost-center, and entity level.
 - [ ] Budget entry supports manual input, spreading (even, seasonal pattern, trend-based), and import from spreadsheets.
@@ -216,7 +223,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] Budget threshold alerts notify designated users when spending reaches configurable percentages (e.g., 80%, 100%) of budget.
 - [ ] Budget approval workflows route proposed budgets through the required sign-off chain.
 
-### FIN-012: Hedge Accounting
+### FIN-012: Hedge Accounting `Traces to: PRD FIN-012`
 
 - [ ] Hedging relationships can be designated, linking a hedging instrument (e.g., FX forward) to a hedged item (e.g., forecast foreign-currency revenue).
 - [ ] Supported hedge types: cash-flow hedge and fair-value hedge per ASC 815 / IFRS 9.
@@ -226,7 +233,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] De-designation of a hedge relationship is supported, with appropriate accounting treatment of the amounts remaining in OCI.
 - [ ] A hedge-documentation report captures all required elements: risk management objective, hedging instrument, hedged item, effectiveness assessment method, and test results.
 
-### FIN-013: Transfer Pricing Documentation
+### FIN-013: Transfer Pricing Documentation `Traces to: PRD FIN-013`
 
 - [ ] Intercompany transactions are categorized by type (services, tangible goods, intangible property, financial transactions).
 - [ ] Transfer-pricing policies can be documented per transaction type and entity pair (e.g., cost-plus markup for shared services).
@@ -235,7 +242,7 @@ Satellite operators face unique financial challenges that generic ERP systems ha
 - [ ] The system captures and stores comparable-company benchmarking data to support arm's-length pricing assertions.
 - [ ] Annual transfer-pricing summary reports are generated per entity showing volumes, margins, and methods by transaction type.
 
-### FIN-014: Consolidated Financial Statements
+### FIN-014: Consolidated Financial Statements `Traces to: PRD FIN-014`
 
 - [ ] A consolidation scope defines which entities are included and their ownership percentages.
 - [ ] Full consolidation is applied for majority-owned subsidiaries; equity method for significant-influence investments.
@@ -336,6 +343,18 @@ Key entities and their relationships:
 - **Audit / Compliance.** GL data and supporting documents are exportable in standard audit file formats (SAF-T, OECD SAF-T schema) for external auditors.
 - **Sanctions Screening.** Transaction and counterparty data is checked against sanctions lists (OFAC SDN, EU consolidated list, UN Security Council) via integration with a screening provider.
 - **Consolidation / BI Tools.** While FIN includes built-in consolidation, data can also be exported to external consolidation tools (e.g., OneStream, Hyperion) or BI platforms (e.g., Power BI, Tableau) via API or scheduled extracts.
+
+## Non-Functional Requirements (NFR)
+
+### Performance Thresholds
+
+| Operation | Target |
+|---|---|
+| Month-end close process for a single entity | < 30 minutes |
+| Intercompany elimination for 10 entities | < 15 minutes |
+| Journal entry posting (single entry) | < 1 second |
+| Standard financial report (balance sheet, income statement, trial balance) for a single entity with up to 500,000 journal entry lines | < 5 seconds |
+| Consolidated financial report across 10 entities | < 30 seconds |
 
 ## Open Design Questions
 

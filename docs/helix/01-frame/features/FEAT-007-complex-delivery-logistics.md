@@ -75,22 +75,28 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 
 ### LOG-001: Shipping Execution (P0)
 
+*Traces to: PRD LOG-001*
+
 1. A confirmed sales order with shippable lines generates a pick list assigned to a warehouse location.
 2. Warehouse operator can scan item serial/lot numbers during packing; mismatched serials are rejected.
-3. Carrier selection presents configured carrier accounts with rate estimates (where carrier API supports it).
+3. Carrier selection presents configured carrier accounts with rate estimates (where carrier API supports it). When carrier API does not support rate estimates, the carrier is still selectable with a 'Rate unavailable — manual quote required' indicator.
 4. Label generation produces a carrier-compliant shipping label and captures the tracking number on the shipment record.
 5. Shipment cannot be confirmed if any line item has an unresolved export compliance hold (integration with FEAT-006).
 6. Shipment confirmation triggers inventory deduction and updates the sales order fulfillment status.
 
 ### LOG-002: Customs Documentation (P0)
 
+*Traces to: PRD LOG-002*
+
 1. Commercial invoice is auto-generated from shipment data: seller, buyer, item descriptions, HS codes, values, quantities, weights, country of origin.
 2. Packing list is auto-generated with per-package contents, dimensions, and weights.
-3. AES filing data (SED replacement) is pre-populated with ECCN/USML classification, license type, destination, and value; exportable to AESDirect or equivalent.
+3. AES filing data (SED replacement) is pre-populated with ECCN/USML classification, license type, destination, and value; exportable as CSV conforming to AESDirect upload format, or via AESDirect API when configured.
 4. Documents are stored as immutable records linked to the shipment.
 5. If a required export license is not attached to the shipment, customs document generation is blocked with a clear error.
 
 ### LOG-003: Restricted Destination Workflows (P1)
+
+*Traces to: PRD LOG-003*
 
 1. Each country in the system has a configurable destination classification: unrestricted, restricted, sanctioned, conflict zone.
 2. Shipments to restricted or sanctioned destinations automatically enter a hold state and trigger an approval workflow.
@@ -101,6 +107,8 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 
 ### LOG-004: Conflict Zone Delivery (P1)
 
+*Traces to: PRD LOG-004*
+
 1. Conflict zone destinations (e.g., Ukraine, Israel) have configurable delivery workflow templates that include: diplomatic clearance, military logistics coordination, NGO/agency partnership selection, special carrier assignment, and operational security review.
 2. Each workflow step has an assignee, due date, status, and completion evidence (document upload or sign-off).
 3. Shipment cannot proceed to the next logistics phase until all required conflict-zone workflow steps are complete.
@@ -108,6 +116,8 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 5. Conflict zone shipments require dual approval: export compliance and operational security.
 
 ### LOG-005: Multi-Modal Freight Management (P1)
+
+*Traces to: PRD LOG-005*
 
 1. A shipment can have multiple freight legs, each with: mode (air, ocean, ground), carrier, origin, destination, cost, estimated transit time, and actual transit time.
 2. Freight bookings can be created and linked to shipment legs with booking reference, vessel/flight, and departure/arrival dates.
@@ -117,14 +127,18 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 
 ### LOG-006: Delivery Tracking (P1)
 
+*Traces to: PRD LOG-006*
+
 1. Shipment status is updated automatically via carrier API polling for supported carriers.
 2. Manual status updates are supported for legs without API tracking (military handoff, NGO relay, charter transport).
 3. Customs hold status is a distinct tracking state with hold reason and estimated clearance date.
 4. In-country forwarding (handoff to local carrier or logistics partner) is tracked as a distinct leg.
 5. Customer-facing shipment status is available via API (and later via customer portal, SLS-009).
-6. Configurable alerts fire when: shipment is delivered, shipment is held in customs beyond threshold, shipment is overdue vs. estimated delivery.
+6. Configurable alerts fire when: shipment is delivered, shipment is held in customs beyond threshold, shipment is overdue vs. estimated delivery. Customs hold alert threshold: default 48 hours; overdue delivery alert: default 24 hours past estimated delivery date.
 
 ### LOG-007: Proof of Delivery (P2)
+
+*Traces to: PRD LOG-007*
 
 1. Delivery confirmation captures: GPS coordinates, photo(s), timestamp, recipient name, and signature (where applicable).
 2. Proof-of-delivery data is stored as an immutable record linked to the shipment.
@@ -133,12 +147,16 @@ The design assumes that "normal" shipments (domestic US, allied-nation commercia
 
 ### LOG-008: Carnet & Temporary Import/Export (P2)
 
+*Traces to: PRD LOG-008*
+
 1. ATA Carnet documents can be created and linked to shipments for temporary export/import of equipment (demo units, trade show equipment, field service tools).
 2. Carnet records track: issuing chamber, countries of transit, expiration date, item list with values, and re-importation status.
 3. Alerts fire when a carnet is approaching expiration or when re-importation has not been confirmed within a configurable window.
 4. Carnet items are tracked separately from permanent inventory movements; temporary exports do not trigger revenue recognition.
 
 ### LOG-009: Remote/Austere Site Delivery Planning (P2)
+
+*Traces to: PRD LOG-009*
 
 1. Delivery plans for remote sites include: seasonal access windows, charter transport requirements (vessel, aircraft), staging locations, landing permits, and on-site labor coordination.
 2. Remote site profiles are configurable with: location coordinates, access constraints, available transport modes, preferred staging points, and lead time requirements.

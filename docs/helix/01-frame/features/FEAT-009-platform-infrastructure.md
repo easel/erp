@@ -84,6 +84,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-001: TypeScript + Node.js Backend with REST and GraphQL APIs
 
+*Traces to: PRD PLT-001*
+
 - [ ] Backend is implemented in TypeScript running on Node.js (LTS version)
 - [ ] Every module exposes REST endpoints following OpenAPI 3.x specification
 - [ ] Every module exposes GraphQL queries and mutations via a unified schema
@@ -93,23 +95,29 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-002: RBAC with Entity-Level, Program-Level, and ITAR Compartment-Level Permissions
 
+*Traces to: PRD PLT-002*
+
 - [ ] System supports role definitions with permissions scoped to: global, entity (legal entity), program, and ITAR compartment
 - [ ] Permissions are enforced on every API call and UI render (no client-side-only enforcement)
 - [ ] ITAR compartment permissions restrict visibility of programs, inventory items, documents, and transactions to authorized users
-- [ ] A user with no ITAR compartment access cannot see, search, or infer the existence of ITAR-controlled records
+- [ ] A user with no ITAR compartment access cannot see, search, or infer the existence of ITAR-controlled records. ITAR-controlled records are excluded from list counts, search results, API responses, audit log queries, and report aggregations for unauthorized users. Record IDs referencing ITAR-controlled records return 404 (not 403) to prevent existence inference.
 - [ ] Role assignments support time-bounding (start/end dates) for temporary access
 - [ ] Permission changes are audit-logged
 
 ### PLT-003: Immutable Audit Log
 
+*Traces to: PRD PLT-003*
+
 - [ ] Every create, update, and delete operation on any entity produces an audit log entry
 - [ ] Audit entries include: timestamp, user, operation type, entity type, entity ID, before-state, after-state (field-level diff), and source (UI, API, system)
 - [ ] Audit log entries cannot be modified or deleted through any API or UI
-- [ ] Audit log supports tamper-evidence verification (cryptographic chaining or append-only storage)
+- [ ] Audit log supports tamper-evidence verification (cryptographic chaining (SHA-256 hash chain per ADR-004) AND append-only storage (no UPDATE or DELETE on audit_entry table))
 - [ ] Audit log is searchable by entity type, entity ID, user, date range, and operation type
 - [ ] Audit log retention is configurable per entity type with a minimum of 5 years
 
 ### PLT-004: Multi-Tenant Data Model
+
+*Traces to: PRD PLT-004*
 
 - [ ] System supports 50+ legal entities with per-entity configuration (chart of accounts, currency, tax rules, etc.)
 - [ ] Data isolation ensures users scoped to one entity cannot access another entity's data unless explicitly granted cross-entity permissions
@@ -117,6 +125,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 - [ ] Entity creation and configuration is available through both UI and API
 
 ### PLT-005: PostgreSQL Database
+
+*Traces to: PRD PLT-005*
 
 - [ ] PostgreSQL is the sole required database (no mandatory Redis, MongoDB, etc. for core functions)
 - [ ] Time-series data (telemetry, EVM snapshots, exchange rates) is stored efficiently using PostgreSQL partitioning or TimescaleDB extension
@@ -126,23 +136,29 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-006: SSO, MFA, and Session Management
 
+*Traces to: PRD PLT-006*
+
 - [ ] SSO integration supports SAML 2.0 and OIDC protocols
 - [ ] MFA can be enforced globally, by role, or per user
 - [ ] MFA supports TOTP (authenticator apps) and WebAuthn/FIDO2 (hardware keys)
 - [ ] Sessions expire after configurable inactivity timeout (default: 30 minutes)
 - [ ] Active sessions are visible to the user and can be revoked
-- [ ] Failed login attempts trigger account lockout after configurable threshold
+- [ ] Failed login attempts trigger account lockout after configurable threshold. Failed login lockout threshold: default 5 attempts. Lockout duration: default 30 minutes. Locked accounts can be unlocked by administrators before timeout. All lockout events are audit-logged.
 
 ### PLT-007: Configurable Workflow/Approval Engine
 
+*Traces to: PRD PLT-007*
+
 - [ ] Administrator can define workflows with sequential and parallel approval steps
 - [ ] Approvers can be assigned by role, named user, or dynamic rule (e.g., "manager of requester")
-- [ ] Workflows support escalation on timeout (configurable per step)
+- [ ] Workflows support escalation on timeout (configurable per step). Default escalation timeout: 48 hours. Escalation action: notify next approver in chain. If no next approver exists, notify system administrator.
 - [ ] Workflow steps support approve, reject, and delegate actions with mandatory comment on reject
 - [ ] Workflow engine is generic: any entity type can have workflows attached via configuration, not code
 - [ ] Workflow history (all actions, timestamps, comments) is persisted and audit-logged
 
 ### PLT-008: Notification System
+
+*Traces to: PRD PLT-008*
 
 - [ ] Notifications delivered via in-app, email, and webhook channels
 - [ ] Users can configure per-event-type channel preferences
@@ -153,14 +169,19 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-009: Reporting Engine
 
+*Traces to: PRD PLT-009*
+
 - [ ] User can create reports selecting columns from any module's exposed data fields
 - [ ] Reports support filters (equality, range, contains, in-list), grouping, and aggregation (sum, count, avg, min, max)
 - [ ] Drill-down from grouped/aggregated rows to underlying records
 - [ ] Export to CSV, PDF, and Excel (XLSX)
 - [ ] Users can save report configurations and share them with other users or roles
 - [ ] Scheduled reports can be configured to run daily, weekly, or monthly with email delivery
+- [ ] Standard reports generate within 5 seconds for up to 100,000 rows. Reports exceeding 100,000 rows are executed as background jobs with notification on completion.
 
 ### PLT-010: Data Import/Export
+
+*Traces to: PRD PLT-010*
 
 - [ ] Import supports CSV and Excel (XLSX) with configurable column mapping
 - [ ] Import runs in preview mode showing validation results (row count, errors, warnings) before commit
@@ -171,6 +192,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-011: Multi-Language UI
 
+*Traces to: PRD PLT-011*
+
 - [ ] UI supports language switching without page reload
 - [ ] All UI strings are externalized in translation files, not hard-coded
 - [ ] Date, number, and currency formatting follows the user's locale setting
@@ -178,6 +201,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 - [ ] Missing translations fall back to English with a developer-visible indicator
 
 ### PLT-012: Outbound Webhook System
+
+*Traces to: PRD PLT-012*
 
 - [ ] Webhooks can be registered for any entity lifecycle event (created, updated, deleted, status changed)
 - [ ] Webhook payloads include event type, timestamp, entity type, entity ID, and configurable field set
@@ -187,6 +212,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 
 ### PLT-013: Plugin/Extension Architecture
 
+*Traces to: PRD PLT-013*
+
 - [ ] Plugins can add custom fields to existing entities without schema migration by operators
 - [ ] Plugins can register custom validation rules that run on create/update operations
 - [ ] Plugins can add UI components (tabs, panels, fields) to existing entity views
@@ -195,6 +222,8 @@ The technology stack is TypeScript + Node.js for the backend, PostgreSQL for per
 - [ ] Plugin API is versioned with backward compatibility guarantees within major versions
 
 ### PLT-014: Per-Entity Data Residency
+
+*Traces to: PRD PLT-014*
 
 - [ ] System administrator can configure which database instance/region stores a given legal entity's data
 - [ ] Cross-entity queries that span data residency boundaries are handled transparently (with latency trade-off documented)

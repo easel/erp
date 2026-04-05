@@ -80,7 +80,7 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 
 | Component | Choice | Rationale |
 |-----------|--------|-----------|
-| Runtime | **Node.js 22 LTS** | Long-term support, native TypeScript support via `--experimental-strip-types` (backup: tsx loader), mature ecosystem for enterprise applications |
+| Runtime | **Bun** (Node.js fallback) | Single-binary deployment simplifies air-gapped installs, native TypeScript execution without transpilation, built-in SQLite for local-first client state, built-in test runner and bundler. Node.js 22 LTS retained as fallback runtime — CI tests run on both. See ADR-009. |
 | Language | **TypeScript 5.x (strict mode)** | `strict: true`, `noUncheckedIndexedAccess: true`, `exactOptionalPropertyTypes: true`. Financial software demands maximum type safety. Shared types between frontend and backend eliminate an entire class of integration bugs |
 
 ### Backend

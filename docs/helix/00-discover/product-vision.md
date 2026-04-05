@@ -155,7 +155,7 @@ Satellite operators end up with a patchwork of systems — ERP for finance, cust
 
 ## Resolved Decisions
 
-1. **Technology stack** — **TypeScript + Node.js**. Full-stack TypeScript for backend and frontend. Strong API/UI ecosystem, modern tooling, good contributor accessibility. Frontend framework TBD (likely React/Next.js).
+1. **Technology stack** — **Isomorphic TypeScript on Bun**. Full-stack isomorphic TypeScript sharing validation, domain types, and business rules between server and client. Bun runtime for server-side (single-binary deployment, native TypeScript execution, built-in SQLite for local-first state). Node.js retained as fallback runtime. React + Next.js for frontend. Local-first architecture with SQLite client-side state and PostgreSQL server-side source of truth, enabling offline operation in conflict zones and remote ground stations. See ADR-009.
 
 2. **Deployment model** — **Self-hosted only**. Operators deploy on their own infrastructure or GovCloud. ITAR data never leaves operator control. This is the simplest compliance story and fits the defense-adjacent customer base. SaaS may be revisited post-Phase 1 if demand warrants.
 

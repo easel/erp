@@ -58,85 +58,94 @@ Both GEO and LEO business models are first-class citizens. A GEO operator leasin
 
 ## Acceptance Criteria
 
-### SLS-001: Quote Creation
+### SLS-001: Quote Creation `Traces to: PRD SLS-001`
 
-- AC-SLS-001-01: User can create a quote with one or more line items, each referencing a product catalog entry or free-text description.
+- AC-SLS-001-01: User can create a quote with one or more line items, each referencing a product catalog entry or free-text description. Quote creation requires at least one line item; empty quotes cannot be saved. References to inactive/discontinued products return a validation error. Required fields: customer, valid-through date, at least one line item with product or description, quantity, and unit price.
 - AC-SLS-001-02: Each line item supports quantity, unit price, discount (percentage or absolute), and extended price calculation.
 - AC-SLS-001-03: Quotes support configurable approval workflows triggered by discount percentage, total value, or customer-specific rules.
 - AC-SLS-001-04: Approved quotes are versioned; prior versions are retained as immutable history.
 - AC-SLS-001-05: Quotes can be printed or exported as PDF with configurable templates.
 
-### SLS-002: Sales Order Management
+### SLS-002: Sales Order Management `Traces to: PRD SLS-002`
 
 - AC-SLS-002-01: An approved quote can be converted to a sales order with a single action; all line items, pricing, and terms carry forward.
 - AC-SLS-002-02: Sales orders track fulfillment status per line item (open, partially shipped, fully shipped, invoiced, closed).
 - AC-SLS-002-03: Invoices are generated automatically upon shipment confirmation or on a manual trigger.
-- AC-SLS-002-04: Returns create return material authorizations (RMAs) linked to the original order and generate credit memos on receipt.
-- AC-SLS-002-05: Every sales order triggers denied-party screening and export classification checks before release to fulfillment.
+- AC-SLS-002-04: Returns create return material authorizations (RMAs) linked to the original order and generate credit memos on receipt. Return/RMA creates a return_authorization record linked to the original sales order; credit memo generation requires RMA approval.
+- AC-SLS-002-05: Every sales order triggers denied-party screening (per EXP-002) and export classification checks (per EXP-001) before transitioning to `released_to_fulfillment` status. If screening returns a match, the order is placed on compliance hold per EXP-003 and compliance_status is set to 'held'. If the export control service is unavailable, the order remains in `pending_compliance_check` status and does not release. Orders with compliance_status='pending' cannot transition to fulfillment.
 
-### SLS-003: Customer Master
+### SLS-003: Customer Master `Traces to: PRD SLS-003`
 
 - AC-SLS-003-01: Customer records support multiple legal entities with separate billing addresses, shipping addresses, payment terms, and credit limits per entity.
 - AC-SLS-003-02: Parent/child account relationships are modeled (e.g., a conglomerate with regional subsidiaries).
 - AC-SLS-003-03: Customer records link to CRM company records for pipeline visibility.
-- AC-SLS-003-04: Credit limit enforcement prevents order entry when outstanding AR plus new order value exceeds the limit.
+- AC-SLS-003-04: Credit limit enforcement prevents order entry when outstanding AR plus new order value exceeds the limit. When outstanding AR plus new order value exceeds credit limit (compared in the customer's functional currency), the system blocks order confirmation and displays the available credit, outstanding balance, and order value. A user with `credit_override` permission can approve the order with a documented reason stored in the audit trail.
 
-### SLS-004: Hardware Product Catalog
+### SLS-004: Hardware Product Catalog `Traces to: PRD SLS-004`
 
 - AC-SLS-004-01: Products are defined with SKU, description, ECCN/USML classification, weight, dimensions, and lead time.
 - AC-SLS-004-02: Pricing supports multiple price lists (standard, government, partner) with effective-date ranges.
-- AC-SLS-004-03: Availability is shown on the quote/order screen based on current inventory and lead time.
+- AC-SLS-004-03: Availability is shown on the quote/order screen based on current inventory and lead time. Availability = on-hand quantity minus allocated quantity. When availability is zero or negative, the UI shows 'Available: 0' with estimated lead time. When no inventory record exists, the UI shows 'Lead time only' with the product's configured lead time.
 - AC-SLS-004-04: Products can be marked active, discontinued, or restricted (requiring override to sell).
 
-### SLS-005: CPQ
+### SLS-005: CPQ `Traces to: PRD SLS-005`
 
 - AC-SLS-005-01: Bundles can be defined as combinations of hardware products, installation services, bandwidth capacity, and managed services.
 - AC-SLS-005-02: Bundle pricing supports term-based discounting (e.g., 10% off 3-year, 20% off 5-year).
 - AC-SLS-005-03: Configuration rules prevent invalid combinations (e.g., Ku-band terminal with C-band-only satellite).
 - AC-SLS-005-04: Bundle components flow through to separate fulfillment streams (hardware to warehouse, capacity to provisioning, services to project management).
 
-### SLS-006: Capacity Contract Management
+### SLS-006: Capacity Contract Management `Traces to: PRD SLS-006`
 
 - AC-SLS-006-01: Capacity contracts define allocated bandwidth or transponder segments, term dates, SLA parameters, and pricing.
 - AC-SLS-006-02: Contracts link to specific transponder/beam allocations in Orbital Asset Management.
-- AC-SLS-006-03: SLA tracking records uptime, latency, and throughput against contractual thresholds.
+- AC-SLS-006-03: SLA tracking records uptime, latency, and throughput against contractual thresholds. SLA metrics (uptime, latency, throughput) are recorded via integration with the monitoring system (API endpoint or manual entry). Breach detection runs on a configurable schedule (default: hourly). Breaches trigger a notification to the account manager and a credit calculation based on the contract's SLA credit schedule.
 - AC-SLS-006-04: Escalation clauses (annual increases, CPI-linked) are modeled and automatically applied at billing time.
 - AC-SLS-006-05: Usage metering data is ingested and reconciled against contracted allocations.
 
-### SLS-007: Milestone Billing
+### SLS-007: Milestone Billing `Traces to: PRD SLS-007`
 
 - AC-SLS-007-01: Billing schedules can be defined with milestones (delivery, program milestone, or calendar date) and percentage or fixed-amount splits.
-- AC-SLS-007-02: Milestone completion triggers invoice generation automatically or queues for manual review.
+- AC-SLS-007-02: Milestone completion triggers invoice generation automatically or queues for manual review. Milestone billing events trigger revenue recognition schedule generation in FIN-008. The billing event sends: contract_id, milestone_id, billing_amount, billing_currency, performance_obligation_id. If FIN-008 rejects the event (e.g., invalid performance obligation), the billing event is queued for review.
 - AC-SLS-007-03: Milestone billing integrates with Program Management milestones (PDR, CDR, ship, launch, acceptance).
 - AC-SLS-007-04: Revenue recognition schedules align with billing milestones per ASC 606 / IFRS 15 rules.
 
-### SLS-008: Renewal Management
+### SLS-008: Renewal Management `Traces to: PRD SLS-008`
 
 - AC-SLS-008-01: Contracts approaching expiration trigger automated renewal notices at configurable lead times (e.g., 180, 90, 30 days).
 - AC-SLS-008-02: Renewal workflows support extension (same terms), re-pricing (new terms), or non-renewal paths.
 - AC-SLS-008-03: Renewal quotes are pre-populated with current contract terms for rapid processing.
 - AC-SLS-008-04: Renewal pipeline is visible in CRM and sales forecasting.
 
-### SLS-009: Customer Self-Service Portal
+### SLS-009: Customer Self-Service Portal `Traces to: PRD SLS-009`
 
 - AC-SLS-009-01: Authenticated customers can browse the hardware catalog and place orders.
 - AC-SLS-009-02: Customers can view their invoices, payment history, and current account balance.
 - AC-SLS-009-03: Customers can track shipment status for open orders.
 - AC-SLS-009-04: Capacity customers can view usage dashboards showing bandwidth consumption against allocation.
 
-### SLS-010: Usage-Based Billing
+### SLS-010: Usage-Based Billing `Traces to: PRD SLS-010`
 
 - AC-SLS-010-01: Metered usage data is ingested from provisioning or monitoring systems on a configurable schedule.
 - AC-SLS-010-02: Tiered pricing rules are applied: base rate up to commitment, overage rate above.
 - AC-SLS-010-03: Usage invoices are generated on a configurable cycle (monthly, quarterly).
 - AC-SLS-010-04: Usage data is reconcilable against raw meter records for dispute resolution.
 
-### SLS-011: Partner/Reseller Management
+### SLS-011: Partner/Reseller Management `Traces to: PRD SLS-011`
 
 - AC-SLS-011-01: Partner accounts are distinct from direct customer accounts with separate pricing, margin, and commission structures.
 - AC-SLS-011-02: Deal registration creates a protected pipeline entry with expiration.
 - AC-SLS-011-03: Co-sell workflows allow joint pursuit with visibility into partner and direct activities.
 - AC-SLS-011-04: Partner margin reports are generated per deal and in aggregate.
+
+## Non-Functional Requirements
+
+| Metric | Target |
+|--------|--------|
+| Quote creation response time | < 2 seconds |
+| Sales order compliance check (includes denied-party screening) | < 5 seconds |
+| Order search across 10,000+ orders | < 3 seconds |
+| CPQ bundle pricing calculation | < 3 seconds |
 
 ## Domain Model
 

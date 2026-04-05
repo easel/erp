@@ -59,8 +59,10 @@ This module tracks programs from concept through deorbit, providing work breakdo
 
 ### PGM-001: Program/Project Creation with WBS
 
+*Traces to: PRD PGM-001*
+
 - [ ] User can create a program with name, description, customer, start date, target end date, and budget
-- [ ] User can build a hierarchical WBS with at least 5 levels of depth
+- [ ] WBS supports 1-10 levels of depth (configurable, default max: 7). Attempting to add a level beyond the configured maximum returns a validation error.
 - [ ] Each WBS element has: code, name, description, planned start, planned end, budgeted cost, and responsible person
 - [ ] User can assign team members to a program with defined roles
 - [ ] Programs appear in a portfolio list view sortable by status, customer, and date
@@ -68,32 +70,40 @@ This module tracks programs from concept through deorbit, providing work breakdo
 
 ### PGM-002: Milestone Tracking
 
+*Traces to: PRD PGM-002*
+
 - [ ] User can define milestones with name, planned date, and type (standard set: PDR, CDR, integration, test, ship, launch, IOT, acceptance; plus custom)
 - [ ] User can define dependencies between milestones (finish-to-start, start-to-start, finish-to-finish, start-to-finish with optional lag)
 - [ ] System computes critical path and displays it visually (Gantt or network diagram)
 - [ ] User can record actual completion date for a milestone, updating status to complete
 - [ ] Dashboard shows planned vs. actual dates with variance for all milestones
-- [ ] System generates alerts when a milestone is within configurable threshold of planned date and prerequisites are incomplete
+- [ ] System generates alerts when a milestone is within configurable threshold of planned date and prerequisites are incomplete. Default alert threshold: 7 calendar days before planned date. Alert generated when milestone is within threshold AND at least one predecessor is incomplete. Alert recipients: program manager and milestone owner.
 
 ### PGM-003: Milestone Billing Integration
 
+*Traces to: PRD PGM-003*
+
 - [ ] User can link a billing schedule to a program, associating each billing line to a specific milestone
 - [ ] Billing amounts can be defined as fixed amounts or percentage of contract value
-- [ ] Milestone completion triggers a billing event only after required signoffs are recorded
+- [ ] Milestone completion triggers a billing event only after required signoffs are recorded. Required signoffs are configurable per milestone type. Each milestone defines a list of required approver roles (e.g., program_manager, quality_engineer, customer_representative). Billing event triggers only when all required signoffs are recorded. Signoffs are timestamped and audit-logged.
 - [ ] Billing events create draft invoices in AR with reference to program, milestone, and contract
 - [ ] Finance user can review and post milestone-triggered invoices through standard AR workflow
 - [ ] Billing status is visible on the program milestone view (unbilled, draft invoice, posted, paid)
 
 ### PGM-004: Earned Value Management
 
+*Traces to: PRD PGM-004*
+
 - [ ] System computes BCWS, BCWP, and ACWP per WBS element based on planned schedule, reported progress, and actual cost postings
 - [ ] System computes CPI (BCWP/ACWP) and SPI (BCWP/BCWS) at element, summary, and program level
-- [ ] System computes EAC using at least three methods: CPI-based, SPI-based, and composite (CPI x SPI)
+- [ ] EVM calculations: (a) CPI = BCWP / ACWP, (b) SPI = BCWP / BCWS, (c) EAC CPI-based = BAC / CPI, (d) EAC SPI-based = AC + (BAC - BCWP) / SPI, (e) EAC composite = BAC / (CPI * SPI). When ACWP or BCWS is zero, the corresponding index displays 'N/A'. Formulas are documented in the EVM report footer.
 - [ ] EVM metrics roll up correctly through the WBS hierarchy
 - [ ] EVM data is available as time-series for trend analysis
 - [ ] EVM report exportable to CSV and PDF
 
 ### PGM-005: Resource Planning
+
+*Traces to: PRD PGM-005*
 
 - [ ] User can define resource types/disciplines (e.g., systems engineer, thermal engineer, integration technician)
 - [ ] User can allocate resources to WBS elements by type, headcount, and time period (weekly or monthly)
@@ -103,12 +113,22 @@ This module tracks programs from concept through deorbit, providing work breakdo
 
 ### PGM-006: Program Financial Dashboard
 
+*Traces to: PRD PGM-006*
+
 - [ ] Dashboard shows per-program: total budget, actuals to date, committed (POs issued), EAC, and margin (budget minus EAC)
 - [ ] Budget burn-down chart shows cumulative actuals vs. planned spend curve
-- [ ] Portfolio summary shows all programs with color-coded health indicators based on configurable thresholds (e.g., CPI < 0.9 = red)
+- [ ] Portfolio summary shows all programs with color-coded health indicators. Default health indicator thresholds: CPI < 0.9 = red, 0.9-0.95 = yellow, > 0.95 = green. SPI thresholds: same. Thresholds are configurable per program.
 - [ ] Drill-down from portfolio to program to WBS element
 - [ ] Dashboard data refreshes within 5 minutes of underlying transaction changes
 - [ ] All dashboard views exportable to PDF
+
+## Non-Functional Requirements
+
+- **WBS tree load:** < 3 seconds for programs with up to 5,000 WBS elements.
+- **EVM calculation refresh:** < 10 seconds per program.
+- **Dashboard data refresh:** Within 5 minutes of underlying changes.
+
+---
 
 ## Domain Model
 

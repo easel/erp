@@ -162,7 +162,7 @@ SatERP replaces this patchwork with a single, open-source, self-hosted ERP that 
 
 | ID | Priority | Requirement |
 |----|----------|-------------|
-| PLT-001 | P0 | TypeScript + Node.js backend with REST and GraphQL APIs for all modules |
+| PLT-001 | P0 | Isomorphic TypeScript on Bun runtime (Node.js fallback) with REST and GraphQL APIs for all modules; local-first architecture with SQLite client-side state and PostgreSQL server-side source of truth (see ADR-009) |
 | PLT-002 | P0 | Role-based access control (RBAC) with entity-level, program-level, and ITAR compartment-level permissions |
 | PLT-003 | P0 | Immutable audit log for all create, update, and delete operations across all entities |
 | PLT-004 | P0 | Multi-tenant data model supporting 50+ legal entities with per-entity configuration |

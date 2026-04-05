@@ -62,15 +62,20 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### OAM-001: Satellite Registry
 
+*Traces to: PRD OAM-001*
+
 | # | Criterion |
 |---|-----------|
 | AC-001.1 | A satellite record can be created with required fields: name, NORAD ID (optional pre-launch), bus type, operator, orbital regime (GEO/MEO/LEO/HEO), target orbital slot or constellation ID, and planned launch date. |
-| AC-001.2 | TLE data can be imported (manual paste or API fetch from Space-Track) and stored with a timestamp; the system retains TLE history. |
-| AC-001.3 | Lifecycle state transitions follow the defined state machine; invalid transitions are rejected with an error message identifying the current state and permitted transitions. |
-| AC-001.4 | Payload metadata (number of transponders, beam count, antenna types, power budget) is stored and editable. |
-| AC-001.5 | All changes to satellite records produce an immutable audit log entry with user, timestamp, and before/after values. |
+| AC-001.2 | NORAD ID format: 5-digit integer (per USSPACECOM convention). Duplicate NORAD IDs are rejected. Required fields for operational satellites: name, operator entity, orbit type (GEO/LEO/MEO/HEO), status. Pre-launch satellites require: name, operator entity, target orbit type, build program reference. |
+| AC-001.3 | TLE data can be imported (manual paste or API fetch from Space-Track) and stored with a timestamp; the system retains TLE history. |
+| AC-001.4 | Lifecycle state transitions follow the defined state machine; invalid transitions are rejected with an error message identifying the current state and permitted transitions. |
+| AC-001.5 | Payload metadata (number of transponders, beam count, antenna types, power budget) is stored and editable. |
+| AC-001.6 | All changes to satellite records produce an immutable audit log entry with user, timestamp, and before/after values. |
 
 ### OAM-002: Transponder and Beam Inventory
+
+*Traces to: PRD OAM-002*
 
 | # | Criterion |
 |---|-----------|
@@ -81,23 +86,29 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### OAM-003: Capacity Allocation Tracking
 
+*Traces to: PRD OAM-003*
+
 | # | Criterion |
 |---|-----------|
 | AC-003.1 | A capacity allocation links a transponder or beam segment to a customer contract line item, specifying allocated bandwidth (MHz), power (dBW or percentage), and coverage region. |
-| AC-003.2 | The system prevents over-allocation: total allocated bandwidth on a transponder cannot exceed its rated bandwidth unless an override with justification is provided. |
+| AC-003.2 | The system prevents over-allocation: total allocated bandwidth on a transponder cannot exceed its rated bandwidth unless an override with justification is provided. Over-allocation override requires `capacity_planning_admin` role. Override justification is stored as free-text and audit-logged. Over-allocation by more than 20% requires additional approval from `capacity_director` role. |
 | AC-003.3 | Utilization reports can be generated per satellite, per transponder, per beam, per customer, and per time period, showing allocated vs. available capacity. |
 | AC-003.4 | Capacity allocations have start and end dates aligned with the governing contract term. |
 
 ### OAM-004: Ground Station Asset Records
+
+*Traces to: PRD OAM-004*
 
 | # | Criterion |
 |---|-----------|
 | AC-004.1 | Ground station records include: name, geographic coordinates (WGS-84), country, supported frequency bands, number and type of antennas, and operational status. |
 | AC-004.2 | Each antenna within a ground station is individually tracked with: diameter, mount type, supported bands, and current status. |
 | AC-004.3 | Maintenance schedules (preventive and corrective) are stored with planned dates, actual dates, and completion status. |
-| AC-004.4 | Ground station availability is reported as a percentage over configurable time windows. |
+| AC-004.4 | Ground station availability is reported as a percentage over configurable time windows. Availability = (total_time - unplanned_downtime) / total_time * 100. Scheduled maintenance does not count as downtime. Configurable time windows: last 24h, 7d, 30d, 90d, 365d, and custom range. |
 
 ### OAM-005: Spectrum License Registry
+
+*Traces to: PRD OAM-005*
 
 | # | Criterion |
 |---|-----------|
@@ -108,6 +119,8 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### OAM-006: Satellite Depreciation and Impairment
 
+*Traces to: PRD OAM-006*
+
 | # | Criterion |
 |---|-----------|
 | AC-006.1 | Each satellite's depreciable life is derived from its design orbital life (years), and the depreciation schedule is generated in the Financial Management module using the operator's chosen method (straight-line default). |
@@ -116,13 +129,17 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### OAM-007: Ground Station Scheduling
 
+*Traces to: PRD OAM-007*
+
 | # | Criterion |
 |---|-----------|
 | AC-007.1 | Antenna time can be allocated to satellite contacts in defined time slots with conflict detection. |
-| AC-007.2 | For LEO constellations, pass windows are computed (or imported from Kratos epoch IPS) and antenna assignments are scheduled to maximize coverage. |
+| AC-007.2 | LEO pass scheduling assigns antenna time to satellite passes based on priority (configurable per satellite/mission). Conflicts are resolved by priority rank; equal-priority conflicts are flagged for manual resolution. A valid schedule has no overlapping antenna assignments and no unassigned mandatory passes. |
 | AC-007.3 | Scheduling respects maintenance windows: antennas in maintenance are excluded from allocation. |
 
 ### OAM-008: Spectrum Lease Management
+
+*Traces to: PRD OAM-008*
 
 | # | Criterion |
 |---|-----------|
@@ -132,12 +149,14 @@ Ground stations span multiple countries with heterogeneous antenna assets. Spect
 
 ### OAM-009: Kratos TT&C Integration
 
+*Traces to: PRD OAM-009*
+
 | # | Criterion |
 |---|-----------|
-| AC-009.1 | SatERP connects to Kratos quantumCMD via a configurable REST or message-queue interface to ingest telemetry summary data (satellite health status, anomaly flags). |
+| AC-009.1 | SatERP connects to Kratos quantumCMD via a configurable REST or message-queue interface to ingest telemetry summary data (satellite health status, anomaly flags). Kratos telemetry ingest expects JSON payloads containing: satellite_id, timestamp, health_status (NOMINAL/DEGRADED/ANOMALY), telemetry_summary (JSONB -- subsystem-level health). Poll frequency: configurable, default 5 minutes. |
 | AC-009.2 | SatERP connects to Kratos epoch IPS to retrieve pass schedules and contact plans for LEO ground station scheduling. |
 | AC-009.3 | Integration is implemented as an adapter with a defined interface so that alternative TT&C systems can be substituted without modifying core OAM logic. |
-| AC-009.4 | Telemetry ingest failures are logged and surfaced as operational alerts; the system degrades gracefully (stale data is flagged, not silently served). |
+| AC-009.4 | Telemetry ingest failures are logged and surfaced as operational alerts; the system degrades gracefully (stale data is flagged, not silently served). Connection failure: retry with exponential backoff (1s, 2s, 4s, max 60s); after 10 consecutive failures, raise alert and continue operating with stale data. |
 
 ---
 

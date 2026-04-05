@@ -655,6 +655,37 @@ System checks: does the program involve ITAR/EAR items?
 
 ---
 
+## End-to-End Compliance Flow
+
+The following end-to-end assertion spans Sales (FEAT-003), Export Control (FEAT-006), Logistics (FEAT-007), and Finance (FEAT-001). It defines the compliance gates that an ITAR-controlled item must pass to move from quote to delivery:
+
+### E2E-COMPLIANCE-001: ITAR Item Quote-to-Delivery
+
+An ITAR-controlled item cannot complete the quote-to-delivery lifecycle without passing ALL of the following gates in order:
+
+1. **Quote stage**: Product classification check (EXP-001) verifies item has a current USML/CCL classification. Quote cannot be converted to order without classification.
+2. **Order entry**: Denied-party screening (EXP-002) runs against customer, end-user, and all intermediaries. Any match → compliance hold (EXP-003), compliance_status='held'.
+3. **Order entry**: Country/region restriction check (EXP-004, EXP-012) validates ship-to destination. Embargoed destinations → order rejected. Restricted regions (Crimea, Donetsk, Luhansk) → hold + manual review.
+4. **Order release**: Export license verification (EXP-005, Phase 2; manual verification in Phase 1) confirms valid license with sufficient drawdown remaining. No valid license → hold.
+5. **Shipment creation**: Re-screening of all parties (EXP-002) at shipment time. New matches since order entry → shipment hold.
+6. **Shipment creation**: End-use certificate (EXP-007, Phase 2) generated/verified for defense articles.
+7. **Customs documentation**: AES filing data generated (LOG-002) with correct USML/ECCN classification.
+8. **Delivery**: Proof of delivery recorded (LOG-007, Phase 3).
+
+**Failure at any gate prevents forward progress.** The system must not allow:
+- An unclassified item to appear on a sales order
+- An order with compliance_status='pending' or 'held' to release to fulfillment
+- A shipment to generate carrier labels or customs docs while compliance_status != 'cleared'
+
+**Test scenarios:**
+- Happy path: classified item, clean customer, unrestricted destination → flows through all gates
+- Denied party match on order entry → order held, cannot fulfill
+- Clean at order time, party added to SDN before shipment → re-screening catches it, shipment held
+- Ship-to address in Crimea → region restriction hold, manual review required
+- Unclassified item added to quote → validation error, quote cannot convert to order
+
+---
+
 ## Open Design Questions
 
 1. **Fuzzy match threshold defaults.** What is the right default threshold for fuzzy screening matches? Too low generates excessive false positives that burden the compliance team; too high risks missing true matches. Need to benchmark against known test data from OFAC and BIS. Consider separate thresholds per list (SDN vs. Entity List may warrant different sensitivity).

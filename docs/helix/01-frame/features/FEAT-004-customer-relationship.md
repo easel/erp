@@ -74,57 +74,57 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 
 ## Acceptance Criteria
 
-### CRM-001: Contact and Company Management
+### CRM-001: Contact and Company Management `Traces to: PRD CRM-001`
 
 - AC-CRM-001-01: Contacts are created with required fields (name, email) and optional fields (title, phone, address, department).
 - AC-CRM-001-02: Companies are created with required fields (name) and optional fields (industry, size, website, billing address, parent company).
 - AC-CRM-001-03: Contacts are associated with one or more companies; a primary company is designated.
-- AC-CRM-001-04: Company-to-company relationships are modeled with type (parent/child, partner, competitor, affiliate).
+- AC-CRM-001-04: Company-to-company relationships are modeled with type (parent/child, partner, competitor, affiliate). Company relationships (parent, subsidiary, partner, joint_venture, reseller per ADR-005) are tracked via company_relationship records with effective dates. Relationship hierarchy is navigable in the UI with unlimited depth.
 - AC-CRM-001-05: A 360-degree view on each contact and company shows all associated activities, opportunities, quotes, orders, contracts, and cases.
-- AC-CRM-001-06: Duplicate detection runs on create and import; merge preserves all child records.
+- AC-CRM-001-06: Duplicate detection on contact create and import compares: email (exact match), company name + contact name (fuzzy, configurable threshold, default: 0.85). Detected duplicates are presented to the user with options: merge, mark as not-duplicate, or cancel. Merge combines all child records (activities, opportunities) under the surviving record; for conflicting field values, the user selects which to retain. Merge is audit-logged.
 
-### CRM-002: Opportunity Pipeline
+### CRM-002: Opportunity Pipeline `Traces to: PRD CRM-002`
 
-- AC-CRM-002-01: Opportunities are created with required fields: name, company, stage, value, close date.
-- AC-CRM-002-02: Stages are configurable per pipeline (e.g., hardware pipeline vs. capacity pipeline may have different stages).
+- AC-CRM-002-01: Opportunities are created with required fields: name, company, stage, estimated value (must be > 0), close date (must be today or future; past dates allowed only on import). Creation with missing or invalid required fields returns a 400 error identifying each invalid field.
+- AC-CRM-002-02: Stages are configurable per pipeline (e.g., hardware pipeline vs. capacity pipeline may have different stages). Stage transitions follow a configurable pipeline with allowed forward and backward transitions; invalid transitions are rejected.
 - AC-CRM-002-03: Each stage has a default probability used for weighted forecasting.
 - AC-CRM-002-04: Stage history is logged with timestamps and duration-in-stage metrics.
 - AC-CRM-002-05: Pipeline views support filtering and grouping by rep, region, product line, stage, and close-date range.
 - AC-CRM-002-06: Opportunities link to one or more quotes (FEAT-003); quote status is visible on the opportunity record.
 
-### CRM-003: Activity Tracking
+### CRM-003: Activity Tracking `Traces to: PRD CRM-003`
 
-- AC-CRM-003-01: Activities are typed: call, email, meeting, note, task.
+- AC-CRM-003-01: Activities are typed: CALL, EMAIL, MEETING, NOTE, TASK. Required fields: type, date/time, linked contact or company. Duration is optional (defaults to null).
 - AC-CRM-003-02: Activities are associated with one or more contacts, companies, and/or opportunities.
-- AC-CRM-003-03: Activities support date/time, duration, outcome, and free-text notes.
+- AC-CRM-003-03: Outcome is required for completed activities (values: COMPLETED, NO_ANSWER, LEFT_MESSAGE, RESCHEDULED, CANCELLED -- configurable per activity type). Notes field: max 10,000 characters.
 - AC-CRM-003-04: Activities are displayed in reverse-chronological order on associated records.
 - AC-CRM-003-05: Overdue tasks generate notifications to the assigned user.
 
-### CRM-004: Sales Forecasting
+### CRM-004: Sales Forecasting `Traces to: PRD CRM-004`
 
 - AC-CRM-004-01: Forecast report rolls up pipeline by rep, region, and product line for a selected time period.
 - AC-CRM-004-02: Opportunities are categorized as Commit, Best Case, or Pipeline based on stage mapping or manager override.
 - AC-CRM-004-03: Forecast vs. quota comparison is available at rep, region, and company levels.
-- AC-CRM-004-04: Historical forecast snapshots are retained for accuracy-over-time analysis.
+- AC-CRM-004-04: Forecast snapshots are captured weekly (configurable) and on manual submission. Snapshots are retained for 2 years (configurable). Retrievable via API with date range filter.
 - AC-CRM-004-05: Forecasts can be submitted and locked by the manager for a given period.
 
-### CRM-005: Lead Management
+### CRM-005: Lead Management `Traces to: PRD CRM-005`
 
 - AC-CRM-005-01: Leads are created via API (web forms, imports) or manual entry with source tracking.
-- AC-CRM-005-02: Lead scoring model is configurable with weighted criteria (e.g., company size = 20 points, visited pricing page = 10 points).
+- AC-CRM-005-02: Lead score range: 0-100. Scoring criteria are configurable with weighted points (e.g., company size > 500 employees = 20 points). Criteria that reference unavailable data contribute 0 points. Default scoring model is provided; operators can customize. Score recalculation runs on lead update and on a daily batch schedule.
 - AC-CRM-005-03: Assignment rules route leads to reps based on territory, round-robin, or custom logic.
 - AC-CRM-005-04: Lead conversion creates a contact, company (if new), and opportunity in a single transaction.
 - AC-CRM-005-05: Converted leads retain a link to the original lead record for attribution.
 
-### CRM-006: Campaign Management
+### CRM-006: Campaign Management `Traces to: PRD CRM-006`
 
 - AC-CRM-006-01: Campaigns have type, status (planned, active, completed), budget, actual cost, start date, and end date.
 - AC-CRM-006-02: Leads and contacts are associated with campaigns as members with status (sent, responded, converted).
 - AC-CRM-006-03: First-touch attribution links the campaign that created the lead to any resulting opportunity.
 - AC-CRM-006-04: Multi-touch attribution distributes pipeline credit across all campaigns a contact engaged with before opportunity creation.
-- AC-CRM-006-05: Campaign ROI = (attributed closed revenue - actual cost) / actual cost; displayed on campaign reports.
+- AC-CRM-006-05: ROI = (attributed closed revenue - actual cost) / actual cost. When actual cost is 0, ROI displays as 'N/A' (not calculated). Revenue attribution is snapshotted at opportunity close date.
 
-### CRM-007: Territory Management
+### CRM-007: Territory Management `Traces to: PRD CRM-007`
 
 - AC-CRM-007-01: Territories are defined with rules based on country, region, industry, company size, or named accounts.
 - AC-CRM-007-02: Each territory has an assigned owner (rep) and optional overlay owners (specialist, SE).
@@ -132,7 +132,7 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 - AC-CRM-007-04: Territory reassignment bulk-transfers accounts, contacts, and open opportunities to the new owner.
 - AC-CRM-007-05: Territory conflict detection flags accounts matching multiple territories for manual resolution.
 
-### CRM-008: Email Integration
+### CRM-008: Email Integration `Traces to: PRD CRM-008`
 
 - AC-CRM-008-01: Bi-directional email sync logs sent and received emails against matching contacts.
 - AC-CRM-008-02: Email matching uses contact email addresses; unmatched emails are flagged for manual association.
@@ -140,7 +140,7 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 - AC-CRM-008-04: Email sequences execute on a defined schedule with automatic stop on reply or manual opt-out.
 - AC-CRM-008-05: Email open and click tracking is available when the recipient's email client supports it.
 
-### CRM-009: Customer Health Scoring
+### CRM-009: Customer Health Scoring `Traces to: PRD CRM-009`
 
 - AC-CRM-009-01: Health score is computed from configurable weighted inputs: capacity usage %, support ticket volume, billing status (current/overdue), NPS/CSAT scores.
 - AC-CRM-009-02: Health score is displayed on the company record and on capacity contract records.
@@ -148,12 +148,21 @@ By building CRM into the ERP rather than integrating an external system, SatERP 
 - AC-CRM-009-04: Score changes trigger notifications: any account moving from healthy to at-risk or at-risk to critical notifies the account owner and customer success team.
 - AC-CRM-009-05: Health score trend (30-day, 90-day) is displayed alongside the current score.
 
-### CRM-010: Competitive Tracking
+### CRM-010: Competitive Tracking `Traces to: PRD CRM-010`
 
 - AC-CRM-010-01: Competitor records are maintained with name, overview, strengths, weaknesses, and key differentiators.
 - AC-CRM-010-02: Opportunities can be tagged with one or more competitors.
 - AC-CRM-010-03: Win/loss analysis reports show win rate by competitor, deal size by competitor, and common loss reasons.
 - AC-CRM-010-04: Competitive intelligence notes on an opportunity are visible to the sales team but excluded from customer-facing outputs.
+
+## Non-Functional Requirements
+
+| Metric | Target | Condition |
+|--------|--------|-----------|
+| Contact/company search response time | < 2 seconds | Across 100,000 records |
+| Pipeline dashboard load time | < 3 seconds | Full pipeline view with filters applied |
+| Duplicate detection on create | < 1 second | Single record creation |
+| Forecast snapshot generation | < 5 minutes | 10,000 opportunities |
 
 ## Domain Model
 

@@ -59,6 +59,8 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-001: Purchase Order Creation, Approval Workflows, Receipt Matching
 
+*Traces to: PRD SCM-001*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-001-AC1 | A user with the `procurement.po.create` permission can create a PO with one or more line items, each specifying item, quantity, unit price, required delivery date, and ship-to location. |
@@ -70,6 +72,8 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-002: Vendor Master
 
+*Traces to: PRD SCM-002*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-002-AC1 | A vendor record includes: legal name, DBA name, tax ID, primary contact, billing address, remittance address, default payment terms, default currency, tax configuration, and status (active/inactive/suspended). |
@@ -78,6 +82,8 @@ Every item that flows through procurement carries export control implications. I
 | SCM-002-AC4 | A vendor cannot be set to `Active` status if their denied-party screening result is anything other than `Clear`. |
 
 ### SCM-003: Inventory Management
+
+*Traces to: PRD SCM-003*
 
 | ID | Criterion |
 |----|-----------|
@@ -89,14 +95,18 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-004: Goods Receipt and Putaway
 
+*Traces to: PRD SCM-004*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-004-AC1 | Goods receipt can be performed against a PO; the system validates received quantities against PO line open quantities and flags over-receipts. |
-| SCM-004-AC2 | Barcode and QR code scanning is supported for item identification, lot/serial capture, and bin assignment during receipt and putaway. |
+| SCM-004-AC2 | Barcode and QR code scanning is supported for item identification, lot/serial capture, and bin assignment during receipt and putaway. Supported barcode formats for goods receipt scanning: Code 128, Code 39, QR Code, and Data Matrix. Input via keyboard-emulating scanner or camera-based scanning in the UI. |
 | SCM-004-AC3 | Putaway suggests a target bin based on item storage rules (ITAR classification, temperature requirements, item category) and allows operator override. |
 | SCM-004-AC4 | A completed goods receipt automatically updates inventory on-hand and triggers AP matching against the corresponding PO. |
 
 ### SCM-005: Blanket Purchase Orders
+
+*Traces to: PRD SCM-005*
 
 | ID | Criterion |
 |----|-----------|
@@ -106,6 +116,8 @@ Every item that flows through procurement carries export control implications. I
 | SCM-005-AC4 | Blanket POs support price escalation schedules (e.g., annual price adjustments per contract terms). |
 
 ### SCM-006: Launch Vehicle Procurement
+
+*Traces to: PRD SCM-006*
 
 | ID | Criterion |
 |----|-----------|
@@ -117,6 +129,8 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-007: Vendor Qualification
 
+*Traces to: PRD SCM-007*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-007-AC1 | An Approved Vendor List (AVL) can be maintained per commodity code or item category; the system warns or blocks PO creation for vendors not on the relevant AVL, based on configuration. |
@@ -126,15 +140,19 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-008: Component Genealogy
 
+*Traces to: PRD SCM-008*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-008-AC1 | The system maintains a directed acyclic graph (DAG) of component relationships: raw material lots are consumed into sub-assemblies, sub-assemblies into assemblies, assemblies into a finished satellite. |
-| SCM-008-AC2 | Given a satellite serial number, the system returns the complete bill of materials tree with lot/serial numbers, vendor, PO, receipt date, and inspection status for every component. |
+| SCM-008-AC2 | Given a satellite serial number, the system returns the complete bill of materials tree with lot/serial numbers, vendor, PO, receipt date, and inspection status for every component. BOM tree retrieval for a satellite with up to 50,000 components completes within 10 seconds. |
 | SCM-008-AC3 | Given a component lot or serial number, the system returns all satellites and sub-assemblies that consumed units from that lot (forward traceability). |
 | SCM-008-AC4 | Genealogy records are immutable; corrections are recorded as adjustment entries that reference the original record. |
 | SCM-008-AC5 | Component genealogy links to the build program (via Program Management) and the orbital asset (via Orbital Asset Management) for the satellite's full operational life. |
 
 ### SCM-009: ITAR/EAR Classification per Inventory Item
+
+*Traces to: PRD SCM-009*
 
 | ID | Criterion |
 |----|-----------|
@@ -145,6 +163,8 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-010: Consignment Inventory
 
+*Traces to: PRD SCM-010*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-010-AC1 | Consignment inventory is tracked at customer or partner sites with a distinct ownership status (`Operator-owned at customer site`). |
@@ -153,6 +173,8 @@ Every item that flows through procurement carries export control implications. I
 
 ### SCM-011: Bonded Warehouse and ITAR-Controlled Storage
 
+*Traces to: PRD SCM-011*
+
 | ID | Criterion |
 |----|-----------|
 | SCM-011-AC1 | Storage facilities can be tagged as `Bonded`, `ITAR-Controlled`, or both; access control rules enforce that only users with appropriate clearance can view or transact against ITAR-controlled locations. |
@@ -160,6 +182,8 @@ Every item that flows through procurement carries export control implications. I
 | SCM-011-AC3 | Transfer of items from an ITAR-controlled location to a non-controlled location requires compliance officer approval and generates an audit log entry. |
 
 ### SCM-012: Demand Planning and MRP
+
+*Traces to: PRD SCM-012*
 
 | ID | Criterion |
 |----|-----------|
