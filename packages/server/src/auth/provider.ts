@@ -88,8 +88,9 @@ export class DefaultAuthProvider implements AuthProvider {
 		);
 
 		let userId: string;
-		if (linkResult.rows.length > 0) {
-			userId = linkResult.rows[0]?.user_id;
+		const existingLink = linkResult.rows[0];
+		if (existingLink !== undefined) {
+			userId = existingLink.user_id;
 		} else {
 			// JIT provision: create user_account + identity link
 			userId = await this.jitProvision(assertion);
@@ -175,7 +176,9 @@ export class DefaultAuthProvider implements AuthProvider {
 			[assertion.email, displayName, SYSTEM_ACTOR_ID],
 		);
 
-		const userId = insertResult.rows[0]?.id;
+		const insertedRow = insertResult.rows[0];
+		if (!insertedRow?.id) throw new Error("JIT provisioning failed: no user ID returned");
+		const userId = insertedRow.id;
 
 		// Bind the IdP identity to this user; ignore if already linked
 		await this.db.query(
