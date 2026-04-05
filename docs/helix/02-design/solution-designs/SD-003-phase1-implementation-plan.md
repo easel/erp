@@ -35,7 +35,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Keycloak |
 | CI pipeline | GitHub Actions: lint, typecheck, unit test, build, container image push |
 | Database migration framework | graphile-migrate (SQL-first migrations, no ORM lock-in) |
-| Shared kernel package | `@apogee/kernel` -- base types, Result/Error types, audit context, pagination primitives |
+| Shared kernel package | `@apogee/shared` -- base types, Result/Error types, audit context, pagination primitives |
 | API framework | Fastify + GraphQL Yoga + Pothos (GraphQL) + OpenAPI auto-gen for REST endpoints |
 | Authentication scaffolding | OIDC client integration (Keycloak dev instance), session store in Redis |
 | Deployment manifests | Dockerfile (multi-stage), Helm chart with values for dev/staging/prod |
