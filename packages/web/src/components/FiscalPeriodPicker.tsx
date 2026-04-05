@@ -157,7 +157,8 @@ export function FiscalPeriodPicker({
 			{warning && (
 				<p
 					id={warningId}
-					role="alert"
+					aria-live="assertive"
+					aria-atomic="true"
 					style={{
 						margin: "0.25rem 0 0",
 						fontSize: "0.875rem",
@@ -174,7 +175,8 @@ export function FiscalPeriodPicker({
 			{error && (
 				<p
 					id={errorId}
-					role="alert"
+					aria-live="assertive"
+					aria-atomic="true"
 					style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#dc2626" }}
 				>
 					{error}

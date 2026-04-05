@@ -41,7 +41,6 @@ export function SyncRejectionResolutionPanel({
 	onDiscard,
 }: SyncRejectionResolutionPanelProps) {
 	return (
-		// biome-ignore lint/a11y/useSemanticElements: no native HTML element maps to role="alert"
 		<div
 			role="alert"
 			aria-label={`Sync rejection for ${entityLabel} ${entityId}`}

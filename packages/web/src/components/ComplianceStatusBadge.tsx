@@ -116,8 +116,7 @@ export function ComplianceStatusBadge({
 	};
 
 	const element = (
-		<span
-			role="status"
+		<output
 			aria-label={`Compliance status: ${config.label}${tooltipText ? `. ${tooltipText}` : ""}`}
 			title={tooltipText || undefined}
 			style={badgeStyle}
@@ -125,7 +124,7 @@ export function ComplianceStatusBadge({
 		>
 			<span aria-hidden="true">{config.icon}</span>
 			{config.label}
-		</span>
+		</output>
 	);
 
 	if (onClick) {
@@ -143,10 +142,10 @@ export function ComplianceStatusBadge({
 					display: "inline-flex",
 				}}
 			>
-				<span role="status" aria-hidden="true" style={badgeStyle} className={className}>
+				<output aria-hidden="true" style={badgeStyle} className={className}>
 					<span aria-hidden="true">{config.icon}</span>
 					{config.label}
-				</span>
+				</output>
 			</button>
 		);
 	}

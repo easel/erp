@@ -220,7 +220,8 @@ export function MoneyInput({
 			{showError && (
 				<p
 					id={errorId}
-					role="alert"
+					aria-live="assertive"
+					aria-atomic="true"
 					style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#dc2626" }}
 				>
 					{error ?? "Invalid amount. Use up to 13 integer digits and 6 decimal places."}

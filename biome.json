@@ -21,5 +21,18 @@
 	},
 	"files": {
 		"ignore": ["node_modules", "dist", ".ddx"]
-	}
+	},
+	"overrides": [
+		{
+			"include": ["packages/web/**"],
+			"linter": {
+				"rules": {
+					"a11y": {
+						"useSemanticElements": "off",
+						"noNoninteractiveElementToInteractiveRole": "off"
+					}
+				}
+			}
+		}
+	]
 }

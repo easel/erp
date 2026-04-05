@@ -187,6 +187,7 @@ export function EntitySwitcher({
 					role="listbox"
 					aria-labelledby={labelId}
 					aria-activedescendant={active ? `entity-option-${active.id}` : undefined}
+					tabIndex={0}
 					style={{
 						position: "absolute",
 						top: "calc(100% + 0.25rem)",

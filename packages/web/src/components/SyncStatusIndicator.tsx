@@ -137,9 +137,8 @@ export function SyncStatusIndicator({
 
 			{/* Expanded detail panel */}
 			{expanded && (
-				<div
+				<section
 					id={panelId}
-					role="region"
 					aria-label="Sync details"
 					style={{
 						position: "absolute",
@@ -197,7 +196,7 @@ export function SyncStatusIndicator({
 							You are offline. Changes will sync when you reconnect. Compliance checks are pending.
 						</p>
 					)}
-				</div>
+				</section>
 			)}
 
 			{/* CSS animation for syncing dot — injected once */}
@@ -218,8 +217,8 @@ export function SyncStatusIndicator({
 export function OfflineBanner(): React.ReactElement {
 	return (
 		<div
-			role="alert"
 			aria-live="assertive"
+			aria-atomic="true"
 			style={{
 				background: "#fef3c7",
 				borderBottom: "1px solid #f59e0b",

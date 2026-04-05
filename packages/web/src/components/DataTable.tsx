@@ -129,6 +129,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 	});
 
 	const pageCount = Math.ceil(totalCount / pagination.pageSize);
+	// biome-ignore lint/correctness/useExhaustiveDependencies: rowSelection and data drive getSelectedRowModel; table ref is stable
 	const selectedRows = useMemo(
 		() => table.getSelectedRowModel().rows.map((r) => r.original),
 		// eslint-disable-next-line react-hooks/exhaustive-deps
@@ -296,6 +297,16 @@ export function DataTable<TData extends Record<string, unknown>>({
 												background: "#f9fafb",
 											}}
 											onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
+											onKeyDown={
+												canSort
+													? (e) => {
+															if (e.key === "Enter" || e.key === " ") {
+																e.preventDefault();
+																header.column.getToggleSortingHandler()?.(e);
+															}
+														}
+													: undefined
+											}
 										>
 											<span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
 												{flexRender(header.column.columnDef.header, header.getContext())}
