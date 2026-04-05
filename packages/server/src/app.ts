@@ -4,6 +4,7 @@ import Fastify from "fastify";
 import { createYoga } from "graphql-yoga";
 import { Counter, Histogram, Registry, collectDefaultMetrics } from "prom-client";
 import { registerAuthHook } from "./auth.js";
+import { registerEntityContext } from "./entity-context.js";
 import { schema } from "./schema.js";
 import { generateSpanId, generateTraceId, parseTraceparent } from "./telemetry.js";
 
@@ -135,6 +136,9 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 	if (authSecret) {
 		registerAuthHook(app, { secret: authSecret });
 	}
+
+	// --- Entity context (requires auth to have run first) ---
+	registerEntityContext(app);
 
 	// --- CORS ---
 	await app.register(cors, {
