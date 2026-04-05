@@ -1853,3 +1853,672 @@ CREATE TRIGGER restricted_region_audit_stamp
 
 CREATE INDEX IF NOT EXISTS ix_rr_country_code
 	ON restricted_region (country_code) WHERE deleted_at IS NULL;
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- WP-5: Sales & CRM Schema
+-- Tables: customer, customer_address, product, price_list, price_list_entry,
+--         quote, quote_line, sales_order, sales_order_line,
+--         return_authorization, return_authorization_line (Sales §6),
+--         crm_company, crm_contact, company_relationship, pipeline_stage,
+--         opportunity, opportunity_line, activity, lead (CRM §7)
+-- Ref: SD-002-data-model.md §6 and §7
+-- Issues: hx-64aee390 (DB schema), hx-c116b0f8 (Zod schemas)
+-- Epic: erp-fdd91a4b
+-- ─────────────────────────────────────────────────────────────────────────────
+
+-- ── Customer Master ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS customer (
+	id                     UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id              UUID          NOT NULL REFERENCES legal_entity(id),
+	customer_code          VARCHAR(20)   NOT NULL,
+	legal_name             VARCHAR(255)  NOT NULL,
+	trade_name             VARCHAR(255),
+	country_code           CHAR(2)       NOT NULL,
+	tax_id                 VARCHAR(50),
+	payment_terms          VARCHAR(30)   NOT NULL DEFAULT 'NET30',
+	credit_limit           NUMERIC(19,6),
+	credit_limit_currency  CHAR(3),
+	default_currency_code  CHAR(3)       NOT NULL,
+	is_active              BOOLEAN       NOT NULL DEFAULT TRUE,
+	risk_rating            VARCHAR(10)   CHECK (risk_rating IN ('LOW', 'MEDIUM', 'HIGH')),
+	website                VARCHAR(500),
+	notes                  TEXT,
+	ext                    JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at             TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by             UUID          NOT NULL REFERENCES user_account(id),
+	updated_at             TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by             UUID          NOT NULL REFERENCES user_account(id),
+	version                INTEGER       NOT NULL DEFAULT 1,
+	deleted_at             TIMESTAMPTZ,
+	UNIQUE (entity_id, customer_code)
+);
+
+CREATE TRIGGER customer_audit_stamp
+	BEFORE INSERT OR UPDATE ON customer
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_customer_entity
+	ON customer (entity_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_customer_country
+	ON customer (country_code) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS customer_address (
+	id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	customer_id      UUID          NOT NULL REFERENCES customer(id),
+	address_type     VARCHAR(20)   NOT NULL CHECK (address_type IN ('BILLING', 'SHIPPING', 'BOTH')),
+	address_line_1   VARCHAR(255)  NOT NULL,
+	address_line_2   VARCHAR(255),
+	city             VARCHAR(100)  NOT NULL,
+	state_province   VARCHAR(100),
+	postal_code      VARCHAR(20),
+	country_code     CHAR(2)       NOT NULL,
+	is_default       BOOLEAN       NOT NULL DEFAULT FALSE,
+	created_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by       UUID          NOT NULL REFERENCES user_account(id),
+	updated_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by       UUID          NOT NULL REFERENCES user_account(id),
+	version          INTEGER       NOT NULL DEFAULT 1,
+	deleted_at       TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS ix_customer_address_customer
+	ON customer_address (customer_id) WHERE deleted_at IS NULL;
+
+-- ── Product Catalog ───────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS product (
+	id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID          NOT NULL REFERENCES legal_entity(id),
+	product_code         VARCHAR(30)   NOT NULL,
+	name                 VARCHAR(255)  NOT NULL,
+	description          TEXT,
+	product_type         VARCHAR(20)   NOT NULL CHECK (product_type IN ('GOOD', 'SERVICE', 'SUBSCRIPTION')),
+	unit_of_measure      VARCHAR(20)   NOT NULL DEFAULT 'EA',
+	is_active            BOOLEAN       NOT NULL DEFAULT TRUE,
+	revenue_account_id   UUID          REFERENCES account(id),
+	cogs_account_id      UUID          REFERENCES account(id),
+	inventory_item_id    UUID          REFERENCES inventory_item(id),
+	itar_compartment_id  UUID          REFERENCES itar_compartment(id),
+	ext                  JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by           UUID          NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by           UUID          NOT NULL REFERENCES user_account(id),
+	version              INTEGER       NOT NULL DEFAULT 1,
+	deleted_at           TIMESTAMPTZ,
+	UNIQUE (entity_id, product_code)
+);
+
+CREATE TRIGGER product_audit_stamp
+	BEFORE INSERT OR UPDATE ON product
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_product_entity
+	ON product (entity_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS price_list (
+	id              UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id       UUID          NOT NULL REFERENCES legal_entity(id),
+	code            VARCHAR(30)   NOT NULL,
+	name            VARCHAR(100)  NOT NULL,
+	currency_code   CHAR(3)       NOT NULL REFERENCES currency(code),
+	effective_from  DATE          NOT NULL,
+	effective_to    DATE,
+	is_active       BOOLEAN       NOT NULL DEFAULT TRUE,
+	created_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by      UUID          NOT NULL REFERENCES user_account(id),
+	updated_at      TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by      UUID          NOT NULL REFERENCES user_account(id),
+	version         INTEGER       NOT NULL DEFAULT 1,
+	UNIQUE (entity_id, code)
+);
+
+CREATE TABLE IF NOT EXISTS price_list_entry (
+	id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	price_list_id   UUID           NOT NULL REFERENCES price_list(id),
+	product_id      UUID           NOT NULL REFERENCES product(id),
+	unit_price      NUMERIC(19,6)  NOT NULL CHECK (unit_price >= 0),
+	min_quantity    NUMERIC(16,4)  NOT NULL DEFAULT 1,
+	effective_from  DATE           NOT NULL,
+	effective_to    DATE,
+	created_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by      UUID           NOT NULL REFERENCES user_account(id),
+	UNIQUE (price_list_id, product_id, min_quantity, effective_from)
+);
+
+CREATE INDEX IF NOT EXISTS ix_ple_price_list
+	ON price_list_entry (price_list_id);
+CREATE INDEX IF NOT EXISTS ix_ple_product
+	ON price_list_entry (product_id);
+
+-- ── Quote ─────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS quote (
+	id                  UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID           NOT NULL REFERENCES legal_entity(id),
+	customer_id         UUID           NOT NULL REFERENCES customer(id),
+	quote_number        VARCHAR(30)    NOT NULL,
+	quote_date          DATE           NOT NULL,
+	valid_until         DATE,
+	currency_code       CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate       NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	subtotal_amount     NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	tax_amount          NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	total_amount        NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	base_total_amount   NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	status              VARCHAR(20)    NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CANCELLED')),
+	assigned_to         UUID           REFERENCES user_account(id),
+	compliance_status   VARCHAR(10)    NOT NULL DEFAULT 'pending'
+		CHECK (compliance_status IN ('pending', 'cleared', 'held')),
+	opportunity_id      UUID,           -- FK to opportunity(id) — added below after opportunity table
+	notes               TEXT,
+	ext                 JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by          UUID           NOT NULL REFERENCES user_account(id),
+	updated_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by          UUID           NOT NULL REFERENCES user_account(id),
+	version             INTEGER        NOT NULL DEFAULT 1,
+	deleted_at          TIMESTAMPTZ,
+	UNIQUE (entity_id, quote_number)
+);
+
+CREATE TRIGGER quote_audit_stamp
+	BEFORE INSERT OR UPDATE ON quote
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_quote_entity_status
+	ON quote (entity_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_quote_customer
+	ON quote (customer_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS quote_line (
+	id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	quote_id         UUID           NOT NULL REFERENCES quote(id),
+	line_number      INTEGER        NOT NULL,
+	product_id       UUID           REFERENCES product(id),
+	description      VARCHAR(500)   NOT NULL,
+	quantity         NUMERIC(16,4)  NOT NULL CHECK (quantity > 0),
+	unit_price       NUMERIC(19,6)  NOT NULL,
+	discount_percent NUMERIC(5,2)   NOT NULL DEFAULT 0,
+	amount           NUMERIC(19,6)  NOT NULL,
+	currency_code    CHAR(3)        NOT NULL,
+	tax_code         VARCHAR(20),
+	tax_amount       NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	created_at       TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (quote_id, line_number)
+);
+
+CREATE INDEX IF NOT EXISTS ix_quote_line_quote
+	ON quote_line (quote_id);
+
+-- ── Sales Order ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sales_order (
+	id                   UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id            UUID           NOT NULL REFERENCES legal_entity(id),
+	customer_id          UUID           NOT NULL REFERENCES customer(id),
+	quote_id             UUID           REFERENCES quote(id),
+	order_number         VARCHAR(30)    NOT NULL,
+	order_date           DATE           NOT NULL,
+	required_date        DATE,
+	currency_code        CHAR(3)        NOT NULL REFERENCES currency(code),
+	exchange_rate        NUMERIC(18,10) NOT NULL DEFAULT 1.0,
+	subtotal_amount      NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	tax_amount           NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	total_amount         NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	base_total_amount    NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	status               VARCHAR(30)    NOT NULL DEFAULT 'DRAFT'
+		CHECK (status IN ('DRAFT', 'CONFIRMED', 'PENDING_COMPLIANCE_CHECK', 'RELEASED_TO_FULFILLMENT', 'PARTIALLY_SHIPPED', 'SHIPPED', 'INVOICED', 'CLOSED', 'CANCELLED')),
+	shipping_address_id  UUID           REFERENCES customer_address(id),
+	billing_address_id   UUID           REFERENCES customer_address(id),
+	payment_terms        VARCHAR(30),
+	assigned_to          UUID           REFERENCES user_account(id),
+	compliance_status    VARCHAR(10)    NOT NULL DEFAULT 'pending'
+		CHECK (compliance_status IN ('pending', 'cleared', 'held')),
+	itar_compartment_id  UUID           REFERENCES itar_compartment(id),
+	notes                TEXT,
+	ext                  JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at           TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by           UUID           NOT NULL REFERENCES user_account(id),
+	updated_at           TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by           UUID           NOT NULL REFERENCES user_account(id),
+	version              INTEGER        NOT NULL DEFAULT 1,
+	deleted_at           TIMESTAMPTZ,
+	UNIQUE (entity_id, order_number)
+);
+
+CREATE TRIGGER sales_order_audit_stamp
+	BEFORE INSERT OR UPDATE ON sales_order
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_so_entity_status
+	ON sales_order (entity_id, status) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_so_customer
+	ON sales_order (customer_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_so_compliance
+	ON sales_order (compliance_status) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS sales_order_line (
+	id                  UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	sales_order_id      UUID           NOT NULL REFERENCES sales_order(id),
+	line_number         INTEGER        NOT NULL,
+	product_id          UUID           REFERENCES product(id),
+	description         VARCHAR(500)   NOT NULL,
+	quantity_ordered    NUMERIC(16,4)  NOT NULL CHECK (quantity_ordered > 0),
+	quantity_shipped    NUMERIC(16,4)  NOT NULL DEFAULT 0,
+	quantity_invoiced   NUMERIC(16,4)  NOT NULL DEFAULT 0,
+	unit_price          NUMERIC(19,6)  NOT NULL,
+	discount_percent    NUMERIC(5,2)   NOT NULL DEFAULT 0,
+	amount              NUMERIC(19,6)  NOT NULL,
+	currency_code       CHAR(3)        NOT NULL,
+	tax_code            VARCHAR(20),
+	tax_amount          NUMERIC(19,6)  NOT NULL DEFAULT 0,
+	account_id          UUID           REFERENCES account(id),
+	ext                 JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at          TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	UNIQUE (sales_order_id, line_number)
+);
+
+CREATE INDEX IF NOT EXISTS ix_sol_sales_order
+	ON sales_order_line (sales_order_id);
+
+-- ── Return Merchandise Authorization ─────────────────────────────────────────
+
+CREATE TYPE IF NOT EXISTS return_status AS ENUM (
+	'REQUESTED', 'APPROVED', 'RECEIVED', 'INSPECTED', 'RESOLVED'
+);
+
+CREATE TABLE IF NOT EXISTS return_authorization (
+	id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id       UUID           NOT NULL REFERENCES legal_entity(id),
+	sales_order_id  UUID           NOT NULL REFERENCES sales_order(id),
+	customer_id     UUID           NOT NULL REFERENCES customer(id),
+	ra_number       VARCHAR(30)    NOT NULL UNIQUE,
+	status          return_status  NOT NULL DEFAULT 'REQUESTED',
+	reason          TEXT,
+	requested_at    TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	approved_by     UUID           REFERENCES user_account(id),
+	created_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by      UUID           NOT NULL REFERENCES user_account(id),
+	updated_at      TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by      UUID           NOT NULL REFERENCES user_account(id),
+	version         INTEGER        NOT NULL DEFAULT 1,
+	deleted_at      TIMESTAMPTZ
+);
+
+CREATE TRIGGER return_authorization_audit_stamp
+	BEFORE INSERT OR UPDATE ON return_authorization
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_ra_sales_order
+	ON return_authorization (sales_order_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_ra_customer
+	ON return_authorization (customer_id) WHERE deleted_at IS NULL;
+
+CREATE TABLE IF NOT EXISTS return_authorization_line (
+	id                       UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	return_authorization_id  UUID           NOT NULL REFERENCES return_authorization(id),
+	sales_order_line_id      UUID           NOT NULL REFERENCES sales_order_line(id),
+	product_id               UUID           REFERENCES product(id),
+	quantity_returned        NUMERIC(16,4)  NOT NULL CHECK (quantity_returned > 0),
+	quantity_received        NUMERIC(16,4)  NOT NULL DEFAULT 0,
+	quantity_restocked       NUMERIC(16,4)  NOT NULL DEFAULT 0,
+	disposition              VARCHAR(20)    CHECK (disposition IN ('RESTOCK', 'SCRAP', 'REPAIR')),
+	credit_amount            NUMERIC(19,6),
+	credit_currency_code     CHAR(3),
+	created_at               TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by               UUID           NOT NULL REFERENCES user_account(id),
+	updated_at               TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by               UUID           NOT NULL REFERENCES user_account(id),
+	version                  INTEGER        NOT NULL DEFAULT 1,
+	CHECK (quantity_received >= 0 AND quantity_received <= quantity_returned),
+	CHECK (quantity_restocked >= 0 AND quantity_restocked <= quantity_received)
+);
+
+CREATE INDEX IF NOT EXISTS ix_ral_return_auth
+	ON return_authorization_line (return_authorization_id);
+
+-- ── CRM: Company ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS crm_company (
+	id                    UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id             UUID          NOT NULL REFERENCES legal_entity(id),
+	name                  VARCHAR(255)  NOT NULL,
+	domain                VARCHAR(255),
+	industry              VARCHAR(100),
+	employee_count_range  VARCHAR(20),
+	annual_revenue_range  VARCHAR(30),
+	country_code          CHAR(2),
+	phone                 VARCHAR(50),
+	website               VARCHAR(500),
+	customer_id           UUID          REFERENCES customer(id),
+	vendor_id             UUID          REFERENCES vendor(id),
+	owner_user_id         UUID          REFERENCES user_account(id),
+	ext                   JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by            UUID          NOT NULL REFERENCES user_account(id),
+	updated_at            TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by            UUID          NOT NULL REFERENCES user_account(id),
+	version               INTEGER       NOT NULL DEFAULT 1,
+	deleted_at            TIMESTAMPTZ
+);
+
+CREATE TRIGGER crm_company_audit_stamp
+	BEFORE INSERT OR UPDATE ON crm_company
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_crmc_entity
+	ON crm_company (entity_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_crmc_customer
+	ON crm_company (customer_id) WHERE customer_id IS NOT NULL;
+
+-- ── CRM: Contact ──────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS crm_contact (
+	id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id        UUID          NOT NULL REFERENCES legal_entity(id),
+	crm_company_id   UUID          REFERENCES crm_company(id),
+	first_name       VARCHAR(100)  NOT NULL,
+	last_name        VARCHAR(100)  NOT NULL,
+	email            VARCHAR(255),
+	phone            VARCHAR(50),
+	mobile           VARCHAR(50),
+	job_title        VARCHAR(100),
+	department       VARCHAR(100),
+	country_code     CHAR(2),
+	address          JSONB,
+	do_not_contact   BOOLEAN       NOT NULL DEFAULT FALSE,
+	owner_user_id    UUID          REFERENCES user_account(id),
+	source           VARCHAR(50),
+	ext              JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by       UUID          NOT NULL REFERENCES user_account(id),
+	updated_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by       UUID          NOT NULL REFERENCES user_account(id),
+	version          INTEGER       NOT NULL DEFAULT 1,
+	deleted_at       TIMESTAMPTZ
+);
+
+CREATE TRIGGER crm_contact_audit_stamp
+	BEFORE INSERT OR UPDATE ON crm_contact
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_crmct_company
+	ON crm_contact (crm_company_id) WHERE crm_company_id IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_crmct_email
+	ON crm_contact (email) WHERE email IS NOT NULL AND deleted_at IS NULL;
+
+-- ── CRM: Company Relationship ─────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS company_relationship (
+	id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id           UUID         NOT NULL REFERENCES legal_entity(id),
+	parent_company_id   UUID         NOT NULL REFERENCES crm_company(id),
+	child_company_id    UUID         NOT NULL REFERENCES crm_company(id),
+	relationship_type   VARCHAR(30)  NOT NULL
+		CHECK (relationship_type IN ('PARENT', 'SUBSIDIARY', 'PARTNER', 'JOINT_VENTURE', 'RESELLER')),
+	effective_from      DATE         NOT NULL,
+	effective_until     DATE,
+	notes               TEXT,
+	created_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	created_by          UUID         NOT NULL REFERENCES user_account(id),
+	updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	updated_by          UUID         NOT NULL REFERENCES user_account(id),
+	version             INTEGER      NOT NULL DEFAULT 1,
+	deleted_at          TIMESTAMPTZ,
+	CHECK (parent_company_id <> child_company_id),
+	CHECK (effective_until IS NULL OR effective_until > effective_from),
+	UNIQUE (parent_company_id, child_company_id, relationship_type, effective_from)
+);
+
+-- ── Pipeline Stage ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS pipeline_stage (
+	id               UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id        UUID           NOT NULL REFERENCES legal_entity(id),
+	code             VARCHAR(30)    NOT NULL,
+	name             VARCHAR(100)   NOT NULL,
+	stage_order      INTEGER        NOT NULL,
+	win_probability  NUMERIC(5,2),
+	is_closed_won    BOOLEAN        NOT NULL DEFAULT FALSE,
+	is_closed_lost   BOOLEAN        NOT NULL DEFAULT FALSE,
+	created_at       TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by       UUID           NOT NULL REFERENCES user_account(id),
+	UNIQUE (entity_id, code),
+	UNIQUE (entity_id, stage_order)
+);
+
+-- ── Opportunity ───────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS opportunity (
+	id                    UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id             UUID           NOT NULL REFERENCES legal_entity(id),
+	crm_company_id        UUID           REFERENCES crm_company(id),
+	customer_id           UUID           REFERENCES customer(id),
+	name                  VARCHAR(255)   NOT NULL,
+	description           TEXT,
+	pipeline_stage_id     UUID           NOT NULL REFERENCES pipeline_stage(id),
+	amount                NUMERIC(19,6),
+	currency_code         CHAR(3),
+	probability           NUMERIC(5,2),
+	expected_close_date   DATE,
+	actual_close_date     DATE,
+	owner_user_id         UUID           REFERENCES user_account(id),
+	source                VARCHAR(50),
+	lost_reason           VARCHAR(255),
+	ext                   JSONB          NOT NULL DEFAULT '{}'::jsonb,
+	created_at            TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	created_by            UUID           NOT NULL REFERENCES user_account(id),
+	updated_at            TIMESTAMPTZ    NOT NULL DEFAULT now(),
+	updated_by            UUID           NOT NULL REFERENCES user_account(id),
+	version               INTEGER        NOT NULL DEFAULT 1,
+	deleted_at            TIMESTAMPTZ
+);
+
+CREATE TRIGGER opportunity_audit_stamp
+	BEFORE INSERT OR UPDATE ON opportunity
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_opp_entity_stage
+	ON opportunity (entity_id, pipeline_stage_id) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_opp_company
+	ON opportunity (crm_company_id) WHERE crm_company_id IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS opportunity_line (
+	id              UUID           PRIMARY KEY DEFAULT gen_random_uuid(),
+	opportunity_id  UUID           NOT NULL REFERENCES opportunity(id),
+	product_id      UUID           REFERENCES product(id),
+	description     VARCHAR(500)   NOT NULL,
+	quantity        NUMERIC(16,4)  NOT NULL DEFAULT 1,
+	unit_price      NUMERIC(19,6)  NOT NULL,
+	amount          NUMERIC(19,6)  NOT NULL,
+	currency_code   CHAR(3)        NOT NULL,
+	created_at      TIMESTAMPTZ    NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS ix_opl_opportunity
+	ON opportunity_line (opportunity_id);
+
+-- ── Activity ──────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS activity (
+	id               UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id        UUID          NOT NULL REFERENCES legal_entity(id),
+	activity_type    VARCHAR(20)   NOT NULL CHECK (activity_type IN ('CALL', 'EMAIL', 'MEETING', 'TASK', 'NOTE')),
+	subject          VARCHAR(255)  NOT NULL,
+	description      TEXT,
+	crm_contact_id   UUID          REFERENCES crm_contact(id),
+	crm_company_id   UUID          REFERENCES crm_company(id),
+	opportunity_id   UUID          REFERENCES opportunity(id),
+	lead_id          UUID,          -- FK to lead(id) — added below after lead table
+	owner_user_id    UUID          NOT NULL REFERENCES user_account(id),
+	due_date         TIMESTAMPTZ,
+	completed_at     TIMESTAMPTZ,
+	is_completed     BOOLEAN       NOT NULL DEFAULT FALSE,
+	ext              JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by       UUID          NOT NULL REFERENCES user_account(id),
+	updated_at       TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by       UUID          NOT NULL REFERENCES user_account(id),
+	version          INTEGER       NOT NULL DEFAULT 1,
+	deleted_at       TIMESTAMPTZ
+);
+
+CREATE TRIGGER activity_audit_stamp
+	BEFORE INSERT OR UPDATE ON activity
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_activity_opportunity
+	ON activity (opportunity_id) WHERE opportunity_id IS NOT NULL AND deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS ix_activity_company
+	ON activity (crm_company_id) WHERE crm_company_id IS NOT NULL AND deleted_at IS NULL;
+
+-- ── Lead ──────────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS lead (
+	id                         UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
+	entity_id                  UUID          NOT NULL REFERENCES legal_entity(id),
+	first_name                 VARCHAR(100)  NOT NULL,
+	last_name                  VARCHAR(100)  NOT NULL,
+	email                      VARCHAR(255),
+	phone                      VARCHAR(50),
+	company_name               VARCHAR(255),
+	job_title                  VARCHAR(100),
+	source                     VARCHAR(50),
+	status                     VARCHAR(20)   NOT NULL DEFAULT 'NEW'
+		CHECK (status IN ('NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'DISQUALIFIED')),
+	owner_user_id              UUID          REFERENCES user_account(id),
+	converted_contact_id       UUID          REFERENCES crm_contact(id),
+	converted_opportunity_id   UUID          REFERENCES opportunity(id),
+	converted_at               TIMESTAMPTZ,
+	notes                      TEXT,
+	ext                        JSONB         NOT NULL DEFAULT '{}'::jsonb,
+	created_at                 TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	created_by                 UUID          NOT NULL REFERENCES user_account(id),
+	updated_at                 TIMESTAMPTZ   NOT NULL DEFAULT now(),
+	updated_by                 UUID          NOT NULL REFERENCES user_account(id),
+	version                    INTEGER       NOT NULL DEFAULT 1,
+	deleted_at                 TIMESTAMPTZ
+);
+
+CREATE TRIGGER lead_audit_stamp
+	BEFORE INSERT OR UPDATE ON lead
+	FOR EACH ROW EXECUTE FUNCTION audit_stamp();
+
+CREATE INDEX IF NOT EXISTS ix_lead_entity_status
+	ON lead (entity_id, status) WHERE deleted_at IS NULL;
+
+-- ── WP-5 FK fixups: wire deferred FK constraints now that tables exist ─────────
+
+-- quote.opportunity_id → opportunity(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'quote_opportunity_id_fk'
+	) THEN
+		ALTER TABLE quote ADD CONSTRAINT quote_opportunity_id_fk
+			FOREIGN KEY (opportunity_id) REFERENCES opportunity(id);
+	END IF;
+END $$;
+
+-- activity.lead_id → lead(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'activity_lead_id_fk'
+	) THEN
+		ALTER TABLE activity ADD CONSTRAINT activity_lead_id_fk
+			FOREIGN KEY (lead_id) REFERENCES lead(id);
+	END IF;
+END $$;
+
+-- customer_invoice.customer_id → customer(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'customer_invoice_customer_id_fk'
+	) THEN
+		ALTER TABLE customer_invoice ADD CONSTRAINT customer_invoice_customer_id_fk
+			FOREIGN KEY (customer_id) REFERENCES customer(id);
+	END IF;
+END $$;
+
+-- customer_invoice.sales_order_id → sales_order(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'customer_invoice_sales_order_id_fk'
+	) THEN
+		ALTER TABLE customer_invoice ADD CONSTRAINT customer_invoice_sales_order_id_fk
+			FOREIGN KEY (sales_order_id) REFERENCES sales_order(id);
+	END IF;
+END $$;
+
+-- customer_invoice_line.product_id → product(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'customer_invoice_line_product_id_fk'
+	) THEN
+		ALTER TABLE customer_invoice_line ADD CONSTRAINT customer_invoice_line_product_id_fk
+			FOREIGN KEY (product_id) REFERENCES product(id);
+	END IF;
+END $$;
+
+-- customer_payment.customer_id → customer(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'customer_payment_customer_id_fk'
+	) THEN
+		ALTER TABLE customer_payment ADD CONSTRAINT customer_payment_customer_id_fk
+			FOREIGN KEY (customer_id) REFERENCES customer(id);
+	END IF;
+END $$;
+
+-- dunning_letter.customer_id → customer(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'dunning_letter_customer_id_fk'
+	) THEN
+		ALTER TABLE dunning_letter ADD CONSTRAINT dunning_letter_customer_id_fk
+			FOREIGN KEY (customer_id) REFERENCES customer(id);
+	END IF;
+END $$;
+
+-- shipment.sales_order_id → sales_order(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'shipment_sales_order_id_fk'
+	) THEN
+		ALTER TABLE shipment ADD CONSTRAINT shipment_sales_order_id_fk
+			FOREIGN KEY (sales_order_id) REFERENCES sales_order(id);
+	END IF;
+END $$;
+
+-- shipment.customer_id → customer(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'shipment_customer_id_fk'
+	) THEN
+		ALTER TABLE shipment ADD CONSTRAINT shipment_customer_id_fk
+			FOREIGN KEY (customer_id) REFERENCES customer(id);
+	END IF;
+END $$;
+
+-- shipment_line.sales_order_line_id → sales_order_line(id)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'shipment_line_sales_order_line_id_fk'
+	) THEN
+		ALTER TABLE shipment_line ADD CONSTRAINT shipment_line_sales_order_line_id_fk
+			FOREIGN KEY (sales_order_line_id) REFERENCES sales_order_line(id);
+	END IF;
+END $$;
+
+-- product_classification.product_id → product(id)
+-- (was plain UUID stub since WP-3, product table now exists)
+DO $$ BEGIN
+	IF NOT EXISTS (
+		SELECT 1 FROM pg_constraint WHERE conname = 'product_classification_product_id_fk'
+	) THEN
+		ALTER TABLE product_classification ADD CONSTRAINT product_classification_product_id_fk
+			FOREIGN KEY (product_id) REFERENCES product(id);
+	END IF;
+END $$;

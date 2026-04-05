@@ -18,3 +18,6 @@ export * from "./vendor-bill.js";
 export * from "./customer-invoice.js";
 // WP-3: Export Control
 export * from "./export-control.js";
+// WP-5: Sales & CRM
+export * from "./sales.js";
+export * from "./crm.js";

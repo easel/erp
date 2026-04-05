@@ -10,3 +10,13 @@ export * from "./entity-schemas/journal-entry.js";
 export * from "./entity-schemas/purchase-order.js";
 export * from "./entity-schemas/inventory.js";
 export * from "./entity-schemas/goods-receipt.js";
+export * from "./entity-schemas/shipment.js";
+export * from "./entity-schemas/account.js";
+export * from "./entity-schemas/fiscal-period.js";
+export * from "./entity-schemas/currency.js";
+export * from "./entity-schemas/vendor-bill.js";
+export * from "./entity-schemas/customer-invoice.js";
+export * from "./entity-schemas/export-control.js";
+// WP-5: Sales & CRM
+export * from "./entity-schemas/sales.js";
+export * from "./entity-schemas/crm.js";
