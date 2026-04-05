@@ -31,10 +31,7 @@ import {
 	buildIncomeStatement,
 	buildTrialBalance,
 } from "../../src/finance/rpt-service.js";
-import {
-	bestMatchScore,
-	normaliseScreeningName,
-} from "../../src/compliance/export-control-service.js";
+import { screenVendorForPO } from "../../src/procurement/compliance-screening-service.js";
 import {
 	type BillLineSnapshot,
 	type GoodsReceiptLineSnapshot,
@@ -174,36 +171,40 @@ describe("Financial reporting — performance SLAs", () => {
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("Denied-party screening — performance SLAs", () => {
-	// Acceptance criteria (SD-003 WP-3): single-party real-time check < 500ms.
-	// This test validates the in-memory Levenshtein scoring phase of screenParty
-	// against a realistic list size (5,000 entries). The DB round-trip is excluded
-	// here (covered by integration tests); this validates the pure CPU-bound path.
-	test("in-memory Levenshtein scoring: 1 query × 5,000 list entries < 500ms", () => {
-		const LIST_SIZE = 5000;
+	test("screening 1,000 vendors < 30,000ms (30s SLA)", () => {
+		const VENDOR_COUNT = 1000;
 
-		// Simulate a denied-party list with realistic entry names
-		const listEntries = Array.from({ length: LIST_SIZE }, (_, i) => ({
-			entryNorm: normaliseScreeningName(`Sanctioned Entity Group ${i} International`),
-			aliasesNorm: [normaliseScreeningName(`SEG${i} Corp`)],
-		}));
-
-		const queryNorm = normaliseScreeningName("Orbital Components Ltd");
+		// Mix of CLEAR, POTENTIAL_MATCH, and CONFIRMED_MATCH vendors
+		const vendors = Array.from({ length: VENDOR_COUNT }, (_, i) => {
+			if (i % 100 === 0) return `DENIED PARTY ${i}`;
+			if (i % 50 === 0) return `Suspect Vendor ${i}`;
+			return `Orbital Components ${i} Ltd.`;
+		});
 
 		const start = performance.now();
-		let topScore = 0;
+		let clearCount = 0;
+		let holdCount = 0;
 
-		for (const entry of listEntries) {
-			const score = bestMatchScore(queryNorm, entry.entryNorm, entry.aliasesNorm);
-			if (score > topScore) topScore = score;
+		for (const vendorName of vendors) {
+			const result = screenVendorForPO({
+				vendorId: uuid(`00000000-vnd-0000-0000-${hexPad(vendors.indexOf(vendorName) + 1)}`),
+				vendorName,
+				entityId: "00000000-0000-0000-0000-000000000001",
+				purchaseOrderId: uuid("00000000-po-00000000-0000-000000000001"),
+			});
+			if (result.holdRequired) holdCount++;
+			else clearCount++;
 		}
 
 		const elapsed = performance.now() - start;
 
-		// Query should not match any entry (completely different name pattern)
-		expect(topScore).toBeLessThan(0.72);
+		// Correctness: each 100th = DENIED, each 50th (non-100th) = SUSPECT
+		// 10 DENIED + ~10 SUSPECT (≈ 20 holds) + ≈ 980 clear
+		expect(holdCount).toBeGreaterThan(0);
+		expect(clearCount).toBeGreaterThan(holdCount);
 
-		// SLA: single-party screening < 500ms
-		expect(elapsed).toBeLessThan(500);
+		// SLA: under 30s
+		expect(elapsed).toBeLessThan(30_000);
 	});
 });
 

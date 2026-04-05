@@ -26,10 +26,7 @@ import type { UUID } from "@apogee/shared";
 import type { FastifyInstance } from "fastify";
 import { buildApp } from "../../src/app.js";
 import { createTestJWT } from "../../src/auth.js";
-import type {
-	ScreenVendorParams,
-	VendorScreeningResult,
-} from "../../src/procurement/compliance-screening-service.js";
+import { screenVendorForPO } from "../../src/procurement/compliance-screening-service.js";
 import { approve } from "../../src/procurement/po-approval-workflow.js";
 import {
 	hasCompartmentAccess,
@@ -423,29 +420,12 @@ describe("RBAC pure checks — boundary hardening", () => {
 });
 
 // ── NIST 3.3.1 / 3.3.2: Compliance screening audit trail ────────────────────
-// Stub screening functions — the real DB-backed engine lives in
-// src/compliance/export-control-service.ts (tested in test/compliance/).
-// These tests verify that the PO approval workflow correctly propagates
-// screening outcomes to hold/approve decisions and audit trail fields.
-
-function makeScreenStub(
-	outcome: VendorScreeningResult["outcome"],
-): (_: ScreenVendorParams) => VendorScreeningResult {
-	const holdRequired = outcome !== "CLEAR";
-	return (_params) => ({
-		outcome,
-		matchCount: holdRequired ? 1 : 0,
-		holdRequired,
-		holdReason: holdRequired ? "SCREENING_MATCH" : null,
-		screeningResultId: `stub-${outcome.toLowerCase()}`,
-	});
-}
 
 describe("NIST 3.3.1/3.3.2 — Denied-party screening audit trail", () => {
 	const params = { vendorId: "v1", entityId: "e1", purchaseOrderId: "po1" };
 
 	test("CLEAR vendor generates no hold — screening result recorded", () => {
-		const result = makeScreenStub("CLEAR")(params as ScreenVendorParams);
+		const result = screenVendorForPO({ ...params, vendorName: "Orbital Components Ltd." });
 		expect(result.outcome).toBe("CLEAR");
 		expect(result.holdRequired).toBe(false);
 		expect(result.holdReason).toBeNull();
@@ -453,7 +433,7 @@ describe("NIST 3.3.1/3.3.2 — Denied-party screening audit trail", () => {
 	});
 
 	test("POTENTIAL_MATCH vendor triggers hold — audit trace preserved", () => {
-		const result = makeScreenStub("POTENTIAL_MATCH")(params as ScreenVendorParams);
+		const result = screenVendorForPO({ ...params, vendorName: "Suspect Orbital Corp." });
 		expect(result.outcome).toBe("POTENTIAL_MATCH");
 		expect(result.holdRequired).toBe(true);
 		expect(result.holdReason).toBe("SCREENING_MATCH");
@@ -461,7 +441,7 @@ describe("NIST 3.3.1/3.3.2 — Denied-party screening audit trail", () => {
 	});
 
 	test("CONFIRMED_MATCH vendor triggers hold — audit trace preserved", () => {
-		const result = makeScreenStub("CONFIRMED_MATCH")(params as ScreenVendorParams);
+		const result = screenVendorForPO({ ...params, vendorName: "DENIED PARTY ENTITY" });
 		expect(result.outcome).toBe("CONFIRMED_MATCH");
 		expect(result.holdRequired).toBe(true);
 		expect(result.holdReason).toBe("SCREENING_MATCH");
@@ -472,10 +452,10 @@ describe("NIST 3.3.1/3.3.2 — Denied-party screening audit trail", () => {
 			id: "po-sec-001" as UUID,
 			entityId: ENTITY_A,
 			vendorId: "v1" as UUID,
-			vendorName: "Denied Party Entity",
+			vendorName: "DENIED PARTY ENTITY",
 			status: "PENDING_APPROVAL" as const,
 		};
-		const result = approve(po, USER_FINANCE, makeScreenStub("CONFIRMED_MATCH"));
+		const result = approve(po, USER_FINANCE);
 		expect(result.newStatus).toBe("ON_HOLD");
 		expect(result.holdId).toBeTruthy();
 	});
@@ -488,7 +468,7 @@ describe("NIST 3.3.1/3.3.2 — Denied-party screening audit trail", () => {
 			vendorName: "Orbital Components Ltd.",
 			status: "PENDING_APPROVAL" as const,
 		};
-		const result = approve(po, USER_FINANCE, makeScreenStub("CLEAR"));
+		const result = approve(po, USER_FINANCE);
 		expect(result.newStatus).toBe("APPROVED");
 		expect(result.holdId).toBeNull();
 	});
