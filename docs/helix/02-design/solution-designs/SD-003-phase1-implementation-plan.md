@@ -137,7 +137,7 @@ Covers PRD requirements FIN-001 through FIN-007. Broken into three sub-packages 
 **Dependencies:** WP-1
 **Parallel with:** WP-2 (no dependency between Finance and Export Control)
 
-Covers PRD requirements EXP-001 through EXP-004.
+Covers PRD requirements EXP-001 through EXP-004, EXP-006, and EXP-012.
 
 | Req | Deliverable | Detail |
 |---|---|---|
@@ -145,6 +145,8 @@ Covers PRD requirements EXP-001 through EXP-004.
 | EXP-002 | Denied-party screening | Consolidated screening list integration (BIS, OFAC SDN, EU sanctions, UN), fuzzy name matching (Levenshtein + alias expansion), batch + real-time screening, match scoring and threshold config |
 | EXP-003 | Transaction holds | Automatic hold on screening hits, compliance officer review queue, release/reject workflow, hold reason and resolution audit trail |
 | EXP-004 | Country restrictions | Country-level deny/allow lists per classification, embargo enforcement, end-use/end-user checks |
+| EXP-006 | Five-level restriction model | Country restriction rules aligned to five-level model (EMBARGOED, HEAVILY_RESTRICTED, LICENSE_REQUIRED, CAUTION, UNRESTRICTED) per FEAT-006 |
+| EXP-012 | Sub-national region restrictions | Restricted region definitions with GeoJSON boundaries and administrative division matching for sub-national sanctions enforcement |
 
 **Additional deliverables:**
 
@@ -374,7 +376,7 @@ WP-2  Finance         WP-3  Export Control
 | WP-0 | -- | Repo, CI, dev env, Helm chart | 2 wk |
 | WP-1 | PLT-001..006 | API layer, RBAC, audit, multi-entity, auth | 3--4 wk |
 | WP-2 | FIN-001..007 | COA, GL, AP, AR, multi-currency, IC, reporting | 5--6 wk |
-| WP-3 | EXP-001..004 | Classification, screening, holds, country rules | 3--4 wk |
+| WP-3 | EXP-001..004, 006, 012 | Classification, screening, holds, country rules, five-level restriction model, sub-national regions | 3--4 wk |
 | WP-4 | SCM-001..004 | POs, vendor master, inventory, goods receipt | 3--4 wk |
 | WP-5 | SLS-001..004, CRM-001..003 | Quotes, orders, customer master, catalog, pipeline | 4--5 wk |
 | WP-6 | LOG-001..002 | Pick/pack/ship, customs docs | 2--3 wk |
