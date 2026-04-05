@@ -19,10 +19,14 @@ export const UUIDSchema = z
 	.uuid("Must be a valid UUID v4")
 	.transform((v) => v as UUID);
 
-/** Monetary amount — string representation of NUMERIC(19,6). See ADR-003. */
+/** Monetary amount — string representation of NUMERIC(19,6). See ADR-003.
+ * Allows up to 13 integer digits and 6 decimal digits (NUMERIC(19,6) = 19 total - 6 decimal). */
 export const MoneyAmountSchema = z
 	.string()
-	.regex(/^\d+(\.\d{1,6})?$/, "Money amount must be a non-negative decimal with up to 6 places");
+	.regex(
+		/^\d{1,13}(\.\d{1,6})?$/,
+		"Money amount must be a non-negative decimal with up to 13 integer digits and 6 decimal places (NUMERIC(19,6))",
+	);
 
 export const MoneySchema = z.object({
 	amount: MoneyAmountSchema,

@@ -76,6 +76,14 @@ describe("MoneyAmountSchema", () => {
 	test("rejects negative amounts", () => {
 		expect(() => MoneyAmountSchema.parse("-10.00")).toThrow();
 	});
+
+	test("accepts max NUMERIC(19,6) integer digits (13) with 6 decimal places", () => {
+		expect(MoneyAmountSchema.parse("1234567890123.123456")).toBe("1234567890123.123456");
+	});
+
+	test("rejects more than 13 integer digits (exceeds NUMERIC(19,6) limit)", () => {
+		expect(() => MoneyAmountSchema.parse("12345678901234")).toThrow();
+	});
 });
 
 describe("MoneySchema", () => {
