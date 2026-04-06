@@ -204,10 +204,91 @@ test.describe("Apogee ERP — UI Reel", () => {
 		await expect(page.locator("h1")).toContainText("Dashboard");
 	});
 
-	// ── Scene 10: Final screenshot — dashboard with all data ──────────────
-	test("scene 10 — Final dashboard screenshot", async ({ page }) => {
+	// ── Scene 10: Vendor creation form ────────────────────────────────────
+	test("scene 10 — Vendor form: fill and submit", async ({ page }) => {
+		await page.goto(`${BASE}/procurement/vendors/new`, { waitUntil: "networkidle" });
+
+		await expect(page.locator("h1")).toContainText("New Vendor", { timeout: 10_000 });
+
+		// Fill required fields
+		await page.fill('input[name="vendorCode"]', `REEL-${Date.now().toString(36).toUpperCase()}`);
+		await page.fill('input[name="legalName"]', "Reel Test Vendor LLC");
+		await page.fill('input[name="countryCode"]', "US");
+		await page.fill('input[name="defaultCurrencyCode"]', "USD");
+
+		await screenshot(page, "10-vendor-form-filled");
+
+		// Submit
+		await page.click('button[type="submit"]');
+		await waitForPage(page);
+
+		// Should redirect to vendor list
+		await expect(page.locator("h1")).toContainText("Vendors", { timeout: 10_000 });
+
+		await screenshot(page, "10-vendor-form-submitted");
+	});
+
+	// ── Scene 11: Journal entry form ──────────────────────────────────────
+	test("scene 11 — Journal entry form: fill and submit", async ({ page }) => {
+		await page.goto(`${BASE}/finance/journal-entries/new`, { waitUntil: "networkidle" });
+
+		await expect(page.locator("h1")).toContainText("New Journal Entry", { timeout: 10_000 });
+
+		// Fill header
+		await page.fill('input[name="reference"]', `REEL-JE-${Date.now()}`);
+		await page.fill('input[name="description"]', "UI Reel test entry");
+		await page.fill('input[name="entryDate"]', "2026-04-05");
+
+		// Fill line 1 (debit) — the form starts with 2 lines
+		await page.fill('input[name="lines.0.accountId"]', "a8001100-0000-0000-0000-000000000001");
+		await page.selectOption('select[name="lines.0.type"]', "DEBIT");
+		await page.fill('input[name="lines.0.amount"]', "750");
+
+		// Fill line 2 (credit)
+		await page.fill('input[name="lines.1.accountId"]', "a8004100-0000-0000-0000-000000000001");
+		await page.selectOption('select[name="lines.1.type"]', "CREDIT");
+		await page.fill('input[name="lines.1.amount"]', "750");
+
+		await screenshot(page, "11-je-form-filled");
+
+		// Submit
+		await page.click('button[type="submit"]');
+		await waitForPage(page);
+
+		// Should redirect to journal entries list
+		await expect(page.locator("h1")).toContainText("Journal Entries", { timeout: 10_000 });
+
+		await screenshot(page, "11-je-form-submitted");
+	});
+
+	// ── Scene 12: Sales order detail page ─────────────────────────────────
+	test("scene 12 — Sales order detail view", async ({ page }) => {
+		// Navigate to sales list and click a known order
+		await page.goto(`${BASE}/sales`, { waitUntil: "networkidle" });
+		await expect(page.locator("h1")).toContainText("Sales Orders");
+
+		// Click on SO-2026-0001 (cleared order)
+		const orderLink = page.locator('a', { hasText: "SO-2026-0001" });
+		if (await orderLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
+			await orderLink.click();
+			await waitForPage(page);
+
+			// Should show order detail
+			await expect(page.getByText("SO-2026-0001")).toBeVisible();
+			await screenshot(page, "12-sales-order-detail");
+		} else {
+			// Fallback: go directly
+			await page.goto(`${BASE}/sales/a6000001-0000-0000-0000-000000000001`, {
+				waitUntil: "networkidle",
+			});
+			await screenshot(page, "12-sales-order-detail");
+		}
+	});
+
+	// ── Scene 13: Final dashboard ─────────────────────────────────────────
+	test("scene 13 — Final dashboard screenshot", async ({ page }) => {
 		await page.goto(BASE, { waitUntil: "networkidle" });
 		await expect(page.locator("h1")).toContainText("Dashboard");
-		await screenshot(page, "10-final-dashboard");
+		await screenshot(page, "13-final-dashboard");
 	});
 });

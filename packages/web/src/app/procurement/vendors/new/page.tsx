@@ -38,6 +38,10 @@ export default function NewVendorPage() {
 
   async function onSubmit(data: Record<string, unknown>) {
     setSubmitError(null);
+    // Strip empty strings from optional fields — Zod expects undefined, not ""
+    const cleaned = Object.fromEntries(
+      Object.entries(data).filter(([, v]) => v !== "" && v !== undefined),
+    );
     try {
       const res = await fetch(`${API_URL}/graphql`, {
         method: "POST",
@@ -46,7 +50,7 @@ export default function NewVendorPage() {
           query: `mutation CreateVendor($input: CreateVendorInput!) {
             createVendor(input: $input) { id name }
           }`,
-          variables: { input: data },
+          variables: { input: cleaned },
         }),
       });
       const json = await res.json();
@@ -158,7 +162,7 @@ export default function NewVendorPage() {
           <select
             id="riskRating"
             className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-base shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring md:text-sm"
-            {...register("riskRating")}
+            {...register("riskRating", { setValueAs: (v: string) => v || undefined })}
             defaultValue=""
           >
             <option value="">-- Select --</option>
@@ -173,7 +177,7 @@ export default function NewVendorPage() {
 
         <div className="space-y-2">
           <Label htmlFor="website">Website (optional)</Label>
-          <Input id="website" type="url" placeholder="https://example.com" {...register("website")} />
+          <Input id="website" type="url" placeholder="https://example.com" {...register("website", { setValueAs: (v: string) => v || undefined })} />
           {errors.website && (
             <p className="text-sm text-destructive">{errors.website.message}</p>
           )}
