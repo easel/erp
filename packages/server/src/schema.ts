@@ -107,14 +107,14 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 	// ────────────────────────────────────────────────────────────────────────
 
 	type LegalEntityRow = { id: string; code: string; name: string; country_code: string; base_currency_code: string; tax_id: string | null; parent_entity_id: string | null; is_active: boolean; created_at: string };
-	type VendorRow = { id: string; entity_id: string; vendor_code: string; legal_name: string; trade_name: string | null; country_code: string; default_currency_code: string; payment_terms: string | null; risk_rating: string | null; is_active: boolean; created_at: string };
+	type VendorRow = { id: string; entity_id: string; vendor_code: string; legal_name: string; trade_name: string | null; country_code: string; default_currency_code: string; tax_id: string | null; payment_terms: string | null; risk_rating: string | null; is_active: boolean; created_at: string };
 	type CustomerRow = { id: string; entity_id: string; customer_code: string; legal_name: string; country_code: string; default_currency_code: string; notes: string | null; is_active: boolean; created_at: string };
 	type ProductRow = { id: string; entity_id: string; product_code: string; name: string; description: string | null; product_type: string; unit_of_measure: string; is_active: boolean; created_at: string };
 	type AccountRow = { id: string; entity_id: string; account_number: string; name: string; account_type: string; normal_balance: string; is_header: boolean; is_active: boolean };
 	type SalesOrderRow = { id: string; entity_id: string; customer_id: string; order_number: string; order_date: string; status: string; compliance_status: string | null; currency_code: string; total_amount: string; notes: string | null; created_at: string };
-	type PurchaseOrderRow = { id: string; entity_id: string; vendor_id: string; po_number: string; po_date: string; status: string; compliance_status: string | null; currency_code: string; total_amount: string; created_at: string };
+	type PurchaseOrderRow = { id: string; entity_id: string; vendor_id: string; po_number: string; po_date: string; expected_delivery_date: string | null; status: string; compliance_status: string | null; currency_code: string; total_amount: string; created_at: string };
 	type JournalEntryRow = { id: string; entity_id: string; entry_number: string; entry_date: string; description: string; status: string; source_module: string; created_at: string };
-	type OpportunityRow = { id: string; entity_id: string; customer_id: string | null; name: string; pipeline_stage_id: string; amount: string | null; currency_code: string | null; expected_close_date: string | null; probability: string | null; created_at: string };
+	type OpportunityRow = { id: string; entity_id: string; crm_company_id: string | null; customer_id: string | null; name: string; description: string | null; pipeline_stage_id: string; amount: string | null; currency_code: string | null; expected_close_date: string | null; actual_close_date: string | null; probability: string | null; owner_user_id: string | null; source: string | null; lost_reason: string | null; created_at: string };
 	type ComplianceHoldRow = { id: string; entity_id: string; held_table: string; held_record_id: string; hold_reason: string; status: string; placed_by: string; placed_at: string; resolved_at: string | null; resolution_notes: string | null };
 
 	// ────────────────────────────────────────────────────────────────────────
@@ -146,6 +146,7 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 			tradeName: t.exposeString("trade_name", { nullable: true }),
 			countryCode: t.exposeString("country_code"),
 			defaultCurrencyCode: t.exposeString("default_currency_code"),
+			taxId: t.exposeString("tax_id", { nullable: true }),
 			paymentTerms: t.exposeString("payment_terms", { nullable: true }),
 			riskRating: t.exposeString("risk_rating", { nullable: true }),
 			isActive: t.exposeBoolean("is_active"),
@@ -222,6 +223,7 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 			vendorId: t.exposeString("vendor_id"),
 			poNumber: t.exposeString("po_number"),
 			poDate: t.exposeString("po_date"),
+			expectedDeliveryDate: t.exposeString("expected_delivery_date", { nullable: true }),
 			status: t.exposeString("status"),
 			complianceStatus: t.exposeString("compliance_status", { nullable: true }),
 			currencyCode: t.exposeString("currency_code"),
@@ -249,13 +251,19 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		fields: (t) => ({
 			id: t.exposeString("id"),
 			entityId: t.exposeString("entity_id"),
+			crmCompanyId: t.exposeString("crm_company_id", { nullable: true }),
 			customerId: t.exposeString("customer_id", { nullable: true }),
 			name: t.exposeString("name"),
+			description: t.exposeString("description", { nullable: true }),
 			pipelineStageId: t.exposeString("pipeline_stage_id"),
 			amount: t.exposeString("amount", { nullable: true }),
 			currencyCode: t.exposeString("currency_code", { nullable: true }),
 			expectedCloseDate: t.exposeString("expected_close_date", { nullable: true }),
+			actualCloseDate: t.exposeString("actual_close_date", { nullable: true }),
 			probability: t.exposeString("probability", { nullable: true }),
+			ownerUserId: t.exposeString("owner_user_id", { nullable: true }),
+			source: t.exposeString("source", { nullable: true }),
+			lostReason: t.exposeString("lost_reason", { nullable: true }),
 			createdAt: t.exposeString("created_at"),
 		}),
 	});
@@ -340,8 +348,8 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 					const offset = args.pagination?.offset ?? 0;
 					return dbQuery<VendorRow>(
 						`SELECT id, entity_id, vendor_code, legal_name, trade_name,
-						        country_code, default_currency_code, payment_terms,
-						        risk_rating, is_active, created_at::text
+						        country_code, default_currency_code, tax_id,
+						        payment_terms, risk_rating, is_active, created_at::text
 						 FROM vendor WHERE entity_id = $1 AND deleted_at IS NULL
 						 ORDER BY vendor_code LIMIT $2 OFFSET $3`,
 						[args.entityId, limit, offset],
@@ -356,8 +364,8 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 				resolve: async (_root, args) => {
 					const rows = await dbQuery<VendorRow>(
 						`SELECT id, entity_id, vendor_code, legal_name, trade_name,
-						        country_code, default_currency_code, payment_terms,
-						        risk_rating, is_active, created_at::text
+						        country_code, default_currency_code, tax_id,
+						        payment_terms, risk_rating, is_active, created_at::text
 						 FROM vendor WHERE id = $1 AND deleted_at IS NULL`,
 						[args.id],
 					);
@@ -491,7 +499,8 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 					const offset = args.pagination?.offset ?? 0;
 					return dbQuery<PurchaseOrderRow>(
 						`SELECT id, entity_id, vendor_id, po_number,
-						        po_date::text, status, compliance_status,
+						        po_date::text, expected_delivery_date::text,
+						        status, compliance_status,
 						        currency_code, total_amount::text, created_at::text
 						 FROM purchase_order WHERE entity_id = $1 AND deleted_at IS NULL
 						 ORDER BY po_number DESC LIMIT $2 OFFSET $3`,
@@ -507,7 +516,8 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 				resolve: async (_root, args) => {
 					const rows = await dbQuery<PurchaseOrderRow>(
 						`SELECT id, entity_id, vendor_id, po_number,
-						        po_date::text, status, compliance_status,
+						        po_date::text, expected_delivery_date::text,
+						        status, compliance_status,
 						        currency_code, total_amount::text, created_at::text
 						 FROM purchase_order WHERE id = $1 AND deleted_at IS NULL`,
 						[args.id],
@@ -562,9 +572,11 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 					const limit = args.pagination?.limit ?? 50;
 					const offset = args.pagination?.offset ?? 0;
 					return dbQuery<OpportunityRow>(
-						`SELECT id, entity_id, customer_id, name, pipeline_stage_id,
-						        amount::text, currency_code, expected_close_date::text,
-						        probability::text, created_at::text
+						`SELECT id, entity_id, crm_company_id, customer_id, name,
+						        description, pipeline_stage_id, amount::text,
+						        currency_code, expected_close_date::text,
+						        actual_close_date::text, probability::text,
+						        owner_user_id, source, lost_reason, created_at::text
 						 FROM opportunity WHERE entity_id = $1 AND deleted_at IS NULL
 						 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
 						[args.entityId, limit, offset],
