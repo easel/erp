@@ -71,7 +71,7 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 
 **Key architectural decisions:**
 - **Modular monolith, not microservices.** Self-hosted deployments need operational simplicity. A single process with internal module boundaries is easier to deploy, monitor, and debug than a distributed system. Module boundaries are enforced at the code level through package visibility and dependency rules.
-- **PostgreSQL as the primary store for everything.** No mandatory Redis or message broker for core operations (Constraint C5). Redis is used for caching and rate limiting but the system functions without it. Background processing uses PostgreSQL-backed job queues (Graphile Worker) so core functions operate without external dependencies.
+- **PostgreSQL as the primary store for everything.** No mandatory Redis or message broker for core operations (Constraint C5). Redis is used for caching and rate limiting but the system functions without it. Background processing will use PostgreSQL-backed job queues (planned Phase 2+) so core functions operate without external dependencies.
 - **Compliance is infrastructure, not a module feature.** Export control checks are wired into the service layer as middleware that cannot be bypassed. Every transaction-creating operation passes through compliance gates before persistence.
 
 ---
@@ -91,10 +91,10 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 |-----------|--------|-----------|
 | HTTP Framework | **Fastify 5** | 2-3x faster than Express with comparable ecosystem. Built-in JSON schema validation, plugin architecture maps cleanly to module boundaries, first-class TypeScript support. NestJS adds unnecessary abstraction layers and decorator magic that obscure control flow in financial code where explicitness matters. Express is too minimal and lacks built-in validation |
 | GraphQL Server | **GraphQL Yoga 5 + Pothos** | Yoga is Envelop-based (plugin ecosystem for auth, caching, tracing). Pothos provides code-first schema construction with full TypeScript inference — no code generation step, schemas are defined alongside resolvers. Superior DX over schema-first approaches for a system with hundreds of entity types |
-| ORM / Query Builder | **Kysely 0.27+** | Type-safe SQL query builder, not a full ORM. Financial queries (multi-currency consolidation, intercompany elimination, aging reports, trial balance) require precise SQL control that ORMs like Prisma and TypeORM abstract away. Kysely generates SQL predictably, supports complex joins, CTEs, window functions, and raw SQL escape hatches. Drizzle is comparable but Kysely has stronger TypeScript inference for complex query composition. Prisma's query engine adds a binary dependency and its query API cannot express the financial SQL this system needs without dropping to raw queries constantly |
-| Validation | **Zod 3** | Runtime schema validation with TypeScript type inference. Shared between API input validation, domain model validation, and frontend form validation. Single source of truth for data shapes |
-| Job Queue | **Graphile Worker 0.16+** | PostgreSQL-backed job queue — no external broker required (Constraint C5). LISTEN/NOTIFY for near-instant job pickup, transactional job creation (enqueue a job in the same transaction as the data change), cron-like recurring jobs for screening list updates and report generation. Scales to thousands of jobs/second which exceeds ERP requirements |
-| Authentication | **passport.js** (SAML strategy + OIDC strategy) + custom JWT session management | Mature, well-audited SAML 2.0 and OIDC implementations. Custom session layer on top for MFA enforcement and session management per PLT-US-005 |
+| Data Access | **pg driver + repository interfaces** | Direct `pg.Pool` with parameterised queries behind typed repository interfaces (e.g. `GLRepository`, `DbClient`). Financial queries (multi-currency consolidation, trial balance, aging reports) require precise SQL control — repository pattern keeps domain logic decoupled from query construction. Deliberate deviation from the original Kysely plan (hx-7a945c01): deferred ORM adoption until schema stabilises |
+| Validation | **Zod 4** | Runtime schema validation with TypeScript type inference. Shared between API input validation, domain model validation, and frontend form validation via `@apogee/shared`. Single source of truth for data shapes (ADR-010) |
+| Job Queue | **PostgreSQL-backed** (planned Phase 2+) | Not yet implemented. Design calls for PostgreSQL-backed job queue (no external broker per Constraint C5). Candidate: Graphile Worker or pg-boss for LISTEN/NOTIFY job pickup, transactional job creation, and cron-like recurring jobs for screening list updates |
+| Authentication | **Custom OIDC/SAML + MFA module** | Purpose-built auth module with OIDC login flow, SAML ACS, TOTP MFA, and encrypted session management. Keycloak as the dev IdP. passport.js was not adopted — the custom implementation provides tighter control over session encryption, MFA enforcement, and lockout policy per PLT-US-005 |
 | API Documentation | **@fastify/swagger + @fastify/swagger-ui** | Auto-generated OpenAPI 3.1 specs from Fastify route schemas. Zero drift between implementation and documentation |
 
 ### Frontend
@@ -116,9 +116,9 @@ The system is organized into four primary layers: API, Service, Domain, and Data
 | Database | **PostgreSQL 16** | Row-level security for multi-entity isolation, JSONB for flexible metadata (custom fields, audit snapshots), partitioning for time-series audit data, full-text search via `tsvector`/GIN indexes. The sole required database per PLT-005 |
 | Full-Text Search | **PostgreSQL built-in (tsvector + GIN indexes)** | No Elasticsearch dependency. PostgreSQL full-text search handles entity search (customers, vendors, products, contacts) at ERP scale. For 1M+ SKUs, GIN indexes on tsvector columns provide sub-second search. Weighted search across multiple fields (name > description > SKU) is natively supported. If search requirements grow beyond PostgreSQL capabilities in Phase 3+, pg_search or Meilisearch can be added as an optional enhancement |
 | Cache | **Redis 7** (optional, recommended) | Session store, rate limiting counters, frequently-accessed reference data (exchange rates, screening list hashes, entity configuration). System functions without Redis by falling back to in-process LRU cache and PostgreSQL-backed sessions, but Redis significantly improves performance for multi-instance deployments |
-| Message Queue | **Graphile Worker** (PostgreSQL-backed) | See job queue above. For self-hosted deployments that need to work without external dependencies, a PostgreSQL-backed queue is the right default. For operators who want higher throughput async processing (Phase 3+), NATS can be added as an optional event transport |
+| Message Queue | **PostgreSQL-backed** (planned) | For self-hosted deployments that need to work without external dependencies, a PostgreSQL-backed queue is the right default. For operators who want higher throughput async processing (Phase 3+), NATS can be added as an optional event transport |
 | Object Storage | **S3-compatible** (MinIO for self-hosted) | Documents, attachments, generated reports, contract PDFs, end-use certificates. MinIO provides S3 API compatibility for air-gapped deployments. PostgreSQL large objects as fallback for minimal deployments |
-| Migrations | **graphile-migrate** | Plain SQL migrations with current.sql for development workflow. Complements Graphile Worker. Alternative: Kysely's built-in migrations if the team prefers TypeScript-defined migrations |
+| Migrations | **graphile-migrate** | Plain SQL migrations with current.sql for development workflow. SQL-first approach keeps migrations readable and auditable for financial schema |
 
 ### Testing
 
@@ -196,7 +196,7 @@ The service layer contains all business logic. Each module has its own set of se
 - `AuthorizationService` — RBAC evaluation, entity-scope resolution, ITAR compartment checks
 
 **Transaction Management**
-- Services receive a transaction context (Kysely `Transaction` object) from the API layer
+- Services receive a transaction context (`pg.PoolClient`) from the API layer
 - All operations within a single request execute in a single database transaction
 - Compliance checks, audit log writes, and workflow state changes are part of the same transaction — if the compliance check fails, nothing is persisted
 - Long-running operations (report generation, bulk imports) use separate transactions with progress tracking
@@ -234,8 +234,8 @@ The data layer handles all persistence concerns. It is the only layer that knows
 **Repository Pattern**
 - Each entity type has a repository class that encapsulates all database operations
 - Repositories accept and return domain objects, not database rows
-- Repositories use Kysely for query construction — complex queries (financial reporting, aging calculations, consolidation) are written as composable query builders, not raw SQL strings
-- Example: `TrialBalanceQueryBuilder` composes account filters, entity scope, period range, and currency conversion into a single efficient query
+- Repositories use parameterised `pg` queries — complex queries (financial reporting, aging calculations, consolidation) are written as composable SQL with typed row interfaces
+- Example: `GLRepository` composes account lookups, period validation, and entry retrieval behind a typed interface
 
 **Query Builders for Financial Queries**
 - Financial reporting requires queries that are too complex for simple CRUD repositories
@@ -781,7 +781,7 @@ All monetary values are stored as `NUMERIC(19,6)` in the database. Every monetar
 ### Database Deployment
 
 - **Primary:** Single PostgreSQL 16 instance. All writes go here
-- **Read Replicas:** 1+ streaming replicas for reporting queries. Kysely query builders are configured to route read-only queries to replicas
+- **Read Replicas:** 1+ streaming replicas for reporting queries. Repository layer can route read-only queries to replicas via a separate pool
 - **Backups:** pg_basebackup for full backups (daily), WAL archiving for point-in-time recovery. Backups encrypted at rest
 - **Connection Pooling:** PgBouncer in transaction mode. API pods connect to PgBouncer, not directly to PostgreSQL
 
@@ -998,7 +998,7 @@ Exposed via `/metrics` endpoint on each pod (prom-client library):
 
 ### Distributed Tracing
 
-- **Library:** @opentelemetry/sdk-node with auto-instrumentation for Fastify, Kysely, Redis, and HTTP
+- **Library:** @opentelemetry/sdk-node with auto-instrumentation for Fastify, pg, Redis, and HTTP
 - **Trace propagation:** W3C Trace Context headers (`traceparent`, `tracestate`)
 - **Span coverage:** Every HTTP request creates a root span. Database queries, Redis operations, compliance checks, and event bus dispatches create child spans
 - **Export:** OTLP exporter to Jaeger, Tempo, or any OTLP-compatible backend
