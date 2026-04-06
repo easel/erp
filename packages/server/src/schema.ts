@@ -116,6 +116,18 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 	type JournalEntryRow = { id: string; entity_id: string; entry_number: string; entry_date: string; description: string; status: string; source_module: string; created_at: string };
 	type OpportunityRow = { id: string; entity_id: string; crm_company_id: string | null; customer_id: string | null; name: string; description: string | null; pipeline_stage_id: string; amount: string | null; currency_code: string | null; expected_close_date: string | null; actual_close_date: string | null; probability: string | null; owner_user_id: string | null; source: string | null; lost_reason: string | null; created_at: string };
 	type ComplianceHoldRow = { id: string; entity_id: string; held_table: string; held_record_id: string; hold_reason: string; status: string; placed_by: string; placed_at: string; resolved_at: string | null; resolution_notes: string | null };
+	type CrmCompanyRow = { id: string; entity_id: string; name: string; domain: string | null; industry: string | null; employee_count_range: string | null; annual_revenue_range: string | null; country_code: string | null; phone: string | null; website: string | null; customer_id: string | null; vendor_id: string | null; created_at: string };
+	type CrmContactRow = { id: string; entity_id: string; crm_company_id: string | null; first_name: string; last_name: string; email: string | null; phone: string | null; job_title: string | null; department: string | null; country_code: string | null; do_not_contact: boolean; created_at: string };
+	type PipelineStageRow = { id: string; entity_id: string; code: string; name: string; stage_order: string; win_probability: string | null; is_closed_won: boolean; is_closed_lost: boolean; created_at: string };
+	type FiscalYearRow = { id: string; entity_id: string; year_label: string; start_date: string; end_date: string; is_closed: boolean; created_at: string };
+	type FiscalPeriodRow = { id: string; entity_id: string; fiscal_year_id: string; period_number: string; period_label: string; start_date: string; end_date: string; status: string; created_at: string };
+	type InventoryLocationRow = { id: string; entity_id: string; location_code: string; name: string; is_active: boolean; created_at: string };
+	type ScreeningListRow = { id: string; code: string; name: string; source_authority: string | null; is_active: boolean; created_at: string };
+	type ScreeningListEntryRow = { id: string; screening_list_id: string; entry_name: string; country_codes: string[] | null; remarks: string | null; listed_date: string | null; created_at: string };
+	type CountryRestrictionRow = { id: string; entity_id: string; name: string; description: string | null; is_active: boolean; created_at: string };
+	type CountryRestrictionRuleRow = { id: string; country_restriction_id: string; country_code: string; restriction_type: string; effective_from: string | null; effective_to: string | null; notes: string | null; created_at: string };
+	type RestrictedRegionRow = { id: string; country_code: string; region_name: string; sanctions_regime: string | null; effective_date: string | null; source_authority: string | null; created_at: string };
+	type CurrencyRow = { code: string; name: string; symbol: string | null; decimal_places: string; is_active: boolean };
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Entity object types for queries
@@ -281,6 +293,173 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 			placedAt: t.exposeString("placed_at"),
 			resolvedAt: t.exposeString("resolved_at", { nullable: true }),
 			resolutionNotes: t.exposeString("resolution_notes", { nullable: true }),
+		}),
+	});
+
+	const CrmCompanyType = builder.objectRef<CrmCompanyRow>("CrmCompany");
+	CrmCompanyType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			name: t.exposeString("name"),
+			domain: t.exposeString("domain", { nullable: true }),
+			industry: t.exposeString("industry", { nullable: true }),
+			employeeCountRange: t.exposeString("employee_count_range", { nullable: true }),
+			annualRevenueRange: t.exposeString("annual_revenue_range", { nullable: true }),
+			countryCode: t.exposeString("country_code", { nullable: true }),
+			phone: t.exposeString("phone", { nullable: true }),
+			website: t.exposeString("website", { nullable: true }),
+			customerId: t.exposeString("customer_id", { nullable: true }),
+			vendorId: t.exposeString("vendor_id", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const CrmContactType = builder.objectRef<CrmContactRow>("CrmContact");
+	CrmContactType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			crmCompanyId: t.exposeString("crm_company_id", { nullable: true }),
+			firstName: t.exposeString("first_name"),
+			lastName: t.exposeString("last_name"),
+			email: t.exposeString("email", { nullable: true }),
+			phone: t.exposeString("phone", { nullable: true }),
+			jobTitle: t.exposeString("job_title", { nullable: true }),
+			department: t.exposeString("department", { nullable: true }),
+			countryCode: t.exposeString("country_code", { nullable: true }),
+			doNotContact: t.exposeBoolean("do_not_contact"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const PipelineStageType = builder.objectRef<PipelineStageRow>("PipelineStage");
+	PipelineStageType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			code: t.exposeString("code"),
+			name: t.exposeString("name"),
+			stageOrder: t.exposeString("stage_order"),
+			winProbability: t.exposeString("win_probability", { nullable: true }),
+			isClosedWon: t.exposeBoolean("is_closed_won"),
+			isClosedLost: t.exposeBoolean("is_closed_lost"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const FiscalYearType = builder.objectRef<FiscalYearRow>("FiscalYear");
+	FiscalYearType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			yearLabel: t.exposeString("year_label"),
+			startDate: t.exposeString("start_date"),
+			endDate: t.exposeString("end_date"),
+			isClosed: t.exposeBoolean("is_closed"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const FiscalPeriodType = builder.objectRef<FiscalPeriodRow>("FiscalPeriod");
+	FiscalPeriodType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			fiscalYearId: t.exposeString("fiscal_year_id"),
+			periodNumber: t.exposeString("period_number"),
+			periodLabel: t.exposeString("period_label"),
+			startDate: t.exposeString("start_date"),
+			endDate: t.exposeString("end_date"),
+			status: t.exposeString("status"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const InventoryLocationType = builder.objectRef<InventoryLocationRow>("InventoryLocation");
+	InventoryLocationType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			locationCode: t.exposeString("location_code"),
+			name: t.exposeString("name"),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const ScreeningListType = builder.objectRef<ScreeningListRow>("ScreeningList");
+	ScreeningListType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			code: t.exposeString("code"),
+			name: t.exposeString("name"),
+			sourceAuthority: t.exposeString("source_authority", { nullable: true }),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const ScreeningListEntryType = builder.objectRef<ScreeningListEntryRow>("ScreeningListEntry");
+	ScreeningListEntryType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			screeningListId: t.exposeString("screening_list_id"),
+			entryName: t.exposeString("entry_name"),
+			countryCodes: t.exposeStringList("country_codes", { nullable: true }),
+			remarks: t.exposeString("remarks", { nullable: true }),
+			listedDate: t.exposeString("listed_date", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const CountryRestrictionType = builder.objectRef<CountryRestrictionRow>("CountryRestriction");
+	CountryRestrictionType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			name: t.exposeString("name"),
+			description: t.exposeString("description", { nullable: true }),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const CountryRestrictionRuleType = builder.objectRef<CountryRestrictionRuleRow>("CountryRestrictionRule");
+	CountryRestrictionRuleType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			countryRestrictionId: t.exposeString("country_restriction_id"),
+			countryCode: t.exposeString("country_code"),
+			restrictionType: t.exposeString("restriction_type"),
+			effectiveFrom: t.exposeString("effective_from", { nullable: true }),
+			effectiveTo: t.exposeString("effective_to", { nullable: true }),
+			notes: t.exposeString("notes", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const RestrictedRegionType = builder.objectRef<RestrictedRegionRow>("RestrictedRegion");
+	RestrictedRegionType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			countryCode: t.exposeString("country_code"),
+			regionName: t.exposeString("region_name"),
+			sanctionsRegime: t.exposeString("sanctions_regime", { nullable: true }),
+			effectiveDate: t.exposeString("effective_date", { nullable: true }),
+			sourceAuthority: t.exposeString("source_authority", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const CurrencyType = builder.objectRef<CurrencyRow>("Currency");
+	CurrencyType.implement({
+		fields: (t) => ({
+			code: t.exposeString("code"),
+			name: t.exposeString("name"),
+			symbol: t.exposeString("symbol", { nullable: true }),
+			decimalPlaces: t.exposeString("decimal_places"),
+			isActive: t.exposeBoolean("is_active"),
 		}),
 	});
 
@@ -601,6 +780,251 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 						 FROM compliance_hold WHERE entity_id = $1
 						 ORDER BY placed_at DESC LIMIT $2 OFFSET $3`,
 						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── CRM Companies ───────────────────────────────────────────
+			crmCompanies: t.field({
+				type: [CrmCompanyType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CrmCompanyRow>(
+						`SELECT id, entity_id, name, domain, industry,
+						        employee_count_range, annual_revenue_range,
+						        country_code, phone, website, customer_id,
+						        vendor_id, created_at::text
+						 FROM crm_company WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY name LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── CRM Contacts ────────────────────────────────────────────
+			crmContacts: t.field({
+				type: [CrmContactType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CrmContactRow>(
+						`SELECT id, entity_id, crm_company_id, first_name, last_name,
+						        email, phone, job_title, department, country_code,
+						        do_not_contact, created_at::text
+						 FROM crm_contact WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY last_name, first_name LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Pipeline Stages ─────────────────────────────────────────
+			pipelineStages: t.field({
+				type: [PipelineStageType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<PipelineStageRow>(
+						`SELECT id, entity_id, code, name, stage_order::text,
+						        win_probability::text, is_closed_won, is_closed_lost,
+						        created_at::text
+						 FROM pipeline_stage WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY stage_order LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Fiscal Years ────────────────────────────────────────────
+			fiscalYears: t.field({
+				type: [FiscalYearType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<FiscalYearRow>(
+						`SELECT id, entity_id, year_label, start_date::text,
+						        end_date::text, is_closed, created_at::text
+						 FROM fiscal_year WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY year_label LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Fiscal Periods ──────────────────────────────────────────
+			fiscalPeriods: t.field({
+				type: [FiscalPeriodType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<FiscalPeriodRow>(
+						`SELECT id, entity_id, fiscal_year_id, period_number::text,
+						        period_label, start_date::text, end_date::text,
+						        status, created_at::text
+						 FROM fiscal_period WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY period_number LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Inventory Locations ─────────────────────────────────────
+			inventoryLocations: t.field({
+				type: [InventoryLocationType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<InventoryLocationRow>(
+						`SELECT id, entity_id, location_code, name, is_active,
+						        created_at::text
+						 FROM inventory_location WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY location_code LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Screening Lists (global) ────────────────────────────────
+			screeningLists: t.field({
+				type: [ScreeningListType],
+				args: {
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<ScreeningListRow>(
+						`SELECT id, code, name, source_authority, is_active,
+						        created_at::text
+						 FROM screening_list WHERE deleted_at IS NULL
+						 ORDER BY code LIMIT $1 OFFSET $2`,
+						[limit, offset],
+					);
+				},
+			}),
+
+			// ── Screening List Entries ───────────────────────────────────
+			screeningListEntries: t.field({
+				type: [ScreeningListEntryType],
+				args: {
+					screeningListId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<ScreeningListEntryRow>(
+						`SELECT id, screening_list_id, entry_name, country_codes,
+						        remarks, listed_date::text, created_at::text
+						 FROM screening_list_entry WHERE screening_list_id = $1
+						        AND deleted_at IS NULL
+						 ORDER BY entry_name LIMIT $2 OFFSET $3`,
+						[args.screeningListId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Country Restrictions ────────────────────────────────────
+			countryRestrictions: t.field({
+				type: [CountryRestrictionType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CountryRestrictionRow>(
+						`SELECT id, entity_id, name, description, is_active,
+						        created_at::text
+						 FROM country_restriction WHERE entity_id = $1
+						        AND deleted_at IS NULL
+						 ORDER BY name LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Country Restriction Rules ───────────────────────────────
+			countryRestrictionRules: t.field({
+				type: [CountryRestrictionRuleType],
+				args: {
+					countryRestrictionId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CountryRestrictionRuleRow>(
+						`SELECT id, country_restriction_id, country_code,
+						        restriction_type, effective_from::text,
+						        effective_to::text, notes, created_at::text
+						 FROM country_restriction_rule
+						 WHERE country_restriction_id = $1 AND deleted_at IS NULL
+						 ORDER BY country_code LIMIT $2 OFFSET $3`,
+						[args.countryRestrictionId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Restricted Regions (global) ─────────────────────────────
+			restrictedRegions: t.field({
+				type: [RestrictedRegionType],
+				args: {
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<RestrictedRegionRow>(
+						`SELECT id, country_code, region_name, sanctions_regime,
+						        effective_date::text, source_authority, created_at::text
+						 FROM restricted_region WHERE deleted_at IS NULL
+						 ORDER BY country_code, region_name LIMIT $1 OFFSET $2`,
+						[limit, offset],
+					);
+				},
+			}),
+
+			// ── Currencies (global) ─────────────────────────────────────
+			currencies: t.field({
+				type: [CurrencyType],
+				args: {
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 200;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CurrencyRow>(
+						`SELECT code, name, symbol, decimal_places::text, is_active
+						 FROM currency
+						 ORDER BY code LIMIT $1 OFFSET $2`,
+						[limit, offset],
 					);
 				},
 			}),

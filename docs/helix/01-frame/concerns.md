@@ -10,6 +10,7 @@
 - e2e-kind (testing)
 - e2e-playwright (testing)
 - demo-playwright (demo, ui)
+- hugo-hextra (microsite)
 
 ## Area Labels
 
@@ -65,3 +66,12 @@
 - **Helpers**: `tests/e2e/helpers/api.ts` — `graphql()`, `screenshotPage()`, seed constants
 - **Run**: `bun run test:e2e` (headless) or `bun run test:e2e:headed` (browser visible)
 - **Against Kind**: `E2E_BASE_URL=http://localhost:3100 bun run test:e2e`
+
+### hugo-hextra
+- **Site directory**: `website/` — Hugo Module system with `go.mod` pinning Hextra v0.12.1
+- **Config**: `website/hugo.yaml` — Hextra theme, `enableGitInfo: true`, wide page width
+- **Content structure**: Home (hextra-home layout), Docs (getting-started, concepts), Entity Catalog (per-module pages auto-synced from Zod schemas), API Reference
+- **Entity catalog sync**: When entity schemas in `packages/shared/src/entity-schemas/` change, the corresponding `website/content/docs/entities/*.md` pages must be updated in the same pass
+- **Build**: `hugo --gc --minify` from `website/` directory
+- **Deployment**: GitHub Pages via GitHub Actions (planned)
+- **Theme management**: Hugo Module (`go mod`) — not git submodules

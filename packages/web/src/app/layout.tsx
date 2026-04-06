@@ -11,12 +11,54 @@ export const metadata: Metadata = {
 };
 
 const modules = [
-  { name: "Dashboard", href: "/", color: "text-foreground" },
-  { name: "Finance", href: "/finance", color: "text-finance" },
-  { name: "Sales", href: "/sales", color: "text-sales" },
-  { name: "Procurement", href: "/procurement", color: "text-procurement" },
-  { name: "CRM", href: "/crm", color: "text-crm" },
-  { name: "Compliance", href: "/compliance", color: "text-compliance" },
+  { name: "Dashboard", href: "/", color: "text-foreground", children: [] },
+  {
+    name: "Finance",
+    href: "/finance",
+    color: "text-finance",
+    children: [
+      { name: "Accounts", href: "/finance/accounts" },
+      { name: "Fiscal Periods", href: "/finance/fiscal-periods" },
+      { name: "Currencies", href: "/finance/currencies" },
+    ],
+  },
+  {
+    name: "Sales",
+    href: "/sales",
+    color: "text-sales",
+    children: [
+      { name: "Customers", href: "/sales/customers" },
+    ],
+  },
+  {
+    name: "Procurement",
+    href: "/procurement",
+    color: "text-procurement",
+    children: [
+      { name: "Purchase Orders", href: "/procurement/purchase-orders" },
+      { name: "Products", href: "/procurement/products" },
+      { name: "Locations", href: "/procurement/locations" },
+    ],
+  },
+  {
+    name: "CRM",
+    href: "/crm",
+    color: "text-crm",
+    children: [
+      { name: "Companies", href: "/crm/companies" },
+      { name: "Contacts", href: "/crm/contacts" },
+    ],
+  },
+  {
+    name: "Compliance",
+    href: "/compliance",
+    color: "text-compliance",
+    children: [
+      { name: "Screening Lists", href: "/compliance/screening-lists" },
+      { name: "Country Restrictions", href: "/compliance/country-restrictions" },
+      { name: "Restricted Regions", href: "/compliance/restricted-regions" },
+    ],
+  },
 ];
 
 export default function RootLayout({
@@ -35,13 +77,27 @@ export default function RootLayout({
             </div>
             <nav className="flex-1 p-3 space-y-1">
               {modules.map((mod) => (
-                <Link
-                  key={mod.href}
-                  href={mod.href}
-                  className={`block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors ${mod.color}`}
-                >
-                  {mod.name}
-                </Link>
+                <div key={mod.href}>
+                  <Link
+                    href={mod.href}
+                    className={`block rounded-md px-3 py-2 text-sm font-medium hover:bg-accent transition-colors ${mod.color}`}
+                  >
+                    {mod.name}
+                  </Link>
+                  {mod.children.length > 0 && (
+                    <div className="space-y-0.5">
+                      {mod.children.map((child) => (
+                        <Link
+                          key={child.href}
+                          href={child.href}
+                          className="block rounded-md pl-6 pr-3 py-1.5 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                        >
+                          {child.name}
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ))}
             </nav>
           </aside>
