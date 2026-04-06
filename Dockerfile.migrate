@@ -1,7 +1,13 @@
 FROM oven/bun:1-alpine
 
-RUN bun install -g graphile-migrate@1.4.1
+RUN apk add --no-cache postgresql16-client \
+ && bun install -g graphile-migrate@1.4.1
 
 WORKDIR /app
 
-CMD ["graphile-migrate", "migrate"]
+# Bake migration files and config into the image
+COPY packages/server/migrations ./migrations
+COPY packages/server/.gmrc ./.gmrc
+
+# Run committed migrations, then apply current.sql if it exists
+CMD ["sh", "-c", "graphile-migrate migrate && if [ -f migrations/current.sql ]; then psql \"$DATABASE_URL\" -f migrations/current.sql; fi"]

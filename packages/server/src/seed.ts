@@ -357,16 +357,16 @@ async function seed() {
 		];
 
 		for (const [id, code, name, desc, compartId] of satellites) {
+			const orbitClass = code.includes("GEO") ? "GEO" : "LEO";
+			const ext = JSON.stringify({ asset_type: "satellite", orbit_class: orbitClass });
 			await run(
 				db,
 				`INSERT INTO product
 				   (id, entity_id, product_code, name, description, product_type, unit_of_measure,
 				    itar_compartment_id, ext, created_by, updated_by)
-				 VALUES ($1, $2, $3, $4, $5, 'SERVICE', 'EA', $6,
-				         '{"asset_type":"satellite","orbit_class":"' || (CASE WHEN $3 LIKE '%GEO%' THEN 'GEO' ELSE 'LEO' END) || '"}'::jsonb,
-				         $7, $7)
+				 VALUES ($1, $2, $3, $4, $5, 'SERVICE', 'EA', $6, $7::jsonb, $8, $8)
 				 ON CONFLICT (entity_id, product_code) DO NOTHING`,
-				[id, E_US, code, name, desc, compartId, SYS],
+				[id, E_US, code, name, desc, compartId, ext, SYS],
 			);
 		}
 
@@ -741,10 +741,10 @@ async function seed() {
 		await run(
 			db,
 			`INSERT INTO restricted_region
-			   (id, country_code, region_name, restriction_type, description, effective_from, created_by)
+			   (id, country_code, region_name, sanctions_regime, effective_date, source_authority, created_by, updated_by)
 			 VALUES
-			   ('a0500000-0000-0000-0000-000000000001', 'UA', 'Crimea', 'EMBARGOED', 'Crimea/Sevastopol per EO 13685', '2014-12-19', $1),
-			   ('a0500000-0000-0000-0000-000000000002', 'UA', 'Donetsk', 'HEAVILY_RESTRICTED', 'Donetsk and Luhansk oblasts per EO 13660', '2022-02-21', $1)
+			   ('a0500000-0000-0000-0000-000000000001', 'UA', 'Crimea', 'EMBARGOED', '2014-12-19', 'Crimea/Sevastopol per EO 13685', $1, $1),
+			   ('a0500000-0000-0000-0000-000000000002', 'UA', 'Donetsk', 'HEAVILY_RESTRICTED', '2022-02-21', 'Donetsk and Luhansk oblasts per EO 13660', $1, $1)
 			 ON CONFLICT (id) DO NOTHING`,
 			[SYS],
 		);
@@ -903,8 +903,8 @@ async function seed() {
 		await run(
 			db,
 			`INSERT INTO purchase_order_line
-			   (id, purchase_order_id, line_number, inventory_item_id, description, quantity_ordered, unit_price, amount, currency_code, created_at)
-			 VALUES ($1, $2, 1, NULL, 'Rideshare launch service — LEO 550km SSO, 24 satellites', 1, 85000000, 85000000, 'USD', now())
+			   (id, purchase_order_id, line_number, inventory_item_id, description, quantity_ordered, unit_of_measure, unit_price, amount, currency_code, created_at)
+			 VALUES ($1, $2, 1, NULL, 'Rideshare launch service — LEO 550km SSO, 24 satellites', 1, 'EA', 85000000, 85000000, 'USD', now())
 			 ON CONFLICT (purchase_order_id, line_number) DO NOTHING`,
 			[POL_ID(1, 1), PO_ID(1)],
 		);
@@ -925,8 +925,8 @@ async function seed() {
 		await run(
 			db,
 			`INSERT INTO purchase_order_line
-			   (id, purchase_order_id, line_number, inventory_item_id, description, quantity_ordered, unit_price, amount, currency_code, created_at)
-			 VALUES ($1, $2, 1, NULL, 'Ku-Band Transponder Assembly — flight grade, 24 units', 24, 175000, 4200000, 'USD', now())
+			   (id, purchase_order_id, line_number, inventory_item_id, description, quantity_ordered, unit_of_measure, unit_price, amount, currency_code, created_at)
+			 VALUES ($1, $2, 1, NULL, 'Ku-Band Transponder Assembly — flight grade, 24 units', 24, 'EA', 175000, 4200000, 'USD', now())
 			 ON CONFLICT (purchase_order_id, line_number) DO NOTHING`,
 			[POL_ID(2, 1), PO_ID(2)],
 		);

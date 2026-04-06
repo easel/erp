@@ -21,6 +21,7 @@ import {
 } from "@apogee/shared";
 import type { UUID } from "@apogee/shared";
 import SchemaBuilder from "@pothos/core";
+import type { DbClient } from "./db.js";
 import {
 	type FiscalPeriodSnapshot,
 	type GLAccountSnapshot,
@@ -75,17 +76,214 @@ export const stubGLRepository: GLRepository = {
 /**
  * Build and return the Pothos GraphQL schema.
  *
- * @param glRepo  GLRepository implementation. Defaults to the in-memory stub
- *                when omitted (useful for tests without a real DB).
+ * @param glRepo  GLRepository implementation. Defaults to the in-memory stub.
+ * @param db      Optional DbClient for query resolvers. When omitted, queries
+ *                return empty results (useful for tests without a real DB).
  */
-export function buildSchema(glRepo: GLRepository = stubGLRepository): ReturnType<typeof _build> {
-	return _build(glRepo);
+export function buildSchema(
+	glRepo: GLRepository = stubGLRepository,
+	db?: DbClient,
+): ReturnType<typeof _build> {
+	return _build(glRepo, db ?? null);
 }
 
-function _build(glRepo: GLRepository) {
+function _build(glRepo: GLRepository, db: DbClient | null) {
 	const builder = new SchemaBuilder<{
 		Context: Record<string, never>;
 	}>({});
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Shared pagination input
+	// ────────────────────────────────────────────────────────────────────────
+	const PaginationInput = builder.inputType("PaginationInput", {
+		fields: (t) => ({
+			limit: t.int({ required: false, defaultValue: 50 }),
+			offset: t.int({ required: false, defaultValue: 0 }),
+		}),
+	});
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Row types for query results (snake_case from DB)
+	// ────────────────────────────────────────────────────────────────────────
+
+	type LegalEntityRow = { id: string; code: string; name: string; country_code: string; base_currency_code: string; tax_id: string | null; parent_entity_id: string | null; is_active: boolean; created_at: string };
+	type VendorRow = { id: string; entity_id: string; vendor_code: string; legal_name: string; trade_name: string | null; country_code: string; default_currency_code: string; payment_terms: string | null; risk_rating: string | null; is_active: boolean; created_at: string };
+	type CustomerRow = { id: string; entity_id: string; customer_code: string; legal_name: string; country_code: string; default_currency_code: string; notes: string | null; is_active: boolean; created_at: string };
+	type ProductRow = { id: string; entity_id: string; product_code: string; name: string; description: string | null; product_type: string; unit_of_measure: string; is_active: boolean; created_at: string };
+	type AccountRow = { id: string; entity_id: string; account_number: string; name: string; account_type: string; normal_balance: string; is_header: boolean; is_active: boolean };
+	type SalesOrderRow = { id: string; entity_id: string; customer_id: string; order_number: string; order_date: string; status: string; compliance_status: string | null; currency_code: string; total_amount: string; notes: string | null; created_at: string };
+	type PurchaseOrderRow = { id: string; entity_id: string; vendor_id: string; po_number: string; po_date: string; status: string; compliance_status: string | null; currency_code: string; total_amount: string; created_at: string };
+	type JournalEntryRow = { id: string; entity_id: string; entry_number: string; entry_date: string; description: string; status: string; source_module: string; created_at: string };
+	type OpportunityRow = { id: string; entity_id: string; customer_id: string | null; name: string; pipeline_stage_id: string; amount: string | null; currency_code: string | null; expected_close_date: string | null; probability: string | null; created_at: string };
+	type ComplianceHoldRow = { id: string; entity_id: string; held_table: string; held_record_id: string; hold_reason: string; status: string; placed_by: string; placed_at: string; resolved_at: string | null; resolution_notes: string | null };
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Entity object types for queries
+	// ────────────────────────────────────────────────────────────────────────
+
+	const LegalEntityType = builder.objectRef<LegalEntityRow>("LegalEntity");
+	LegalEntityType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			code: t.exposeString("code"),
+			name: t.exposeString("name"),
+			countryCode: t.exposeString("country_code"),
+			baseCurrencyCode: t.exposeString("base_currency_code"),
+			taxId: t.exposeString("tax_id", { nullable: true }),
+			parentEntityId: t.exposeString("parent_entity_id", { nullable: true }),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const VendorType = builder.objectRef<VendorRow>("Vendor");
+	VendorType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			vendorCode: t.exposeString("vendor_code"),
+			legalName: t.exposeString("legal_name"),
+			tradeName: t.exposeString("trade_name", { nullable: true }),
+			countryCode: t.exposeString("country_code"),
+			defaultCurrencyCode: t.exposeString("default_currency_code"),
+			paymentTerms: t.exposeString("payment_terms", { nullable: true }),
+			riskRating: t.exposeString("risk_rating", { nullable: true }),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const CustomerType = builder.objectRef<CustomerRow>("Customer");
+	CustomerType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			customerCode: t.exposeString("customer_code"),
+			legalName: t.exposeString("legal_name"),
+			countryCode: t.exposeString("country_code"),
+			defaultCurrencyCode: t.exposeString("default_currency_code"),
+			notes: t.exposeString("notes", { nullable: true }),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const ProductType = builder.objectRef<ProductRow>("Product");
+	ProductType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			productCode: t.exposeString("product_code"),
+			name: t.exposeString("name"),
+			description: t.exposeString("description", { nullable: true }),
+			productType: t.exposeString("product_type"),
+			unitOfMeasure: t.exposeString("unit_of_measure"),
+			isActive: t.exposeBoolean("is_active"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const AccountType = builder.objectRef<AccountRow>("Account");
+	AccountType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			accountNumber: t.exposeString("account_number"),
+			name: t.exposeString("name"),
+			accountType: t.exposeString("account_type"),
+			normalBalance: t.exposeString("normal_balance"),
+			isHeader: t.exposeBoolean("is_header"),
+			isActive: t.exposeBoolean("is_active"),
+		}),
+	});
+
+	const SalesOrderType = builder.objectRef<SalesOrderRow>("SalesOrder");
+	SalesOrderType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			customerId: t.exposeString("customer_id"),
+			orderNumber: t.exposeString("order_number"),
+			orderDate: t.exposeString("order_date"),
+			status: t.exposeString("status"),
+			complianceStatus: t.exposeString("compliance_status", { nullable: true }),
+			currencyCode: t.exposeString("currency_code"),
+			totalAmount: t.exposeString("total_amount"),
+			notes: t.exposeString("notes", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const PurchaseOrderType = builder.objectRef<PurchaseOrderRow>("PurchaseOrder");
+	PurchaseOrderType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			vendorId: t.exposeString("vendor_id"),
+			poNumber: t.exposeString("po_number"),
+			poDate: t.exposeString("po_date"),
+			status: t.exposeString("status"),
+			complianceStatus: t.exposeString("compliance_status", { nullable: true }),
+			currencyCode: t.exposeString("currency_code"),
+			totalAmount: t.exposeString("total_amount"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const JournalEntryType = builder.objectRef<JournalEntryRow>("JournalEntry");
+	JournalEntryType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			entryNumber: t.exposeString("entry_number"),
+			entryDate: t.exposeString("entry_date"),
+			description: t.exposeString("description"),
+			status: t.exposeString("status"),
+			sourceModule: t.exposeString("source_module"),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const OpportunityType = builder.objectRef<OpportunityRow>("Opportunity");
+	OpportunityType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			customerId: t.exposeString("customer_id", { nullable: true }),
+			name: t.exposeString("name"),
+			pipelineStageId: t.exposeString("pipeline_stage_id"),
+			amount: t.exposeString("amount", { nullable: true }),
+			currencyCode: t.exposeString("currency_code", { nullable: true }),
+			expectedCloseDate: t.exposeString("expected_close_date", { nullable: true }),
+			probability: t.exposeString("probability", { nullable: true }),
+			createdAt: t.exposeString("created_at"),
+		}),
+	});
+
+	const ComplianceHoldType = builder.objectRef<ComplianceHoldRow>("ComplianceHold");
+	ComplianceHoldType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			entityId: t.exposeString("entity_id"),
+			heldTable: t.exposeString("held_table"),
+			heldRecordId: t.exposeString("held_record_id"),
+			holdReason: t.exposeString("hold_reason"),
+			status: t.exposeString("status"),
+			placedBy: t.exposeString("placed_by"),
+			placedAt: t.exposeString("placed_at"),
+			resolvedAt: t.exposeString("resolved_at", { nullable: true }),
+			resolutionNotes: t.exposeString("resolution_notes", { nullable: true }),
+		}),
+	});
+
+	// ────────────────────────────────────────────────────────────────────────
+	// Helper: run a query if DB is available, return empty if not
+	// ────────────────────────────────────────────────────────────────────────
+	async function dbQuery<T>(sql: string, params?: unknown[]): Promise<T[]> {
+		if (!db) return [];
+		const result = await db.query<T>(sql, params);
+		return result.rows;
+	}
 
 	// ------------------------------------------------------------------ //
 	// Query
@@ -96,6 +294,303 @@ function _build(glRepo: GLRepository) {
 			_version: t.string({
 				description: "API version",
 				resolve: () => "0.0.1",
+			}),
+
+			// ── Legal Entities ──────────────────────────────────────────
+			legalEntities: t.field({
+				type: [LegalEntityType],
+				args: { pagination: t.arg({ type: PaginationInput, required: false }) },
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<LegalEntityRow>(
+						`SELECT id, code, name, country_code, base_currency_code, tax_id,
+						        parent_entity_id, is_active, created_at::text
+						 FROM legal_entity WHERE deleted_at IS NULL
+						 ORDER BY code LIMIT $1 OFFSET $2`,
+						[limit, offset],
+					);
+				},
+			}),
+
+			legalEntity: t.field({
+				type: LegalEntityType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<LegalEntityRow>(
+						`SELECT id, code, name, country_code, base_currency_code, tax_id,
+						        parent_entity_id, is_active, created_at::text
+						 FROM legal_entity WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Vendors ─────────────────────────────────────────────────
+			vendors: t.field({
+				type: [VendorType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<VendorRow>(
+						`SELECT id, entity_id, vendor_code, legal_name, trade_name,
+						        country_code, default_currency_code, payment_terms,
+						        risk_rating, is_active, created_at::text
+						 FROM vendor WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY vendor_code LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			vendor: t.field({
+				type: VendorType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<VendorRow>(
+						`SELECT id, entity_id, vendor_code, legal_name, trade_name,
+						        country_code, default_currency_code, payment_terms,
+						        risk_rating, is_active, created_at::text
+						 FROM vendor WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Customers ───────────────────────────────────────────────
+			customers: t.field({
+				type: [CustomerType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<CustomerRow>(
+						`SELECT id, entity_id, customer_code, legal_name,
+						        country_code, default_currency_code, notes,
+						        is_active, created_at::text
+						 FROM customer WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY customer_code LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			customer: t.field({
+				type: CustomerType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<CustomerRow>(
+						`SELECT id, entity_id, customer_code, legal_name,
+						        country_code, default_currency_code, notes,
+						        is_active, created_at::text
+						 FROM customer WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Products ────────────────────────────────────────────────
+			products: t.field({
+				type: [ProductType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<ProductRow>(
+						`SELECT id, entity_id, product_code, name, description,
+						        product_type, unit_of_measure, is_active, created_at::text
+						 FROM product WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY product_code LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Accounts (Chart of Accounts) ────────────────────────────
+			accounts: t.field({
+				type: [AccountType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 200;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<AccountRow>(
+						`SELECT id, entity_id, account_number, name, account_type,
+						        normal_balance, is_header, is_active
+						 FROM account WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY account_number LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Sales Orders ────────────────────────────────────────────
+			salesOrders: t.field({
+				type: [SalesOrderType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<SalesOrderRow>(
+						`SELECT id, entity_id, customer_id, order_number,
+						        order_date::text, status, compliance_status,
+						        currency_code, total_amount::text, notes, created_at::text
+						 FROM sales_order WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY order_number DESC LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			salesOrder: t.field({
+				type: SalesOrderType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<SalesOrderRow>(
+						`SELECT id, entity_id, customer_id, order_number,
+						        order_date::text, status, compliance_status,
+						        currency_code, total_amount::text, notes, created_at::text
+						 FROM sales_order WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Purchase Orders ─────────────────────────────────────────
+			purchaseOrders: t.field({
+				type: [PurchaseOrderType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<PurchaseOrderRow>(
+						`SELECT id, entity_id, vendor_id, po_number,
+						        po_date::text, status, compliance_status,
+						        currency_code, total_amount::text, created_at::text
+						 FROM purchase_order WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY po_number DESC LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			purchaseOrder: t.field({
+				type: PurchaseOrderType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<PurchaseOrderRow>(
+						`SELECT id, entity_id, vendor_id, po_number,
+						        po_date::text, status, compliance_status,
+						        currency_code, total_amount::text, created_at::text
+						 FROM purchase_order WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Journal Entries ──────────────────────────────────────────
+			journalEntries: t.field({
+				type: [JournalEntryType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<JournalEntryRow>(
+						`SELECT id, entity_id, entry_number, entry_date::text,
+						        description, status, source_module, created_at::text
+						 FROM journal_entry WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY entry_number DESC LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			journalEntry: t.field({
+				type: JournalEntryType,
+				nullable: true,
+				args: { id: t.arg.string({ required: true }) },
+				resolve: async (_root, args) => {
+					const rows = await dbQuery<JournalEntryRow>(
+						`SELECT id, entity_id, entry_number, entry_date::text,
+						        description, status, source_module, created_at::text
+						 FROM journal_entry WHERE id = $1 AND deleted_at IS NULL`,
+						[args.id],
+					);
+					return rows[0] ?? null;
+				},
+			}),
+
+			// ── Opportunities (CRM) ─────────────────────────────────────
+			opportunities: t.field({
+				type: [OpportunityType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<OpportunityRow>(
+						`SELECT id, entity_id, customer_id, name, pipeline_stage_id,
+						        amount::text, currency_code, expected_close_date::text,
+						        probability::text, created_at::text
+						 FROM opportunity WHERE entity_id = $1 AND deleted_at IS NULL
+						 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
+			}),
+
+			// ── Compliance Holds ─────────────────────────────────────────
+			complianceHolds: t.field({
+				type: [ComplianceHoldType],
+				args: {
+					entityId: t.arg.string({ required: true }),
+					pagination: t.arg({ type: PaginationInput, required: false }),
+				},
+				resolve: async (_root, args) => {
+					const limit = args.pagination?.limit ?? 50;
+					const offset = args.pagination?.offset ?? 0;
+					return dbQuery<ComplianceHoldRow>(
+						`SELECT id, entity_id, held_table, held_record_id, hold_reason,
+						        status, placed_by, placed_at::text, resolved_at::text,
+						        resolution_notes
+						 FROM compliance_hold WHERE entity_id = $1
+						 ORDER BY placed_at DESC LIMIT $2 OFFSET $3`,
+						[args.entityId, limit, offset],
+					);
+				},
 			}),
 		}),
 	});
@@ -171,16 +666,17 @@ function _build(glRepo: GLRepository) {
 
 	const CreateVendorInput_GQL = builder.inputType("CreateVendorInput", {
 		fields: (t) => ({
-			name: t.string({ required: true }),
+			entityId: t.string({ required: true }),
+			vendorCode: t.string({ required: true }),
 			legalName: t.string({ required: true }),
-			vendorType: t.string({ required: true }),
-			taxId: t.string({ required: false }),
+			tradeName: t.string({ required: false }),
 			countryCode: t.string({ required: true }),
-			currencyCode: t.string({ required: true }),
-			paymentTerms: t.string({ required: true }),
-			email: t.string({ required: false }),
-			phone: t.string({ required: false }),
-			address: t.field({ type: VendorAddressInput, required: false }),
+			defaultCurrencyCode: t.string({ required: true }),
+			taxId: t.string({ required: false }),
+			paymentTerms: t.string({ required: false }),
+			defaultPaymentMethod: t.string({ required: false }),
+			riskRating: t.string({ required: false }),
+			website: t.string({ required: false }),
 			notes: t.string({ required: false }),
 		}),
 	});

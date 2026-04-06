@@ -1,0 +1,23 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: seed
+  namespace: apogee
+spec:
+  backoffLimit: 5
+  template:
+    metadata:
+      labels:
+        app: seed
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: seed
+          image: apogee:demo
+          imagePullPolicy: Never
+          command: ["bun", "packages/server/src/seed.ts"]
+          env:
+            - name: DATABASE_URL
+              value: postgresql://apogee:apogee_dev@postgres:5432/apogee_dev
+            - name: NODE_ENV
+              value: development

@@ -1,28 +1,29 @@
 #!/usr/bin/env bun
 /**
- * Apogee Demo Mode
+ * Apogee Demo Mode — Kind (Kubernetes-in-Docker)
  *
- * Stands up the full stack for demonstration and functional testing:
- *   1. Start PostgreSQL and Redis via Docker Compose
- *   2. Wait for PostgreSQL to be healthy
- *   3. Run database migrations (graphile-migrate)
- *   4. Seed the database with Orbital Dynamics Corp demo dataset
- *   5. Start the API server
- *   6. Open the browser at http://localhost:3000
+ * Stands up the full stack on a local Kind cluster:
+ *   1. Create (or reuse) a Kind cluster "apogee-demo"
+ *   2. Build and load container images into the cluster
+ *   3. Deploy PostgreSQL, Redis, Keycloak
+ *   4. Run database migrations (graphile-migrate) as a Job
+ *   5. Seed the database with Orbital Dynamics Corp demo dataset as a Job
+ *   6. Deploy the Apogee API server
+ *   7. Print access URLs
  *
- * Requirements: docker, bun
+ * Requirements: docker, kind, kubectl, bun
  *
  * Ref: FEAT-009 PLT-020, issue erp-b2ef3933
  */
 
-import { spawn, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import path from "node:path";
 
 const ROOT = path.resolve(import.meta.dir, "..");
-const SERVER_DIR = path.join(ROOT, "packages", "server");
-const SERVER_PORT = Number(process.env.PORT ?? 3000);
-const DATABASE_URL =
-	process.env.DATABASE_URL ?? "postgresql://apogee:apogee_dev@localhost:5432/apogee_dev";
+const K8S_DIR = path.join(ROOT, "k8s");
+const CLUSTER_NAME = "apogee-demo";
+const NAMESPACE = "apogee";
+const SERVER_PORT = 3100;
 const BROWSER_URL = `http://localhost:${SERVER_PORT}`;
 
 // ─── Colour helpers ────────────────────────────────────────────────────────────
@@ -47,126 +48,177 @@ function die(msg: string): never {
 	process.exit(1);
 }
 
+// ─── Shell helper ─────────────────────────────────────────────────────────────
+function run(cmd: string, args: string[], opts?: { cwd?: string; quiet?: boolean }): number {
+	const result = spawnSync(cmd, args, {
+		cwd: opts?.cwd ?? ROOT,
+		stdio: opts?.quiet ? "pipe" : "inherit",
+	});
+	return result.status ?? 1;
+}
+
+function runOutput(cmd: string, args: string[], opts?: { cwd?: string }): string {
+	const result = spawnSync(cmd, args, { cwd: opts?.cwd ?? ROOT, stdio: "pipe" });
+	return result.stdout?.toString().trim() ?? "";
+}
+
 // ─── Prerequisite checks ───────────────────────────────────────────────────────
 function checkPrerequisites() {
-	log("Checking prerequisites…");
+	log("Checking prerequisites...");
 
-	for (const cmd of ["docker", "bun"]) {
-		const result = spawnSync(cmd, ["--version"], { stdio: "pipe" });
+	const checks: [string, string[]][] = [
+		["docker", ["--version"]],
+		["kind", ["--version"]],
+		["kubectl", ["version", "--client"]],
+		["bun", ["--version"]],
+	];
+	for (const [cmd, args] of checks) {
+		const result = spawnSync(cmd, args, { stdio: "pipe" });
 		if (result.status !== 0) {
 			die(`Required tool not found: ${cmd}\nPlease install it and try again.`);
 		}
 	}
 
-	// Check docker daemon is running
 	const dockerInfo = spawnSync("docker", ["info"], { stdio: "pipe" });
 	if (dockerInfo.status !== 0) {
-		die(
-			"Docker daemon is not running.\nPlease start Docker Desktop or the Docker daemon and try again.",
-		);
+		die("Docker daemon is not running.\nPlease start Docker and try again.");
 	}
 
-	ok("Prerequisites OK (docker, bun)");
+	ok("Prerequisites OK (docker, kind, kubectl, bun)");
 }
 
-// ─── Docker Compose helpers ────────────────────────────────────────────────────
-function dockerCompose(args: string[], opts?: { cwd?: string }) {
-	const cwd = opts?.cwd ?? ROOT;
-	const result = spawnSync("docker", ["compose", ...args], {
-		cwd,
-		stdio: "inherit",
-		env: { ...process.env, DATABASE_URL },
-	});
-	return result.status ?? 1;
-}
+// ─── Kind cluster ─────────────────────────────────────────────────────────────
+function ensureCluster() {
+	log(`Ensuring Kind cluster "${CLUSTER_NAME}" exists...`);
 
-async function startInfrastructure() {
-	log("Starting PostgreSQL and Redis via Docker Compose…");
-	const exitCode = dockerCompose(["up", "-d", "postgres", "redis"]);
+	const clusters = runOutput("kind", ["get", "clusters"]);
+	if (clusters.split("\n").includes(CLUSTER_NAME)) {
+		ok(`Cluster "${CLUSTER_NAME}" already exists — reusing.`);
+		// Point kubectl at it
+		run("kubectl", ["cluster-info", "--context", `kind-${CLUSTER_NAME}`], { quiet: true });
+		return;
+	}
+
+	log("Creating Kind cluster (this takes ~30s on first run)...");
+	const exitCode = run("kind", [
+		"create",
+		"cluster",
+		"--config",
+		path.join(K8S_DIR, "kind-config.yaml"),
+	]);
 	if (exitCode !== 0) {
-		die("Failed to start infrastructure services.");
+		die("Failed to create Kind cluster.");
 	}
-	ok("Infrastructure services started.");
+	ok("Kind cluster created.");
 }
 
-// ─── Wait for PostgreSQL ───────────────────────────────────────────────────────
-async function waitForPostgres(maxWaitMs = 60_000, intervalMs = 2_000): Promise<void> {
-	log("Waiting for PostgreSQL to be ready…");
-	const deadline = Date.now() + maxWaitMs;
+// ─── Build and load images ────────────────────────────────────────────────────
+function buildAndLoadImages() {
+	log("Building apogee:demo image...");
+	if (run("docker", ["build", "-t", "apogee:demo", "-f", "Dockerfile", "."]) !== 0) {
+		die("Failed to build apogee:demo image.");
+	}
 
-	while (Date.now() < deadline) {
-		const result = spawnSync(
-			"docker",
-			["compose", "exec", "-T", "postgres", "pg_isready", "-U", "apogee", "-d", "apogee_dev"],
-			{ cwd: ROOT, stdio: "pipe" },
-		);
-		if (result.status === 0) {
-			ok("PostgreSQL is ready.");
-			return;
+	log("Building apogee-migrate:demo image...");
+	if (run("docker", ["build", "-t", "apogee-migrate:demo", "-f", "Dockerfile.migrate", "."]) !== 0) {
+		die("Failed to build apogee-migrate:demo image.");
+	}
+
+	log("Loading images into Kind cluster...");
+	if (run("kind", ["load", "docker-image", "apogee:demo", "--name", CLUSTER_NAME]) !== 0) {
+		die("Failed to load apogee:demo into Kind.");
+	}
+	if (run("kind", ["load", "docker-image", "apogee-migrate:demo", "--name", CLUSTER_NAME]) !== 0) {
+		die("Failed to load apogee-migrate:demo into Kind.");
+	}
+
+	ok("Images built and loaded.");
+}
+
+// ─── Deploy infrastructure ────────────────────────────────────────────────────
+function deployInfra() {
+	log("Deploying infrastructure (postgres, redis, keycloak)...");
+
+	const manifests = ["namespace.yaml", "postgres.yaml", "redis.yaml", "keycloak.yaml"];
+	for (const m of manifests) {
+		if (run("kubectl", ["apply", "-f", path.join(K8S_DIR, m)]) !== 0) {
+			die(`Failed to apply ${m}`);
 		}
-		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 
-	die(`PostgreSQL did not become ready within ${maxWaitMs / 1000}s.`);
+	ok("Infrastructure manifests applied.");
 }
 
-// ─── Migration ────────────────────────────────────────────────────────────────
+// ─── Wait helpers ─────────────────────────────────────────────────────────────
+async function waitForRollout(deployment: string, timeoutSec = 120): Promise<void> {
+	log(`Waiting for ${deployment} to be ready...`);
+	const exitCode = run("kubectl", [
+		"rollout",
+		"status",
+		`deployment/${deployment}`,
+		"-n",
+		NAMESPACE,
+		`--timeout=${timeoutSec}s`,
+	]);
+	if (exitCode !== 0) {
+		die(`${deployment} did not become ready within ${timeoutSec}s.`);
+	}
+	ok(`${deployment} is ready.`);
+}
+
+async function waitForJob(jobName: string, timeoutSec = 120): Promise<void> {
+	log(`Waiting for job/${jobName} to complete...`);
+	const exitCode = run("kubectl", [
+		"wait",
+		`--for=condition=complete`,
+		`job/${jobName}`,
+		"-n",
+		NAMESPACE,
+		`--timeout=${timeoutSec}s`,
+	]);
+	if (exitCode !== 0) {
+		// Show logs to help debug
+		warn(`Job ${jobName} did not complete. Fetching logs...`);
+		run("kubectl", ["logs", `job/${jobName}`, "-n", NAMESPACE]);
+		die(`Job ${jobName} failed or timed out.`);
+	}
+	ok(`Job ${jobName} completed.`);
+}
+
+// ─── Run migrations ──────────────────────────────────────────────────────────
 async function runMigrations() {
-	log("Running database migrations…");
-	const result = spawnSync("bun", ["run", "migrate"], {
-		cwd: SERVER_DIR,
-		stdio: "inherit",
-		env: { ...process.env, DATABASE_URL },
-	});
-	if (result.status !== 0) {
-		die("Migration failed. Check the output above for details.");
+	log("Running database migrations...");
+	// Delete previous job run if it exists (jobs are immutable)
+	run("kubectl", ["delete", "job", "migrate", "-n", NAMESPACE, "--ignore-not-found"], { quiet: true });
+	if (run("kubectl", ["apply", "-f", path.join(K8S_DIR, "migrate-job.yaml")]) !== 0) {
+		die("Failed to create migrate job.");
 	}
-	ok("Migrations applied.");
+	await waitForJob("migrate", 120);
 }
 
-// ─── Seed ─────────────────────────────────────────────────────────────────────
+// ─── Run seed ────────────────────────────────────────────────────────────────
 async function runSeed() {
-	log("Seeding demo data (Orbital Dynamics Corp)…");
-	const result = spawnSync("bun", ["run", "seed"], {
-		cwd: SERVER_DIR,
-		stdio: "inherit",
-		env: { ...process.env, DATABASE_URL },
-	});
-	if (result.status !== 0) {
-		die("Seed failed. Check the output above for details.");
+	log("Seeding demo data (Orbital Dynamics Corp)...");
+	run("kubectl", ["delete", "job", "seed", "-n", NAMESPACE, "--ignore-not-found"], { quiet: true });
+	if (run("kubectl", ["apply", "-f", path.join(K8S_DIR, "seed-job.yaml")]) !== 0) {
+		die("Failed to create seed job.");
 	}
-	ok("Demo data seeded.");
+	await waitForJob("seed", 120);
 }
 
-// ─── Browser open ─────────────────────────────────────────────────────────────
-function openBrowser(url: string) {
-	log(`Opening ${url} in your browser…`);
-	// Platform-appropriate open command
-	const platform = process.platform;
-	let cmd: string;
-	let args: string[];
-	if (platform === "darwin") {
-		cmd = "open";
-		args = [url];
-	} else if (platform === "win32") {
-		cmd = "cmd";
-		args = ["/c", "start", url];
-	} else {
-		// Linux: try xdg-open, then sensible-browser, then warn
-		cmd = "xdg-open";
-		args = [url];
+// ─── Deploy app ──────────────────────────────────────────────────────────────
+async function deployApp() {
+	log("Deploying Apogee API server...");
+	if (run("kubectl", ["apply", "-f", path.join(K8S_DIR, "apogee-server.yaml")]) !== 0) {
+		die("Failed to deploy apogee-server.");
 	}
-
-	const result = spawnSync(cmd, args, { stdio: "pipe" });
-	if (result.status !== 0) {
-		warn(`Could not open browser automatically. Visit ${url} manually.`);
-	}
+	await waitForRollout("apogee-server", 120);
 }
 
-// ─── Wait for server to be ready ──────────────────────────────────────────────
-async function waitForServer(url: string, maxWaitMs = 30_000, intervalMs = 500): Promise<void> {
+// ─── Wait for server reachable via NodePort ──────────────────────────────────
+async function waitForServer(url: string, maxWaitMs = 30_000, intervalMs = 1_000): Promise<void> {
 	const healthUrl = `${url.replace(/\/$/, "")}/health/live`;
-	log(`Waiting for server at ${healthUrl}…`);
+	log(`Waiting for server at ${healthUrl}...`);
 	const deadline = Date.now() + maxWaitMs;
 
 	while (Date.now() < deadline) {
@@ -177,18 +229,46 @@ async function waitForServer(url: string, maxWaitMs = 30_000, intervalMs = 500):
 				return;
 			}
 		} catch {
-			// Not ready yet
+			// Not reachable yet
 		}
 		await new Promise((resolve) => setTimeout(resolve, intervalMs));
 	}
 
-	warn(`Server did not respond within ${maxWaitMs / 1000}s — opening browser anyway.`);
+	warn(`Server did not respond within ${maxWaitMs / 1000}s — it may still be starting.`);
+}
+
+// ─── Browser open ─────────────────────────────────────────────────────────────
+function openBrowser(url: string) {
+	log(`Opening ${url} in your browser...`);
+	const platform = process.platform;
+	let cmd: string;
+	let args: string[];
+	if (platform === "darwin") {
+		cmd = "open";
+		args = [url];
+	} else if (platform === "win32") {
+		cmd = "cmd";
+		args = ["/c", "start", url];
+	} else {
+		cmd = "xdg-open";
+		args = [url];
+	}
+	const result = spawnSync(cmd, args, { stdio: "pipe" });
+	if (result.status !== 0) {
+		warn(`Could not open browser automatically. Visit ${url} manually.`);
+	}
+}
+
+// ─── Teardown ─────────────────────────────────────────────────────────────────
+function printTeardown() {
+	console.log(`\n  ${BOLD}To stop the demo:${RESET}`);
+	console.log(`    kind delete cluster --name ${CLUSTER_NAME}\n`);
 }
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 async function main() {
 	console.log(`\n${BOLD}${CYAN}╔══════════════════════════════════════╗${RESET}`);
-	console.log(`${BOLD}${CYAN}║  Apogee ERP — Demo Mode               ║${RESET}`);
+	console.log(`${BOLD}${CYAN}║  Apogee ERP — Demo Mode (Kind)       ║${RESET}`);
 	console.log(`${BOLD}${CYAN}╚══════════════════════════════════════╝${RESET}\n`);
 
 	log("Demo credentials: demo@apogee.dev / apogee-demo");
@@ -196,58 +276,24 @@ async function main() {
 	console.log();
 
 	checkPrerequisites();
-	await startInfrastructure();
-	await waitForPostgres();
+	ensureCluster();
+	buildAndLoadImages();
+	deployInfra();
+	await waitForRollout("postgres", 120);
 	await runMigrations();
 	await runSeed();
-
-	// Start the API server as a background child process
-	log("Starting Apogee API server…");
-	const server = spawn("bun", ["run", "src/index.ts"], {
-		cwd: SERVER_DIR,
-		stdio: "inherit",
-		env: {
-			...process.env,
-			DATABASE_URL,
-			PORT: String(SERVER_PORT),
-			HOST: "0.0.0.0",
-			NODE_ENV: "development",
-			LOG_LEVEL: "info",
-			// Disable JWT auth for demo mode so the GraphQL playground is accessible
-			APP_JWT_SECRET: "",
-		},
-	});
-
-	server.on("error", (err) => {
-		die(`Failed to start server: ${err.message}`);
-	});
-
-	// Graceful shutdown
-	const shutdown = (signal: string) => {
-		log(`\nReceived ${signal} — shutting down…`);
-		server.kill("SIGTERM");
-
-		// Stop infrastructure
-		log("Stopping Docker Compose services…");
-		dockerCompose(["stop", "postgres", "redis"]);
-
-		ok("Demo stopped. Goodbye!");
-		process.exit(0);
-	};
-
-	process.on("SIGINT", () => shutdown("SIGINT"));
-	process.on("SIGTERM", () => shutdown("SIGTERM"));
-
-	// Wait for server to be ready, then open browser
+	await deployApp();
 	await waitForServer(BROWSER_URL);
 	openBrowser(BROWSER_URL);
 
-	ok("\nDemo is running! Press Ctrl+C to stop.");
+	ok("\nDemo is running on Kind!");
 	console.log(`\n  ${BOLD}URL:         ${BROWSER_URL}${RESET}`);
 	console.log(`  ${BOLD}Email:       demo@apogee.dev${RESET}`);
 	console.log(`  ${BOLD}Password:    apogee-demo${RESET}`);
 	console.log(`  ${BOLD}GraphQL:     ${BROWSER_URL}/graphql${RESET}`);
-	console.log(`  ${BOLD}Health:      ${BROWSER_URL}/health/live${RESET}\n`);
+	console.log(`  ${BOLD}Health:      ${BROWSER_URL}/health/live${RESET}`);
+	console.log(`  ${BOLD}Keycloak:    http://localhost:8180${RESET}`);
+	printTeardown();
 }
 
 await main();

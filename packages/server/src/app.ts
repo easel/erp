@@ -69,7 +69,7 @@ export async function buildApp(opts: AppOptions = {}): Promise<FastifyInstance> 
 	if (dbUrl) {
 		const pool = getPool(dbUrl);
 		const glRepo = createGLRepository(pool);
-		schema = buildSchema(glRepo);
+		schema = buildSchema(glRepo, pool);
 	} else {
 		// No DB configured — use stub repositories (tests / build-time checks).
 		schema = buildSchema();

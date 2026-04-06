@@ -13,10 +13,17 @@ export const CountryCodeSchema = z
 	.regex(/^[A-Z]{2}$/, "Country code must be 2 uppercase letters (ISO 3166-1 alpha-2)")
 	.transform((v) => v as CountryCode);
 
-/** UUID v4 */
+/**
+ * UUID — accepts any 8-4-4-4-12 hex string. Not restricted to v4 because
+ * deterministic seed UUIDs use a structured format (e.g. a0000000-0000-0000-...)
+ * for human readability while still being unique.
+ */
 export const UUIDSchema = z
 	.string()
-	.uuid("Must be a valid UUID v4")
+	.regex(
+		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
+		"Must be a valid UUID",
+	)
 	.transform((v) => v as UUID);
 
 /**
