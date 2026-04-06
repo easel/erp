@@ -32,7 +32,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Deliverable | Detail |
 |---|---|
 | Monorepo scaffold | Bun workspaces, Bun workspace scripts, shared `tsconfig` with strict mode |
-| Local dev environment | `docker-compose` for PostgreSQL 16, Redis 7, Keycloak |
+| Local dev environment | Kind cluster for PostgreSQL 16, Redis 7, Keycloak (`bun run demo`) |
 | CI pipeline | GitHub Actions: lint, typecheck, unit test, build, container image push |
 | Database migration framework | graphile-migrate (SQL-first migrations, no ORM lock-in) |
 | Shared kernel package | `@apogee/shared` -- base types, Result/Error types, audit context, pagination primitives |
@@ -43,7 +43,7 @@ Phase 1 is organized into eight sequential work packages (WP-0 through WP-7). Ea
 | Dual-runtime CI pipeline | Bun primary, Node.js fallback — CI runs test suite on both runtimes |
 | Local-first infrastructure | SQLite client-side schema mirroring, sync protocol scaffolding, offline tier configuration |
 
-**Definition of Done:** A contributor can clone the repo, run `bun install && docker compose up`, and hit the GraphQL playground with a valid JWT from the dev Keycloak instance.
+**Definition of Done:** A contributor can clone the repo, run `bun install && bun run demo`, and hit the GraphQL playground with a valid JWT from the dev Keycloak instance.
 
 ---
 
