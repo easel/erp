@@ -49,12 +49,20 @@ export default async function FinancePage() {
             <span>Journal Entries</span>
           </p>
         </div>
-        <Link
-          href="/finance/accounts"
-          className="text-sm text-finance hover:underline"
-        >
-          Chart of Accounts
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/finance/journal-entries/new"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+          >
+            New Entry
+          </Link>
+          <Link
+            href="/finance/accounts"
+            className="text-sm text-finance hover:underline"
+          >
+            Chart of Accounts
+          </Link>
+        </div>
       </div>
 
       <Table>

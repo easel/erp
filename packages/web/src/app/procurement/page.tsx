@@ -49,12 +49,20 @@ export default async function ProcurementPage() {
             <span>Vendors</span>
           </p>
         </div>
-        <Link
-          href="/procurement/purchase-orders"
-          className="text-sm text-procurement hover:underline"
-        >
-          Purchase Orders
-        </Link>
+        <div className="flex items-center gap-3">
+          <Link
+            href="/procurement/vendors/new"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
+          >
+            New Vendor
+          </Link>
+          <Link
+            href="/procurement/purchase-orders"
+            className="text-sm text-procurement hover:underline"
+          >
+            Purchase Orders
+          </Link>
+        </div>
       </div>
 
       <Table>

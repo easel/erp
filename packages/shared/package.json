@@ -5,6 +5,11 @@
 	"type": "module",
 	"main": "src/index.ts",
 	"types": "src/index.ts",
+	"exports": {
+		".": "./src/index.ts",
+		"./entity-schemas/*": "./src/entity-schemas/*.ts",
+		"./schemas": "./src/schemas.ts"
+	},
 	"scripts": {
 		"test": "vitest run",
 		"typecheck": "tsc --noEmit"

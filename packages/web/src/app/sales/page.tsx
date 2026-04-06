@@ -66,8 +66,12 @@ export default async function SalesPage() {
             </TableRow>
           ) : (
             orders.map((order) => (
-              <TableRow key={order.id}>
-                <TableCell className="font-mono">{order.orderNumber}</TableCell>
+              <TableRow key={order.id} className="cursor-pointer">
+                <TableCell className="font-mono">
+                  <Link href={`/sales/${order.id}`} className="hover:underline">
+                    {order.orderNumber}
+                  </Link>
+                </TableCell>
                 <TableCell>
                   <Badge variant={order.status === "CONFIRMED" ? "default" : "secondary"}>
                     {order.status}
