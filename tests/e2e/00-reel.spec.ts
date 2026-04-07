@@ -18,7 +18,7 @@
  * Ref: FEAT-009 PLT-021, issue erp-9e06e0fc
  */
 import { expect, test } from "@playwright/test";
-import { BASE_URL, GRAPHQL_URL, SEED, assertServerHealthy, graphql } from "./helpers/api.js";
+import { BASE_URL, GRAPHQL_URL, SEED, graphql } from "./helpers/api.js";
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // 1. Platform health & observability
@@ -49,7 +49,7 @@ test.describe("Platform health & observability", () => {
 	});
 
 	test("API version is 0.0.1", async ({ request }) => {
-		const result = await graphql(request, `{ _version }`);
+		const result = await graphql(request, "{ _version }");
 		expect(result.errors).toBeUndefined();
 		expect(result.data?._version).toBe("0.0.1");
 	});
@@ -61,13 +61,14 @@ test.describe("Platform health & observability", () => {
 
 test.describe("Schema completeness", () => {
 	test("all mutations are registered", async ({ request }) => {
-		const result = await graphql(request, `{
+		const result = await graphql(
+			request,
+			`{
 			__type(name: "Mutation") { fields { name } }
-		}`);
-		expect(result.errors).toBeUndefined();
-		const names = (result.data?.__type as { fields: { name: string }[] }).fields.map(
-			(f) => f.name,
+		}`,
 		);
+		expect(result.errors).toBeUndefined();
+		const names = (result.data?.__type as { fields: { name: string }[] }).fields.map((f) => f.name);
 		expect(names).toContain("createVendor");
 		expect(names).toContain("createJournalEntry");
 		expect(names).toContain("approvePurchaseOrder");
@@ -77,8 +78,14 @@ test.describe("Schema completeness", () => {
 
 	test("domain input types exist with correct fields", async ({ request }) => {
 		const types = [
-			["CreateVendorInput", ["entityId", "vendorCode", "legalName", "countryCode", "defaultCurrencyCode"]],
-			["CreateJournalEntryInput", ["legalEntityId", "fiscalPeriodId", "entryDate", "reference", "lines"]],
+			[
+				"CreateVendorInput",
+				["entityId", "vendorCode", "legalName", "countryCode", "defaultCurrencyCode"],
+			],
+			[
+				"CreateJournalEntryInput",
+				["legalEntityId", "fiscalPeriodId", "entryDate", "reference", "lines"],
+			],
 			["JournalLineInput", ["accountId", "type", "amount", "currencyCode"]],
 			["ApprovePurchaseOrderInput", ["id", "approverId"]],
 			["SubmitPurchaseOrderInput", ["id", "submittedBy"]],
@@ -86,12 +93,17 @@ test.describe("Schema completeness", () => {
 		] as const;
 
 		for (const [typeName, expectedFields] of types) {
-			const result = await graphql(request, `{
+			const result = await graphql(
+				request,
+				`{
 				__type(name: "${typeName}") { inputFields { name } }
-			}`);
+			}`,
+			);
 			expect(result.errors).toBeUndefined();
-			const fields = (result.data?.__type as { inputFields: { name: string }[] })
-				?.inputFields.map((f) => f.name) ?? [];
+			const fields =
+				(result.data?.__type as { inputFields: { name: string }[] })?.inputFields.map(
+					(f) => f.name,
+				) ?? [];
 			for (const field of expectedFields) {
 				expect(fields, `${typeName} missing field: ${field}`).toContain(field);
 			}
@@ -107,12 +119,15 @@ test.describe("Schema completeness", () => {
 		] as const;
 
 		for (const [typeName, expectedFields] of types) {
-			const result = await graphql(request, `{
+			const result = await graphql(
+				request,
+				`{
 				__type(name: "${typeName}") { fields { name } }
-			}`);
+			}`,
+			);
 			expect(result.errors).toBeUndefined();
-			const fields = (result.data?.__type as { fields: { name: string }[] })
-				?.fields.map((f) => f.name) ?? [];
+			const fields =
+				(result.data?.__type as { fields: { name: string }[] })?.fields.map((f) => f.name) ?? [];
 			for (const field of expectedFields) {
 				expect(fields, `${typeName} missing field: ${field}`).toContain(field);
 			}
@@ -128,7 +143,7 @@ test.describe("Data queries — seeded data", () => {
 	const entityId = SEED.entities.US;
 
 	test("legalEntities returns ODC entities", async ({ request }) => {
-		const result = await graphql(request, `{ legalEntities { id code name } }`);
+		const result = await graphql(request, "{ legalEntities { id code name } }");
 		expect(result.errors).toBeUndefined();
 		const entities = result.data?.legalEntities as { code: string }[];
 		expect(entities.length).toBeGreaterThanOrEqual(3);
@@ -141,7 +156,7 @@ test.describe("Data queries — seeded data", () => {
 	test("vendors returns seeded vendors", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { vendors(entityId: $eid) { id vendorCode legalName } }`,
+			"query($eid: String!) { vendors(entityId: $eid) { id vendorCode legalName } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -152,7 +167,7 @@ test.describe("Data queries — seeded data", () => {
 	test("customers returns seeded customers", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { customers(entityId: $eid) { id customerCode legalName countryCode } }`,
+			"query($eid: String!) { customers(entityId: $eid) { id customerCode legalName countryCode } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -163,7 +178,7 @@ test.describe("Data queries — seeded data", () => {
 	test("accounts returns chart of accounts", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { accounts(entityId: $eid) { id accountNumber name accountType } }`,
+			"query($eid: String!) { accounts(entityId: $eid) { id accountNumber name accountType } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -177,7 +192,7 @@ test.describe("Data queries — seeded data", () => {
 	test("salesOrders returns seeded orders with compliance statuses", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { salesOrders(entityId: $eid) { id orderNumber status complianceStatus } }`,
+			"query($eid: String!) { salesOrders(entityId: $eid) { id orderNumber status complianceStatus } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -191,7 +206,7 @@ test.describe("Data queries — seeded data", () => {
 	test("purchaseOrders returns seeded POs", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { purchaseOrders(entityId: $eid) { id poNumber status totalAmount } }`,
+			"query($eid: String!) { purchaseOrders(entityId: $eid) { id poNumber status totalAmount } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -202,7 +217,7 @@ test.describe("Data queries — seeded data", () => {
 	test("journalEntries returns posted entries", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { journalEntries(entityId: $eid) { id entryNumber description status } }`,
+			"query($eid: String!) { journalEntries(entityId: $eid) { id entryNumber description status } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -213,7 +228,7 @@ test.describe("Data queries — seeded data", () => {
 	test("opportunities returns CRM pipeline", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { opportunities(entityId: $eid) { id name amount } }`,
+			"query($eid: String!) { opportunities(entityId: $eid) { id name amount } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -224,7 +239,7 @@ test.describe("Data queries — seeded data", () => {
 	test("complianceHolds returns active hold (Crimea)", async ({ request }) => {
 		const result = await graphql(
 			request,
-			`query($eid: String!) { complianceHolds(entityId: $eid) { id holdReason status } }`,
+			"query($eid: String!) { complianceHolds(entityId: $eid) { id holdReason status } }",
 			{ eid: entityId },
 		);
 		expect(result.errors).toBeUndefined();
@@ -232,7 +247,7 @@ test.describe("Data queries — seeded data", () => {
 		expect(holds.length).toBeGreaterThanOrEqual(1);
 		const activeHold = holds.find((h) => h.holdReason === "AMBIGUOUS_REGION");
 		expect(activeHold).toBeTruthy();
-		expect(activeHold!.status).toBe("ACTIVE");
+		expect(activeHold?.status).toBe("ACTIVE");
 	});
 });
 
@@ -248,7 +263,7 @@ test.describe("Multi-entity context", () => {
 			["APAC", SEED.entities.APAC],
 		] as const) {
 			const res = await request.post(GRAPHQL_URL, {
-				data: { query: `{ _version }` },
+				data: { query: "{ _version }" },
 				headers: { "Content-Type": "application/json", "X-Entity-Id": entityId },
 			});
 			expect(res.ok(), `Entity ${label} (${entityId}) request failed`).toBeTruthy();
@@ -365,9 +380,7 @@ test.describe("Procurement — PO lifecycle", () => {
 	const poId = "550e8400-e29b-41d4-a716-446655440000";
 	const actorId = "550e8400-e29b-41d4-a716-446655440001";
 
-	test("submitPurchaseOrderForApproval transitions PO to PENDING_APPROVAL", async ({
-		request,
-	}) => {
+	test("submitPurchaseOrderForApproval transitions PO to PENDING_APPROVAL", async ({ request }) => {
 		const result = await graphql(
 			request,
 			`mutation($input: SubmitPurchaseOrderInput!) {
@@ -491,7 +504,7 @@ test.describe("Finance — journal entries", () => {
 			},
 		);
 		expect(result.errors).toBeDefined();
-		expect(result.errors!.length).toBeGreaterThan(0);
+		expect(result.errors?.length).toBeGreaterThan(0);
 	});
 
 	test("createJournalEntry rejects entry with only one line", async ({ request }) => {
@@ -585,9 +598,12 @@ test.describe("Finance — journal entries", () => {
 
 test.describe("Compliance — screening gate", () => {
 	test("POApprovalResult carries screening metadata", async ({ request }) => {
-		const result = await graphql(request, `{
+		const result = await graphql(
+			request,
+			`{
 			__type(name: "POApprovalResult") { fields { name type { name kind } } }
-		}`);
+		}`,
+		);
 		expect(result.errors).toBeUndefined();
 		const fields = (result.data?.__type as { fields: { name: string }[] }).fields.map(
 			(f) => f.name,

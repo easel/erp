@@ -1,0 +1,4 @@
+[test]
+# Exclude Playwright e2e specs from `bun test`.
+# E2E tests must be run via `bun run test:e2e` (playwright test runner).
+pathIgnorePatterns = ["tests/e2e"]

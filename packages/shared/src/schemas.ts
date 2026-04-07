@@ -20,10 +20,7 @@ export const CountryCodeSchema = z
  */
 export const UUIDSchema = z
 	.string()
-	.regex(
-		/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i,
-		"Must be a valid UUID",
-	)
+	.regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i, "Must be a valid UUID")
 	.transform((v) => v as UUID);
 
 /**

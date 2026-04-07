@@ -423,7 +423,7 @@ function makeBalance(
 	const pc = periodCredit;
 	const yd = ytdDebit ?? pd;
 	const yc = ytdCredit ?? pc;
-	const pNet =
+	const _pNet =
 		BigInt(pd.replace(".", "").padEnd(13, "0").slice(0, 13)) -
 		BigInt(pc.replace(".", "").padEnd(13, "0").slice(0, 13));
 	// Simple net calculation — use raw string subtraction for test fixture

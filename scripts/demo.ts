@@ -120,7 +120,9 @@ function buildAndLoadImages() {
 	}
 
 	log("Building apogee-migrate:demo image...");
-	if (run("docker", ["build", "-t", "apogee-migrate:demo", "-f", "Dockerfile.migrate", "."]) !== 0) {
+	if (
+		run("docker", ["build", "-t", "apogee-migrate:demo", "-f", "Dockerfile.migrate", "."]) !== 0
+	) {
 		die("Failed to build apogee-migrate:demo image.");
 	}
 
@@ -170,7 +172,7 @@ async function waitForJob(jobName: string, timeoutSec = 120): Promise<void> {
 	log(`Waiting for job/${jobName} to complete...`);
 	const exitCode = run("kubectl", [
 		"wait",
-		`--for=condition=complete`,
+		"--for=condition=complete",
 		`job/${jobName}`,
 		"-n",
 		NAMESPACE,
@@ -189,7 +191,9 @@ async function waitForJob(jobName: string, timeoutSec = 120): Promise<void> {
 async function runMigrations() {
 	log("Running database migrations...");
 	// Delete previous job run if it exists (jobs are immutable)
-	run("kubectl", ["delete", "job", "migrate", "-n", NAMESPACE, "--ignore-not-found"], { quiet: true });
+	run("kubectl", ["delete", "job", "migrate", "-n", NAMESPACE, "--ignore-not-found"], {
+		quiet: true,
+	});
 	if (run("kubectl", ["apply", "-f", path.join(K8S_DIR, "migrate-job.yaml")]) !== 0) {
 		die("Failed to create migrate job.");
 	}

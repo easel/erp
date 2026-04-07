@@ -30,7 +30,9 @@ describe("InMemoryRateLimitStore", () => {
 		store.increment("key2", 1);
 		// Spin a tiny bit to let the timestamp expire.
 		const spin = Date.now() + 5;
-		while (Date.now() < spin) { /* busy wait */ }
+		while (Date.now() < spin) {
+			/* busy wait */
+		}
 		const count = store.increment("key2", 1);
 		expect(count).toBe(1);
 		store.destroy();

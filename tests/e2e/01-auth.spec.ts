@@ -33,7 +33,7 @@ test.describe("Authentication & server access", () => {
 	});
 
 	test("GraphQL _version query returns version string", async ({ request }) => {
-		const result = await graphql(request, `{ _version }`);
+		const result = await graphql(request, "{ _version }");
 		expect(result.errors).toBeUndefined();
 		expect(result.data?._version).toBe("0.0.1");
 	});
@@ -46,7 +46,7 @@ test.describe("Authentication & server access", () => {
 	});
 
 	test("GraphQL introspection succeeds (unauthenticated demo mode)", async ({ request }) => {
-		const result = await graphql(request, `{ __schema { queryType { name } } }`);
+		const result = await graphql(request, "{ __schema { queryType { name } } }");
 		expect(result.errors).toBeUndefined();
 		const schema = result.data?.__schema as { queryType: { name: string } } | undefined;
 		expect(schema?.queryType?.name).toBe("Query");

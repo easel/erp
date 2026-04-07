@@ -24,7 +24,7 @@ test.describe("Finance module", () => {
 	test("GL version query responds (Finance domain accessible)", async ({ request }) => {
 		await assertServerHealthy(request);
 		// The _version query is the canary for the GraphQL service being up
-		const result = await graphql(request, `{ _version }`);
+		const result = await graphql(request, "{ _version }");
 		expect(result.errors).toBeUndefined();
 	});
 

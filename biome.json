@@ -20,7 +20,14 @@
 		"lineWidth": 100
 	},
 	"files": {
-		"ignore": ["node_modules", "dist", ".ddx"]
+		"ignore": [
+			"node_modules",
+			"dist",
+			".ddx",
+			"packages/web/.next",
+			"website/public",
+			"website/archetypes"
+		]
 	},
 	"overrides": [
 		{

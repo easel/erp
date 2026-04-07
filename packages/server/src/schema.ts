@@ -106,28 +106,248 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 	// Row types for query results (snake_case from DB)
 	// ────────────────────────────────────────────────────────────────────────
 
-	type LegalEntityRow = { id: string; code: string; name: string; country_code: string; base_currency_code: string; tax_id: string | null; parent_entity_id: string | null; is_active: boolean; created_at: string };
-	type VendorRow = { id: string; entity_id: string; vendor_code: string; legal_name: string; trade_name: string | null; country_code: string; default_currency_code: string; tax_id: string | null; payment_terms: string | null; risk_rating: string | null; is_active: boolean; created_at: string };
-	type CustomerRow = { id: string; entity_id: string; customer_code: string; legal_name: string; country_code: string; default_currency_code: string; notes: string | null; is_active: boolean; created_at: string };
-	type ProductRow = { id: string; entity_id: string; product_code: string; name: string; description: string | null; product_type: string; unit_of_measure: string; is_active: boolean; created_at: string };
-	type AccountRow = { id: string; entity_id: string; account_number: string; name: string; account_type: string; normal_balance: string; is_header: boolean; is_active: boolean };
-	type SalesOrderRow = { id: string; entity_id: string; customer_id: string; order_number: string; order_date: string; status: string; compliance_status: string | null; currency_code: string; total_amount: string; notes: string | null; created_at: string };
-	type PurchaseOrderRow = { id: string; entity_id: string; vendor_id: string; po_number: string; po_date: string; expected_delivery_date: string | null; status: string; compliance_status: string | null; currency_code: string; total_amount: string; created_at: string };
-	type JournalEntryRow = { id: string; entity_id: string; entry_number: string; entry_date: string; description: string; status: string; source_module: string; created_at: string };
-	type OpportunityRow = { id: string; entity_id: string; crm_company_id: string | null; customer_id: string | null; name: string; description: string | null; pipeline_stage_id: string; amount: string | null; currency_code: string | null; expected_close_date: string | null; actual_close_date: string | null; probability: string | null; owner_user_id: string | null; source: string | null; lost_reason: string | null; created_at: string };
-	type ComplianceHoldRow = { id: string; entity_id: string; held_table: string; held_record_id: string; hold_reason: string; status: string; placed_by: string; placed_at: string; resolved_at: string | null; resolution_notes: string | null };
-	type CrmCompanyRow = { id: string; entity_id: string; name: string; domain: string | null; industry: string | null; employee_count_range: string | null; annual_revenue_range: string | null; country_code: string | null; phone: string | null; website: string | null; customer_id: string | null; vendor_id: string | null; created_at: string };
-	type CrmContactRow = { id: string; entity_id: string; crm_company_id: string | null; first_name: string; last_name: string; email: string | null; phone: string | null; job_title: string | null; department: string | null; country_code: string | null; do_not_contact: boolean; created_at: string };
-	type PipelineStageRow = { id: string; entity_id: string; code: string; name: string; stage_order: string; win_probability: string | null; is_closed_won: boolean; is_closed_lost: boolean; created_at: string };
-	type FiscalYearRow = { id: string; entity_id: string; year_label: string; start_date: string; end_date: string; is_closed: boolean; created_at: string };
-	type FiscalPeriodRow = { id: string; entity_id: string; fiscal_year_id: string; period_number: string; period_label: string; start_date: string; end_date: string; status: string; created_at: string };
-	type InventoryLocationRow = { id: string; entity_id: string; location_code: string; name: string; is_active: boolean; created_at: string };
-	type ScreeningListRow = { id: string; code: string; name: string; source_authority: string | null; is_active: boolean; created_at: string };
-	type ScreeningListEntryRow = { id: string; screening_list_id: string; entry_name: string; country_codes: string[] | null; remarks: string | null; listed_date: string | null; created_at: string };
-	type CountryRestrictionRow = { id: string; entity_id: string; name: string; description: string | null; is_active: boolean; created_at: string };
-	type CountryRestrictionRuleRow = { id: string; country_restriction_id: string; country_code: string; restriction_type: string; effective_from: string | null; effective_to: string | null; notes: string | null; created_at: string };
-	type RestrictedRegionRow = { id: string; country_code: string; region_name: string; sanctions_regime: string | null; effective_date: string | null; source_authority: string | null; created_at: string };
-	type CurrencyRow = { code: string; name: string; symbol: string | null; decimal_places: string; is_active: boolean };
+	type LegalEntityRow = {
+		id: string;
+		code: string;
+		name: string;
+		country_code: string;
+		base_currency_code: string;
+		tax_id: string | null;
+		parent_entity_id: string | null;
+		is_active: boolean;
+		created_at: string;
+	};
+	type VendorRow = {
+		id: string;
+		entity_id: string;
+		vendor_code: string;
+		legal_name: string;
+		trade_name: string | null;
+		country_code: string;
+		default_currency_code: string;
+		tax_id: string | null;
+		payment_terms: string | null;
+		risk_rating: string | null;
+		is_active: boolean;
+		created_at: string;
+	};
+	type CustomerRow = {
+		id: string;
+		entity_id: string;
+		customer_code: string;
+		legal_name: string;
+		country_code: string;
+		default_currency_code: string;
+		notes: string | null;
+		is_active: boolean;
+		created_at: string;
+	};
+	type ProductRow = {
+		id: string;
+		entity_id: string;
+		product_code: string;
+		name: string;
+		description: string | null;
+		product_type: string;
+		unit_of_measure: string;
+		is_active: boolean;
+		created_at: string;
+	};
+	type AccountRow = {
+		id: string;
+		entity_id: string;
+		account_number: string;
+		name: string;
+		account_type: string;
+		normal_balance: string;
+		is_header: boolean;
+		is_active: boolean;
+	};
+	type SalesOrderRow = {
+		id: string;
+		entity_id: string;
+		customer_id: string;
+		order_number: string;
+		order_date: string;
+		status: string;
+		compliance_status: string | null;
+		currency_code: string;
+		total_amount: string;
+		notes: string | null;
+		created_at: string;
+	};
+	type PurchaseOrderRow = {
+		id: string;
+		entity_id: string;
+		vendor_id: string;
+		po_number: string;
+		po_date: string;
+		expected_delivery_date: string | null;
+		status: string;
+		compliance_status: string | null;
+		currency_code: string;
+		total_amount: string;
+		created_at: string;
+	};
+	type JournalEntryRow = {
+		id: string;
+		entity_id: string;
+		entry_number: string;
+		entry_date: string;
+		description: string;
+		status: string;
+		source_module: string;
+		created_at: string;
+	};
+	type OpportunityRow = {
+		id: string;
+		entity_id: string;
+		crm_company_id: string | null;
+		customer_id: string | null;
+		name: string;
+		description: string | null;
+		pipeline_stage_id: string;
+		amount: string | null;
+		currency_code: string | null;
+		expected_close_date: string | null;
+		actual_close_date: string | null;
+		probability: string | null;
+		owner_user_id: string | null;
+		source: string | null;
+		lost_reason: string | null;
+		created_at: string;
+	};
+	type ComplianceHoldRow = {
+		id: string;
+		entity_id: string;
+		held_table: string;
+		held_record_id: string;
+		hold_reason: string;
+		status: string;
+		placed_by: string;
+		placed_at: string;
+		resolved_at: string | null;
+		resolution_notes: string | null;
+	};
+	type CrmCompanyRow = {
+		id: string;
+		entity_id: string;
+		name: string;
+		domain: string | null;
+		industry: string | null;
+		employee_count_range: string | null;
+		annual_revenue_range: string | null;
+		country_code: string | null;
+		phone: string | null;
+		website: string | null;
+		customer_id: string | null;
+		vendor_id: string | null;
+		created_at: string;
+	};
+	type CrmContactRow = {
+		id: string;
+		entity_id: string;
+		crm_company_id: string | null;
+		first_name: string;
+		last_name: string;
+		email: string | null;
+		phone: string | null;
+		job_title: string | null;
+		department: string | null;
+		country_code: string | null;
+		do_not_contact: boolean;
+		created_at: string;
+	};
+	type PipelineStageRow = {
+		id: string;
+		entity_id: string;
+		code: string;
+		name: string;
+		stage_order: string;
+		win_probability: string | null;
+		is_closed_won: boolean;
+		is_closed_lost: boolean;
+		created_at: string;
+	};
+	type FiscalYearRow = {
+		id: string;
+		entity_id: string;
+		year_label: string;
+		start_date: string;
+		end_date: string;
+		is_closed: boolean;
+		created_at: string;
+	};
+	type FiscalPeriodRow = {
+		id: string;
+		entity_id: string;
+		fiscal_year_id: string;
+		period_number: string;
+		period_label: string;
+		start_date: string;
+		end_date: string;
+		status: string;
+		created_at: string;
+	};
+	type InventoryLocationRow = {
+		id: string;
+		entity_id: string;
+		location_code: string;
+		name: string;
+		is_active: boolean;
+		created_at: string;
+	};
+	type ScreeningListRow = {
+		id: string;
+		code: string;
+		name: string;
+		source_authority: string | null;
+		is_active: boolean;
+		created_at: string;
+	};
+	type ScreeningListEntryRow = {
+		id: string;
+		screening_list_id: string;
+		entry_name: string;
+		country_codes: string[] | null;
+		remarks: string | null;
+		listed_date: string | null;
+		created_at: string;
+	};
+	type CountryRestrictionRow = {
+		id: string;
+		entity_id: string;
+		name: string;
+		description: string | null;
+		is_active: boolean;
+		created_at: string;
+	};
+	type CountryRestrictionRuleRow = {
+		id: string;
+		country_restriction_id: string;
+		country_code: string;
+		restriction_type: string;
+		effective_from: string | null;
+		effective_to: string | null;
+		notes: string | null;
+		created_at: string;
+	};
+	type RestrictedRegionRow = {
+		id: string;
+		country_code: string;
+		region_name: string;
+		sanctions_regime: string | null;
+		effective_date: string | null;
+		source_authority: string | null;
+		created_at: string;
+	};
+	type CurrencyRow = {
+		code: string;
+		name: string;
+		symbol: string | null;
+		decimal_places: string;
+		is_active: boolean;
+	};
 
 	// ────────────────────────────────────────────────────────────────────────
 	// Entity object types for queries
@@ -425,7 +645,8 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		}),
 	});
 
-	const CountryRestrictionRuleType = builder.objectRef<CountryRestrictionRuleRow>("CountryRestrictionRule");
+	const CountryRestrictionRuleType =
+		builder.objectRef<CountryRestrictionRuleRow>("CountryRestrictionRule");
 	CountryRestrictionRuleType.implement({
 		fields: (t) => ({
 			id: t.exposeString("id"),
@@ -1089,7 +1310,7 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 	// Input types
 	// ------------------------------------------------------------------ //
 
-	const VendorAddressInput = builder.inputType("VendorAddressInput", {
+	const _VendorAddressInput = builder.inputType("VendorAddressInput", {
 		fields: (t) => ({
 			line1: t.string({ required: true }),
 			line2: t.string({ required: false }),

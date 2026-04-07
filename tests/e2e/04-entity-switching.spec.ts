@@ -33,7 +33,7 @@ test.describe("Entity switching — data scoping", () => {
 		// The entity-context middleware reads X-Entity-Id header
 		// and binds it to the request. Verify the header is supported.
 		const result = await request.post(GRAPHQL_URL, {
-			data: { query: `{ _version }` },
+			data: { query: "{ _version }" },
 			headers: {
 				"Content-Type": "application/json",
 				"X-Entity-Id": SEED.entities.US,
@@ -45,14 +45,14 @@ test.describe("Entity switching — data scoping", () => {
 	});
 
 	test("US entity GraphQL context returns version", async ({ request }) => {
-		const result = await graphql(request, `{ _version }`);
+		const result = await graphql(request, "{ _version }");
 		expect(result.errors).toBeUndefined();
 		expect(result.data?._version).toBeTruthy();
 	});
 
 	test("EU entity scoped request succeeds", async ({ request }) => {
 		const result = await request.post(GRAPHQL_URL, {
-			data: { query: `{ _version }` },
+			data: { query: "{ _version }" },
 			headers: {
 				"Content-Type": "application/json",
 				"X-Entity-Id": SEED.entities.EU,
@@ -65,7 +65,7 @@ test.describe("Entity switching — data scoping", () => {
 
 	test("APAC entity scoped request succeeds", async ({ request }) => {
 		const result = await request.post(GRAPHQL_URL, {
-			data: { query: `{ _version }` },
+			data: { query: "{ _version }" },
 			headers: {
 				"Content-Type": "application/json",
 				"X-Entity-Id": SEED.entities.APAC,
@@ -131,7 +131,7 @@ test.describe("Entity switching — data isolation verification", () => {
 		expect(euEntityId).toBe("a0000000-0000-0000-0000-000000000002");
 		// Verify server handles EU entity scoped requests
 		const result = await request.post(GRAPHQL_URL, {
-			data: { query: `{ _version }` },
+			data: { query: "{ _version }" },
 			headers: {
 				"Content-Type": "application/json",
 				"X-Entity-Id": euEntityId,
