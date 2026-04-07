@@ -1,101 +1,104 @@
-import Link from "next/link";
-import { gql } from "@/lib/graphql";
 import { Badge } from "@/components/ui/badge";
 import {
-  Table,
-  TableHeader,
-  TableBody,
-  TableHead,
-  TableRow,
-  TableCell,
+	Table,
+	TableBody,
+	TableCell,
+	TableHead,
+	TableHeader,
+	TableRow,
 } from "@/components/ui/table";
+import { gql } from "@/lib/graphql";
+import Link from "next/link";
 
 const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
 
 interface SalesOrder {
-  id: string;
-  orderNumber: string;
-  status: string;
-  complianceStatus: string;
-  currencyCode: string;
-  totalAmount: number;
+	id: string;
+	orderNumber: string;
+	status: string;
+	complianceStatus: string;
+	currencyCode: string;
+	totalAmount: number;
 }
 
 export default async function SalesPage() {
-  let orders: SalesOrder[] = [];
-  try {
-    const data = await gql<{ salesOrders: SalesOrder[] }>(`
+	let orders: SalesOrder[] = [];
+	try {
+		const data = await gql<{ salesOrders: SalesOrder[] }>(
+			`
       query SalesOrders($entityId: String!) {
         salesOrders(entityId: $entityId) {
           id orderNumber status complianceStatus currencyCode totalAmount
         }
       }
-    `, { entityId: ENTITY_ID });
-    orders = data.salesOrders;
-  } catch {
-    // API may be unavailable
-  }
+    `,
+			{ entityId: ENTITY_ID },
+		);
+		orders = data.salesOrders;
+	} catch {
+		// API may be unavailable
+	}
 
-  return (
-    <div>
-      <h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
-      <p className="text-sm text-muted-foreground mt-1 mb-6">
-        <Link href="/" className="hover:underline">Dashboard</Link>
-        {" / "}
-        <span>Sales</span>
-        {" / "}
-        <span>Orders</span>
-      </p>
+	return (
+		<div>
+			<h1 className="text-2xl font-bold tracking-tight">Sales Orders</h1>
+			<p className="text-sm text-muted-foreground mt-1 mb-6">
+				<Link href="/" className="hover:underline">
+					Dashboard
+				</Link>
+				{" / "}
+				<span>Sales</span>
+				{" / "}
+				<span>Orders</span>
+			</p>
 
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Order #</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Compliance</TableHead>
-            <TableHead>Currency</TableHead>
-            <TableHead className="text-right">Total Amount</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {orders.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-                No data
-              </TableCell>
-            </TableRow>
-          ) : (
-            orders.map((order) => (
-              <TableRow key={order.id} className="cursor-pointer">
-                <TableCell className="font-mono">
-                  <Link href={`/sales/${order.id}`} className="hover:underline">
-                    {order.orderNumber}
-                  </Link>
-                </TableCell>
-                <TableCell>
-                  <Badge variant={order.status === "CONFIRMED" ? "default" : "secondary"}>
-                    {order.status}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant={order.complianceStatus === "CLEAR" ? "default" : "destructive"}
-                  >
-                    {order.complianceStatus}
-                  </Badge>
-                </TableCell>
-                <TableCell>{order.currencyCode}</TableCell>
-                <TableCell className="text-right font-mono">
-                  {Number(order.totalAmount).toLocaleString(undefined, {
-                    minimumFractionDigits: 2,
-                    maximumFractionDigits: 2,
-                  })}
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-    </div>
-  );
+			<Table>
+				<TableHeader>
+					<TableRow>
+						<TableHead>Order #</TableHead>
+						<TableHead>Status</TableHead>
+						<TableHead>Compliance</TableHead>
+						<TableHead>Currency</TableHead>
+						<TableHead className="text-right">Total Amount</TableHead>
+					</TableRow>
+				</TableHeader>
+				<TableBody>
+					{orders.length === 0 ? (
+						<TableRow>
+							<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
+								No data
+							</TableCell>
+						</TableRow>
+					) : (
+						orders.map((order) => (
+							<TableRow key={order.id} className="cursor-pointer">
+								<TableCell className="font-mono">
+									<Link href={`/sales/${order.id}`} className="hover:underline">
+										{order.orderNumber}
+									</Link>
+								</TableCell>
+								<TableCell>
+									<Badge variant={order.status === "CONFIRMED" ? "default" : "secondary"}>
+										{order.status}
+									</Badge>
+								</TableCell>
+								<TableCell>
+									<Badge variant={order.complianceStatus === "CLEAR" ? "default" : "destructive"}>
+										{order.complianceStatus}
+									</Badge>
+								</TableCell>
+								<TableCell>{order.currencyCode}</TableCell>
+								<TableCell className="text-right font-mono">
+									{Number(order.totalAmount).toLocaleString(undefined, {
+										minimumFractionDigits: 2,
+										maximumFractionDigits: 2,
+									})}
+								</TableCell>
+							</TableRow>
+						))
+					)}
+				</TableBody>
+			</Table>
+		</div>
+	);
 }

@@ -259,10 +259,7 @@ describe("lookupExchangeRate", () => {
 	});
 
 	test("throws RATE_NOT_FOUND when all rates are after asOfDate", () => {
-		expectRPTError(
-			() => lookupExchangeRate(rates, "USD", "EUR", "2020-01-01"),
-			"RATE_NOT_FOUND",
-		);
+		expectRPTError(() => lookupExchangeRate(rates, "USD", "EUR", "2020-01-01"), "RATE_NOT_FOUND");
 	});
 });
 

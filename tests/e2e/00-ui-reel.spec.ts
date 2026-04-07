@@ -418,7 +418,7 @@ test.describe("Apogee ERP — UI Reel", () => {
 		await expect(page.locator("h1")).toContainText("Sales Orders");
 
 		// Click on SO-2026-0001 (cleared order)
-		const orderLink = page.locator('a', { hasText: "SO-2026-0001" });
+		const orderLink = page.locator("a", { hasText: "SO-2026-0001" });
 		if (await orderLink.isVisible({ timeout: 5_000 }).catch(() => false)) {
 			await orderLink.click();
 			await waitForPage(page);
