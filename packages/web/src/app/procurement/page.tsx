@@ -1,16 +1,13 @@
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface Vendor {
 	id: string;
@@ -21,89 +18,65 @@ interface Vendor {
 	isActive: boolean;
 }
 
-export default async function ProcurementPage() {
-	let vendors: Vendor[] = [];
-	try {
-		const data = await gql<{ vendors: Vendor[] }>(
-			`
-      query Vendors($entityId: String!) {
-        vendors(entityId: $entityId) {
-          id vendorCode legalName countryCode defaultCurrencyCode isActive
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		vendors = data.vendors;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<Vendor & Record<string, unknown>>[] = [
+	{
+		accessorKey: "vendorCode",
+		header: "Vendor Code",
+		cell: ({ row }) => (
+			<Link
+				href={`/procurement/vendors/${row.original.id}`}
+				className="font-mono hover:underline"
+			>
+				{row.original.vendorCode}
+			</Link>
+		),
+	},
+	{ accessorKey: "legalName", header: "Legal Name" },
+	{ accessorKey: "countryCode", header: "Country" },
+	{ accessorKey: "defaultCurrencyCode", header: "Currency" },
+	{
+		accessorKey: "isActive",
+		header: "Status",
+		cell: ({ row }) => (
+			<Badge variant={row.original.isActive ? "default" : "secondary"}>
+				{row.original.isActive ? "Active" : "Inactive"}
+			</Badge>
+		),
+	},
+];
+
+export default function ProcurementPage() {
+	const { entityId } = useEntityId();
+	const [vendors, setVendors] = useState<Vendor[]>([]);
+
+	useEffect(() => {
+		gql<{ vendors: Vendor[] }>(
+			`query Vendors($entityId: String!) {
+				vendors(entityId: $entityId) {
+					id vendorCode legalName countryCode defaultCurrencyCode isActive
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setVendors(data.vendors))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
 			<div className="flex items-center justify-between mb-6">
-				<div>
-					<h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
-					<p className="text-sm text-muted-foreground mt-1">
-						<Link href="/" className="hover:underline">
-							Dashboard
-						</Link>
-						{" / "}
-						<span>Procurement</span>
-						{" / "}
-						<span>Vendors</span>
-					</p>
-				</div>
-				<div className="flex items-center gap-3">
-					<Link
-						href="/procurement/vendors/new"
-						className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium h-9 px-4 py-2 bg-primary text-primary-foreground shadow hover:bg-primary/90"
-					>
-						New Vendor
-					</Link>
-					<Link
-						href="/procurement/purchase-orders"
-						className="text-sm text-procurement hover:underline"
-					>
-						Purchase Orders
-					</Link>
-				</div>
+				<h1 className="text-2xl font-bold tracking-tight">Vendors</h1>
+				<Link href="/procurement/vendors/new">
+					<Button>New Vendor</Button>
+				</Link>
 			</div>
 
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Vendor Code</TableHead>
-						<TableHead>Legal Name</TableHead>
-						<TableHead>Country</TableHead>
-						<TableHead>Currency</TableHead>
-						<TableHead>Status</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{vendors.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						vendors.map((vendor) => (
-							<TableRow key={vendor.id}>
-								<TableCell className="font-mono">{vendor.vendorCode}</TableCell>
-								<TableCell>{vendor.legalName}</TableCell>
-								<TableCell>{vendor.countryCode}</TableCell>
-								<TableCell>{vendor.defaultCurrencyCode}</TableCell>
-								<TableCell>
-									<Badge variant={vendor.isActive ? "default" : "secondary"}>
-										{vendor.isActive ? "Active" : "Inactive"}
-									</Badge>
-								</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<ListTable
+				columns={columns}
+				data={vendors as (Vendor & Record<string, unknown>)[]}
+				exportFilename="vendors"
+				emptyMessage="No vendors found."
+			/>
 		</div>
 	);
 }

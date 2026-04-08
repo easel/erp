@@ -1,8 +1,10 @@
+"use client";
+
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useEntityId } from "@/lib/entity-context";
 import { gql } from "@/lib/graphql";
 import Link from "next/link";
-
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { useEffect, useState } from "react";
 
 interface DashboardData {
 	_version: string;
@@ -18,36 +20,36 @@ interface DashboardData {
 	complianceHolds: { id: string }[];
 }
 
-export default async function DashboardPage() {
-	let data: DashboardData | null = null;
-	try {
-		data = await gql<DashboardData>(
-			`
-      query Dashboard($entityId: String!) {
-        _version
-        legalEntities { id }
-        vendors(entityId: $entityId) { id }
-        customers(entityId: $entityId) { id }
-        products(entityId: $entityId) { id }
-        accounts(entityId: $entityId) { id }
-        salesOrders(entityId: $entityId) { id }
-        purchaseOrders(entityId: $entityId) { id }
-        journalEntries(entityId: $entityId) { id }
-        opportunities(entityId: $entityId) { id }
-        complianceHolds(entityId: $entityId) { id }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-	} catch {
-		// API may be unavailable
-	}
+export default function DashboardPage() {
+	const { entityId } = useEntityId();
+	const [data, setData] = useState<DashboardData | null>(null);
+
+	useEffect(() => {
+		gql<DashboardData>(
+			`query Dashboard($entityId: String!) {
+				_version
+				legalEntities { id }
+				vendors(entityId: $entityId) { id }
+				customers(entityId: $entityId) { id }
+				products(entityId: $entityId) { id }
+				accounts(entityId: $entityId) { id }
+				salesOrders(entityId: $entityId) { id }
+				purchaseOrders(entityId: $entityId) { id }
+				journalEntries(entityId: $entityId) { id }
+				opportunities(entityId: $entityId) { id }
+				complianceHolds(entityId: $entityId) { id }
+			}`,
+			{ entityId },
+		)
+			.then(setData)
+			.catch(() => {});
+	}, [entityId]);
 
 	const cards = [
 		{
 			label: "Legal Entities",
 			count: data?.legalEntities?.length ?? 0,
-			href: "/",
+			href: "/settings/entities",
 			color: "border-l-foreground",
 		},
 		{
@@ -71,7 +73,7 @@ export default async function DashboardPage() {
 		{
 			label: "Customers",
 			count: data?.customers?.length ?? 0,
-			href: "/sales",
+			href: "/sales/customers",
 			color: "border-l-sales",
 		},
 		{
@@ -89,7 +91,7 @@ export default async function DashboardPage() {
 		{
 			label: "Products",
 			count: data?.products?.length ?? 0,
-			href: "/procurement",
+			href: "/procurement/products",
 			color: "border-l-procurement",
 		},
 		{

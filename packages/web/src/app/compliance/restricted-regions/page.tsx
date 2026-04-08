@@ -1,13 +1,9 @@
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
+"use client";
+
+import { ListTable } from "@/components/ListTable";
 import { gql } from "@/lib/graphql";
-import Link from "next/link";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 interface RestrictedRegion {
 	id: string;
@@ -17,64 +13,35 @@ interface RestrictedRegion {
 	sourceAuthority: string;
 }
 
-export default async function RestrictedRegionsPage() {
-	let regions: RestrictedRegion[] = [];
-	try {
-		const data = await gql<{ restrictedRegions: RestrictedRegion[] }>(`
-      query RestrictedRegions {
-        restrictedRegions {
-          id countryCode regionName sanctionsRegime sourceAuthority
-        }
-      }
-    `);
-		regions = data.restrictedRegions;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<RestrictedRegion & Record<string, unknown>>[] = [
+	{ accessorKey: "countryCode", header: "Country" },
+	{ accessorKey: "regionName", header: "Region" },
+	{ accessorKey: "sanctionsRegime", header: "Sanctions Regime" },
+	{ accessorKey: "sourceAuthority", header: "Source" },
+];
+
+export default function RestrictedRegionsPage() {
+	const [regions, setRegions] = useState<RestrictedRegion[]>([]);
+
+	useEffect(() => {
+		gql<{ restrictedRegions: RestrictedRegion[] }>(
+			`query RestrictedRegions {
+				restrictedRegions { id countryCode regionName sanctionsRegime sourceAuthority }
+			}`,
+		)
+			.then((data) => setRegions(data.restrictedRegions))
+			.catch(() => {});
+	}, []);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Restricted Regions</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<Link href="/compliance" className="hover:underline">
-					Compliance
-				</Link>
-				{" / "}
-				<span>Restricted Regions</span>
-			</p>
-
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Country</TableHead>
-						<TableHead>Region</TableHead>
-						<TableHead>Sanctions Regime</TableHead>
-						<TableHead>Source</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{regions.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						regions.map((region) => (
-							<TableRow key={region.id}>
-								<TableCell className="font-mono">{region.countryCode}</TableCell>
-								<TableCell>{region.regionName}</TableCell>
-								<TableCell>{region.sanctionsRegime}</TableCell>
-								<TableCell>{region.sourceAuthority}</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Restricted Regions</h1>
+			<ListTable
+				columns={columns}
+				data={regions as (RestrictedRegion & Record<string, unknown>)[]}
+				exportFilename="restricted-regions"
+				emptyMessage="No restricted regions found."
+			/>
 		</div>
 	);
 }

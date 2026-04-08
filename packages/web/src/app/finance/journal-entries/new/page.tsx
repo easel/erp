@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useZodForm } from "@/hooks/useZodForm";
+import { useEntityId } from "@/lib/entity-context";
 import { CreateJournalEntrySchema } from "@apogee/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,7 +12,6 @@ import { useMemo, useState } from "react";
 import { useFieldArray } from "react-hook-form";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
 const FISCAL_PERIOD_ID = "a5000000-0000-0000-0000-000000000004";
 
 const EMPTY_LINE = {
@@ -24,11 +24,12 @@ const EMPTY_LINE = {
 
 export default function NewJournalEntryPage() {
 	const router = useRouter();
+	const { entityId } = useEntityId();
 	const [submitError, setSubmitError] = useState<string | null>(null);
 
 	const form = useZodForm(CreateJournalEntrySchema, {
 		defaultValues: {
-			legalEntityId: ENTITY_ID,
+			legalEntityId: entityId,
 			fiscalPeriodId: FISCAL_PERIOD_ID,
 			entryDate: new Date().toISOString().slice(0, 10),
 			reference: "",

@@ -1,15 +1,14 @@
+import { ModuleShell } from "@/components/ModuleShell";
+import { FINANCE_NAV } from "@/components/ModuleSidebar";
+
 export default function FinanceLayout({
 	children,
 }: {
 	children: React.ReactNode;
 }) {
 	return (
-		<div>
-			<div className="mb-4 flex items-center gap-2 text-sm text-muted-foreground">
-				<span className="inline-block h-2 w-2 rounded-full bg-finance" />
-				<span>Finance</span>
-			</div>
+		<ModuleShell module="finance" items={FINANCE_NAV}>
 			{children}
-		</div>
+		</ModuleShell>
 	);
 }

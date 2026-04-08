@@ -4,16 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useZodForm } from "@/hooks/useZodForm";
+import { useEntityId } from "@/lib/entity-context";
 import { CreateVendorSchema } from "@apogee/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
 
 export default function NewVendorPage() {
 	const router = useRouter();
+	const { entityId } = useEntityId();
 	const [submitError, setSubmitError] = useState<string | null>(null);
 
 	const {
@@ -22,7 +23,7 @@ export default function NewVendorPage() {
 		formState: { errors, isSubmitting },
 	} = useZodForm(CreateVendorSchema, {
 		defaultValues: {
-			entityId: ENTITY_ID,
+			entityId,
 			vendorCode: "",
 			legalName: "",
 			tradeName: "",

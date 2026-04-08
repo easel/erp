@@ -1,16 +1,11 @@
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { Badge } from "@/components/ui/badge";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 interface Product {
 	id: string;
@@ -21,73 +16,48 @@ interface Product {
 	isActive: boolean;
 }
 
-export default async function ProductsPage() {
-	let products: Product[] = [];
-	try {
-		const data = await gql<{ products: Product[] }>(
-			`
-      query Products($entityId: String!) {
-        products(entityId: $entityId) {
-          id productCode name productType unitOfMeasure isActive
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		products = data.products;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<Product & Record<string, unknown>>[] = [
+	{ accessorKey: "productCode", header: "Product Code" },
+	{ accessorKey: "name", header: "Name" },
+	{ accessorKey: "productType", header: "Type" },
+	{ accessorKey: "unitOfMeasure", header: "UoM" },
+	{
+		accessorKey: "isActive",
+		header: "Status",
+		cell: ({ row }) => (
+			<Badge variant={row.original.isActive ? "default" : "secondary"}>
+				{row.original.isActive ? "Active" : "Inactive"}
+			</Badge>
+		),
+	},
+];
+
+export default function ProductsPage() {
+	const { entityId } = useEntityId();
+	const [products, setProducts] = useState<Product[]>([]);
+
+	useEffect(() => {
+		gql<{ products: Product[] }>(
+			`query Products($entityId: String!) {
+				products(entityId: $entityId) {
+					id productCode name productType unitOfMeasure isActive
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setProducts(data.products))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Products</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<Link href="/procurement" className="hover:underline">
-					Procurement
-				</Link>
-				{" / "}
-				<span>Products</span>
-			</p>
-
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Product Code</TableHead>
-						<TableHead>Name</TableHead>
-						<TableHead>Type</TableHead>
-						<TableHead>UoM</TableHead>
-						<TableHead>Status</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{products.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						products.map((product) => (
-							<TableRow key={product.id}>
-								<TableCell className="font-mono">{product.productCode}</TableCell>
-								<TableCell>{product.name}</TableCell>
-								<TableCell>{product.productType}</TableCell>
-								<TableCell>{product.unitOfMeasure}</TableCell>
-								<TableCell>
-									<Badge variant={product.isActive ? "default" : "secondary"}>
-										{product.isActive ? "Active" : "Inactive"}
-									</Badge>
-								</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Products</h1>
+			<ListTable
+				columns={columns}
+				data={products as (Product & Record<string, unknown>)[]}
+				exportFilename="products"
+				emptyMessage="No products found."
+			/>
 		</div>
 	);
 }

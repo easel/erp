@@ -1,15 +1,10 @@
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 interface CrmContact {
 	id: string;
@@ -20,69 +15,47 @@ interface CrmContact {
 	department: string;
 }
 
-export default async function ContactsPage() {
-	let contacts: CrmContact[] = [];
-	try {
-		const data = await gql<{ crmContacts: CrmContact[] }>(
-			`
-      query CrmContacts($entityId: String!) {
-        crmContacts(entityId: $entityId) {
-          id firstName lastName email jobTitle department
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		contacts = data.crmContacts;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<CrmContact & Record<string, unknown>>[] = [
+	{
+		accessorKey: "firstName",
+		header: "Name",
+		cell: ({ row }) => (
+			<span className="font-medium">
+				{row.original.firstName} {row.original.lastName}
+			</span>
+		),
+	},
+	{ accessorKey: "email", header: "Email" },
+	{ accessorKey: "jobTitle", header: "Job Title" },
+	{ accessorKey: "department", header: "Department" },
+];
+
+export default function ContactsPage() {
+	const { entityId } = useEntityId();
+	const [contacts, setContacts] = useState<CrmContact[]>([]);
+
+	useEffect(() => {
+		gql<{ crmContacts: CrmContact[] }>(
+			`query CrmContacts($entityId: String!) {
+				crmContacts(entityId: $entityId) {
+					id firstName lastName email jobTitle department
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setContacts(data.crmContacts))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Contacts</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<Link href="/crm" className="hover:underline">
-					CRM
-				</Link>
-				{" / "}
-				<span>Contacts</span>
-			</p>
-
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Name</TableHead>
-						<TableHead>Email</TableHead>
-						<TableHead>Job Title</TableHead>
-						<TableHead>Department</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{contacts.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={4} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						contacts.map((contact) => (
-							<TableRow key={contact.id}>
-								<TableCell className="font-medium">
-									{contact.firstName} {contact.lastName}
-								</TableCell>
-								<TableCell>{contact.email}</TableCell>
-								<TableCell>{contact.jobTitle}</TableCell>
-								<TableCell>{contact.department}</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Contacts</h1>
+			<ListTable
+				columns={columns}
+				data={contacts as (CrmContact & Record<string, unknown>)[]}
+				exportFilename="contacts"
+				emptyMessage="No contacts found."
+			/>
 		</div>
 	);
 }

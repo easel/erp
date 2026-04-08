@@ -1,16 +1,12 @@
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { Badge } from "@/components/ui/badge";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 
 interface ComplianceHold {
 	id: string;
@@ -21,71 +17,64 @@ interface ComplianceHold {
 	resolvedAt: string | null;
 }
 
-export default async function CompliancePage() {
-	let holds: ComplianceHold[] = [];
-	try {
-		const data = await gql<{ complianceHolds: ComplianceHold[] }>(
-			`
-      query ComplianceHolds($entityId: String!) {
-        complianceHolds(entityId: $entityId) {
-          id heldTable holdReason status placedAt resolvedAt
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		holds = data.complianceHolds;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<ComplianceHold & Record<string, unknown>>[] = [
+	{
+		accessorKey: "heldTable",
+		header: "Held Table",
+		cell: ({ row }) => (
+			<Link
+				href={`/compliance/holds/${row.original.id}`}
+				className="font-mono hover:underline"
+			>
+				{row.original.heldTable}
+			</Link>
+		),
+	},
+	{ accessorKey: "holdReason", header: "Reason" },
+	{
+		accessorKey: "status",
+		header: "Status",
+		cell: ({ row }) => (
+			<Badge variant={row.original.status === "RESOLVED" ? "default" : "destructive"}>
+				{row.original.status}
+			</Badge>
+		),
+	},
+	{ accessorKey: "placedAt", header: "Placed At" },
+	{
+		accessorKey: "resolvedAt",
+		header: "Resolved At",
+		cell: ({ row }) => <span>{row.original.resolvedAt ?? "--"}</span>,
+	},
+];
+
+export default function CompliancePage() {
+	const { entityId } = useEntityId();
+	const [holds, setHolds] = useState<ComplianceHold[]>([]);
+
+	useEffect(() => {
+		gql<{ complianceHolds: ComplianceHold[] }>(
+			`query ComplianceHolds($entityId: String!) {
+				complianceHolds(entityId: $entityId) {
+					id heldTable holdReason status placedAt resolvedAt
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setHolds(data.complianceHolds))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Compliance Holds</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<span>Compliance</span>
-				{" / "}
-				<span>Holds</span>
-			</p>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Compliance Holds</h1>
 
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Held Table</TableHead>
-						<TableHead>Reason</TableHead>
-						<TableHead>Status</TableHead>
-						<TableHead>Placed At</TableHead>
-						<TableHead>Resolved At</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{holds.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						holds.map((hold) => (
-							<TableRow key={hold.id}>
-								<TableCell className="font-mono">{hold.heldTable}</TableCell>
-								<TableCell>{hold.holdReason}</TableCell>
-								<TableCell>
-									<Badge variant={hold.status === "RESOLVED" ? "default" : "destructive"}>
-										{hold.status}
-									</Badge>
-								</TableCell>
-								<TableCell>{hold.placedAt}</TableCell>
-								<TableCell>{hold.resolvedAt ?? "--"}</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<ListTable
+				columns={columns}
+				data={holds as (ComplianceHold & Record<string, unknown>)[]}
+				exportFilename="compliance-holds"
+				emptyMessage="No compliance holds found."
+			/>
 		</div>
 	);
 }

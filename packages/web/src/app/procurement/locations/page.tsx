@@ -1,16 +1,11 @@
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { Badge } from "@/components/ui/badge";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 interface InventoryLocation {
 	id: string;
@@ -19,69 +14,46 @@ interface InventoryLocation {
 	isActive: boolean;
 }
 
-export default async function LocationsPage() {
-	let locations: InventoryLocation[] = [];
-	try {
-		const data = await gql<{ inventoryLocations: InventoryLocation[] }>(
-			`
-      query InventoryLocations($entityId: String!) {
-        inventoryLocations(entityId: $entityId) {
-          id locationCode name isActive
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		locations = data.inventoryLocations;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<InventoryLocation & Record<string, unknown>>[] = [
+	{ accessorKey: "locationCode", header: "Location Code" },
+	{ accessorKey: "name", header: "Name" },
+	{
+		accessorKey: "isActive",
+		header: "Status",
+		cell: ({ row }) => (
+			<Badge variant={row.original.isActive ? "default" : "secondary"}>
+				{row.original.isActive ? "Active" : "Inactive"}
+			</Badge>
+		),
+	},
+];
+
+export default function LocationsPage() {
+	const { entityId } = useEntityId();
+	const [locations, setLocations] = useState<InventoryLocation[]>([]);
+
+	useEffect(() => {
+		gql<{ inventoryLocations: InventoryLocation[] }>(
+			`query InventoryLocations($entityId: String!) {
+				inventoryLocations(entityId: $entityId) {
+					id locationCode name isActive
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setLocations(data.inventoryLocations))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Inventory Locations</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<Link href="/procurement" className="hover:underline">
-					Procurement
-				</Link>
-				{" / "}
-				<span>Locations</span>
-			</p>
-
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Location Code</TableHead>
-						<TableHead>Name</TableHead>
-						<TableHead>Status</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{locations.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={3} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						locations.map((location) => (
-							<TableRow key={location.id}>
-								<TableCell className="font-mono">{location.locationCode}</TableCell>
-								<TableCell>{location.name}</TableCell>
-								<TableCell>
-									<Badge variant={location.isActive ? "default" : "secondary"}>
-										{location.isActive ? "Active" : "Inactive"}
-									</Badge>
-								</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Inventory Locations</h1>
+			<ListTable
+				columns={columns}
+				data={locations as (InventoryLocation & Record<string, unknown>)[]}
+				exportFilename="locations"
+				emptyMessage="No locations found."
+			/>
 		</div>
 	);
 }

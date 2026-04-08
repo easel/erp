@@ -1,16 +1,11 @@
-import { Badge } from "@/components/ui/badge";
-import {
-	Table,
-	TableBody,
-	TableCell,
-	TableHead,
-	TableHeader,
-	TableRow,
-} from "@/components/ui/table";
-import { gql } from "@/lib/graphql";
-import Link from "next/link";
+"use client";
 
-const ENTITY_ID = "a0000000-0000-0000-0000-000000000001";
+import { ListTable } from "@/components/ListTable";
+import { Badge } from "@/components/ui/badge";
+import { useEntityId } from "@/lib/entity-context";
+import { gql } from "@/lib/graphql";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useEffect, useState } from "react";
 
 interface Customer {
 	id: string;
@@ -18,77 +13,51 @@ interface Customer {
 	legalName: string;
 	countryCode: string;
 	defaultCurrencyCode: string;
-	notes: string;
 	isActive: boolean;
 }
 
-export default async function CustomersPage() {
-	let customers: Customer[] = [];
-	try {
-		const data = await gql<{ customers: Customer[] }>(
-			`
-      query Customers($entityId: String!) {
-        customers(entityId: $entityId) {
-          id customerCode legalName countryCode defaultCurrencyCode notes isActive
-        }
-      }
-    `,
-			{ entityId: ENTITY_ID },
-		);
-		customers = data.customers;
-	} catch {
-		// API may be unavailable
-	}
+const columns: ColumnDef<Customer & Record<string, unknown>>[] = [
+	{ accessorKey: "customerCode", header: "Customer Code" },
+	{ accessorKey: "legalName", header: "Legal Name" },
+	{ accessorKey: "countryCode", header: "Country" },
+	{ accessorKey: "defaultCurrencyCode", header: "Currency" },
+	{
+		accessorKey: "isActive",
+		header: "Status",
+		cell: ({ row }) => (
+			<Badge variant={row.original.isActive ? "default" : "secondary"}>
+				{row.original.isActive ? "Active" : "Inactive"}
+			</Badge>
+		),
+	},
+];
+
+export default function CustomersPage() {
+	const { entityId } = useEntityId();
+	const [customers, setCustomers] = useState<Customer[]>([]);
+
+	useEffect(() => {
+		gql<{ customers: Customer[] }>(
+			`query Customers($entityId: String!) {
+				customers(entityId: $entityId) {
+					id customerCode legalName countryCode defaultCurrencyCode isActive
+				}
+			}`,
+			{ entityId },
+		)
+			.then((data) => setCustomers(data.customers))
+			.catch(() => {});
+	}, [entityId]);
 
 	return (
 		<div>
-			<h1 className="text-2xl font-bold tracking-tight">Customers</h1>
-			<p className="text-sm text-muted-foreground mt-1 mb-6">
-				<Link href="/" className="hover:underline">
-					Dashboard
-				</Link>
-				{" / "}
-				<Link href="/sales" className="hover:underline">
-					Sales
-				</Link>
-				{" / "}
-				<span>Customers</span>
-			</p>
-
-			<Table>
-				<TableHeader>
-					<TableRow>
-						<TableHead>Customer Code</TableHead>
-						<TableHead>Legal Name</TableHead>
-						<TableHead>Country</TableHead>
-						<TableHead>Currency</TableHead>
-						<TableHead>Status</TableHead>
-					</TableRow>
-				</TableHeader>
-				<TableBody>
-					{customers.length === 0 ? (
-						<TableRow>
-							<TableCell colSpan={5} className="text-center text-muted-foreground py-8">
-								No data
-							</TableCell>
-						</TableRow>
-					) : (
-						customers.map((customer) => (
-							<TableRow key={customer.id}>
-								<TableCell className="font-mono">{customer.customerCode}</TableCell>
-								<TableCell>{customer.legalName}</TableCell>
-								<TableCell>{customer.countryCode}</TableCell>
-								<TableCell>{customer.defaultCurrencyCode}</TableCell>
-								<TableCell>
-									<Badge variant={customer.isActive ? "default" : "secondary"}>
-										{customer.isActive ? "Active" : "Inactive"}
-									</Badge>
-								</TableCell>
-							</TableRow>
-						))
-					)}
-				</TableBody>
-			</Table>
+			<h1 className="text-2xl font-bold tracking-tight mb-6">Customers</h1>
+			<ListTable
+				columns={columns}
+				data={customers as (Customer & Record<string, unknown>)[]}
+				exportFilename="customers"
+				emptyMessage="No customers found."
+			/>
 		</div>
 	);
 }
