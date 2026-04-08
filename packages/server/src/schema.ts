@@ -176,6 +176,17 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		notes: string | null;
 		created_at: string;
 	};
+	type SalesOrderLineRow = {
+		id: string;
+		sales_order_id: string;
+		line_number: number;
+		product_id: string | null;
+		description: string;
+		quantity_ordered: string;
+		unit_price: string;
+		amount: string;
+		currency_code: string;
+	};
 	type PurchaseOrderRow = {
 		id: string;
 		entity_id: string;
@@ -430,6 +441,21 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		}),
 	});
 
+	const SalesOrderLineType = builder.objectRef<SalesOrderLineRow>("SalesOrderLine");
+	SalesOrderLineType.implement({
+		fields: (t) => ({
+			id: t.exposeString("id"),
+			salesOrderId: t.exposeString("sales_order_id"),
+			lineNumber: t.exposeInt("line_number"),
+			productId: t.exposeString("product_id", { nullable: true }),
+			description: t.exposeString("description"),
+			quantityOrdered: t.exposeString("quantity_ordered"),
+			unitPrice: t.exposeString("unit_price"),
+			amount: t.exposeString("amount"),
+			currencyCode: t.exposeString("currency_code"),
+		}),
+	});
+
 	const SalesOrderType = builder.objectRef<SalesOrderRow>("SalesOrder");
 	SalesOrderType.implement({
 		fields: (t) => ({
@@ -444,6 +470,18 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 			totalAmount: t.exposeString("total_amount"),
 			notes: t.exposeString("notes", { nullable: true }),
 			createdAt: t.exposeString("created_at"),
+			lines: t.field({
+				type: [SalesOrderLineType],
+				resolve: async (order) => {
+					return dbQuery<SalesOrderLineRow>(
+						`SELECT id, sales_order_id, line_number, product_id, description,
+						        quantity_ordered::text, unit_price::text, amount::text, currency_code
+						 FROM sales_order_line WHERE sales_order_id = $1
+						 ORDER BY line_number`,
+						[order.id],
+					);
+				},
+			}),
 		}),
 	});
 
