@@ -22,6 +22,7 @@
  */
 
 import React from "react";
+import { cn } from "../lib/utils.js";
 
 export interface BreadcrumbSegment {
 	/** Display label for this segment. */
@@ -41,14 +42,6 @@ export interface BreadcrumbsProps {
 	className?: string;
 }
 
-function linkStyle(): React.CSSProperties {
-	return {
-		color: "#4b5563",
-		textDecoration: "none",
-		fontWeight: 400,
-	};
-}
-
 /**
  * Breadcrumbs renders a navigation trail with optional entity context prefix.
  */
@@ -63,27 +56,15 @@ export function Breadcrumbs({
 		: segments;
 
 	return (
-		<nav aria-label="Breadcrumb" className={className}>
-			<ol
-				style={{
-					listStyle: "none",
-					margin: 0,
-					padding: 0,
-					display: "flex",
-					alignItems: "center",
-					flexWrap: "wrap",
-					gap: "0.25rem",
-					fontSize: "0.875rem",
-					color: "#6b7280",
-				}}
-			>
+		<nav aria-label="Breadcrumb" className={cn(className)}>
+			<ol className="list-none m-0 p-0 flex items-center flex-wrap gap-1 text-sm text-gray-500">
 				{allSegments.map((seg, idx) => {
 					const isLast = idx === allSegments.length - 1;
 					const key = `${seg.label}-${idx}`;
 					return (
 						<React.Fragment key={key}>
 							{idx > 0 && (
-								<li aria-hidden="true" style={{ color: "#d1d5db", userSelect: "none" }}>
+								<li aria-hidden="true" className="text-gray-300 select-none">
 									›
 								</li>
 							)}
@@ -100,25 +81,14 @@ export function Breadcrumbs({
 													}
 												: undefined
 										}
-										style={linkStyle()}
-										onFocus={(e) => {
-											(e.currentTarget as HTMLAnchorElement).style.color = "#111827";
-											(e.currentTarget as HTMLAnchorElement).style.textDecoration = "underline";
-										}}
-										onBlur={(e) => {
-											(e.currentTarget as HTMLAnchorElement).style.color = "#4b5563";
-											(e.currentTarget as HTMLAnchorElement).style.textDecoration = "none";
-										}}
+										className="text-gray-600 no-underline font-normal hover:text-gray-900 hover:underline focus:text-gray-900 focus:underline"
 									>
 										{seg.label}
 									</a>
 								) : (
 									<span
 										aria-current={isLast ? "page" : undefined}
-										style={{
-											color: isLast ? "#111827" : "#4b5563",
-											fontWeight: isLast ? 600 : 400,
-										}}
+										className={isLast ? "text-gray-900 font-semibold" : "text-gray-600 font-normal"}
 									>
 										{seg.label}
 									</span>

@@ -44,47 +44,20 @@ export function SyncRejectionResolutionPanel({
 		<div
 			role="alert"
 			aria-label={`Sync rejection for ${entityLabel} ${entityId}`}
-			style={{
-				borderRadius: "0.375rem",
-				border: "1px solid #fca5a5",
-				backgroundColor: "#fff1f2",
-				padding: "1rem",
-				display: "flex",
-				flexDirection: "column",
-				gap: "0.75rem",
-			}}
+			className="rounded-md border border-red-300 bg-rose-50 p-4 flex flex-col gap-3"
 		>
 			<div>
-				<h3
-					style={{
-						margin: 0,
-						fontSize: "0.9375rem",
-						fontWeight: 600,
-						color: "#991b1b",
-					}}
-				>
+				<h3 className="m-0 text-[0.9375rem] font-semibold text-red-800">
 					Server rejected this {entityLabel}
 				</h3>
-				<p style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#b91c1c" }}>
+				<p className="mt-1 mb-0 text-sm text-red-700">
 					Validation failed when syncing. Review the errors below and choose to edit or discard.
 				</p>
 			</div>
 
-			<ul
-				aria-label="Validation errors"
-				style={{
-					margin: 0,
-					padding: "0 0 0 1.25rem",
-					display: "flex",
-					flexDirection: "column",
-					gap: "0.25rem",
-				}}
-			>
+			<ul aria-label="Validation errors" className="m-0 pl-5 flex flex-col gap-1">
 				{errors.map((err) => (
-					<li
-						key={`${err.rule}-${err.field ?? "form"}`}
-						style={{ fontSize: "0.875rem", color: "#7f1d1d" }}
-					>
+					<li key={`${err.rule}-${err.field ?? "form"}`} className="text-sm text-red-900">
 						{err.field ? (
 							<>
 								<strong>{err.field}:</strong> {err.message}
@@ -96,36 +69,18 @@ export function SyncRejectionResolutionPanel({
 				))}
 			</ul>
 
-			<div style={{ display: "flex", gap: "0.5rem" }}>
+			<div className="flex gap-2">
 				<button
 					type="button"
 					onClick={onEdit}
-					style={{
-						padding: "0.375rem 0.875rem",
-						borderRadius: "0.375rem",
-						border: "1px solid #dc2626",
-						backgroundColor: "#dc2626",
-						color: "#fff",
-						fontSize: "0.875rem",
-						fontWeight: 500,
-						cursor: "pointer",
-					}}
+					className="px-3.5 py-1.5 rounded-md border border-red-600 bg-red-600 text-white text-sm font-medium cursor-pointer"
 				>
 					Edit &amp; Resubmit
 				</button>
 				<button
 					type="button"
 					onClick={onDiscard}
-					style={{
-						padding: "0.375rem 0.875rem",
-						borderRadius: "0.375rem",
-						border: "1px solid #fca5a5",
-						backgroundColor: "#fff1f2",
-						color: "#991b1b",
-						fontSize: "0.875rem",
-						fontWeight: 500,
-						cursor: "pointer",
-					}}
+					className="px-3.5 py-1.5 rounded-md border border-red-300 bg-rose-50 text-red-800 text-sm font-medium cursor-pointer"
 				>
 					Discard
 				</button>

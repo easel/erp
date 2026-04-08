@@ -26,21 +26,12 @@ export function OfflineDeferralBanner({ entityLabel, isOffline }: OfflineDeferra
 		<output
 			aria-live="polite"
 			aria-label="Offline validation notice"
-			style={{
-				display: "flex",
-				alignItems: "flex-start",
-				gap: "0.75rem",
-				padding: "0.75rem 1rem",
-				borderRadius: "0.375rem",
-				backgroundColor: "#fefce8",
-				border: "1px solid #fde68a",
-				color: "#92400e",
-			}}
+			className="flex items-start gap-3 px-4 py-3 rounded-md bg-yellow-50 border border-yellow-200 text-amber-800"
 		>
-			<span aria-hidden="true" style={{ fontSize: "1rem", lineHeight: "1.5rem" }}>
+			<span aria-hidden="true" className="text-base leading-6">
 				⚠
 			</span>
-			<p style={{ margin: 0, fontSize: "0.875rem", lineHeight: "1.5rem" }}>
+			<p className="m-0 text-sm leading-6">
 				This {entityLabel} will be validated by the server when you reconnect.{" "}
 				<strong>Compliance checks are pending until you reconnect.</strong>
 			</p>

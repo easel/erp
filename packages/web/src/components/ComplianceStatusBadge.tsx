@@ -20,6 +20,7 @@
 
 import type { ComplianceStatus } from "@apogee/shared";
 import type React from "react";
+import { cn } from "../lib/utils.js";
 
 export interface ComplianceTooltipInfo {
 	/** Summary from the most recent screening run. */
@@ -42,34 +43,22 @@ export interface ComplianceStatusBadgeProps {
 
 const STATUS_CONFIG: Record<
 	ComplianceStatus,
-	{ label: string; icon: string; colors: React.CSSProperties }
+	{ label: string; icon: string; colorClasses: string }
 > = {
 	pending: {
 		label: "Pending",
 		icon: "⏳",
-		colors: {
-			backgroundColor: "#fef3c7",
-			color: "#92400e",
-			borderColor: "#f59e0b",
-		},
+		colorClasses: "bg-amber-100 text-amber-800 border-amber-500",
 	},
 	cleared: {
 		label: "Cleared",
 		icon: "✓",
-		colors: {
-			backgroundColor: "#d1fae5",
-			color: "#065f46",
-			borderColor: "#10b981",
-		},
+		colorClasses: "bg-green-100 text-green-800 border-green-500",
 	},
 	held: {
 		label: "Held",
 		icon: "⚠",
-		colors: {
-			backgroundColor: "#fee2e2",
-			color: "#991b1b",
-			borderColor: "#ef4444",
-		},
+		colorClasses: "bg-red-100 text-red-800 border-red-500",
 	},
 };
 
@@ -98,29 +87,18 @@ export function ComplianceStatusBadge({
 	const config = STATUS_CONFIG[status];
 	const tooltipText = buildTooltipText(tooltip);
 
-	const badgeStyle: React.CSSProperties = {
-		...config.colors,
-		display: "inline-flex",
-		alignItems: "center",
-		gap: "0.25rem",
-		padding: "0.125rem 0.625rem",
-		borderRadius: "9999px",
-		border: "1px solid",
-		fontSize: "0.75rem",
-		fontWeight: 600,
-		lineHeight: 1.5,
-		userSelect: "none",
-		cursor: onClick ? "pointer" : "default",
-		textDecoration: "none",
-		whiteSpace: "nowrap",
-	};
+	const badgeClasses = cn(
+		"inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full border text-xs font-semibold leading-normal select-none whitespace-nowrap no-underline",
+		config.colorClasses,
+		onClick ? "cursor-pointer" : "cursor-default",
+		className,
+	);
 
 	const element = (
 		<output
 			aria-label={`Compliance status: ${config.label}${tooltipText ? `. ${tooltipText}` : ""}`}
 			title={tooltipText || undefined}
-			style={badgeStyle}
-			className={className}
+			className={badgeClasses}
 		>
 			<span aria-hidden="true">{config.icon}</span>
 			{config.label}
@@ -134,15 +112,9 @@ export function ComplianceStatusBadge({
 				onClick={onClick}
 				title={tooltipText || undefined}
 				aria-label={`Compliance status: ${config.label}. Click to view details.${tooltipText ? ` ${tooltipText}` : ""}`}
-				style={{
-					background: "none",
-					border: "none",
-					padding: 0,
-					cursor: "pointer",
-					display: "inline-flex",
-				}}
+				className="bg-transparent border-none p-0 cursor-pointer inline-flex"
 			>
-				<output aria-hidden="true" style={badgeStyle} className={className}>
+				<output aria-hidden="true" className={badgeClasses}>
 					<span aria-hidden="true">{config.icon}</span>
 					{config.label}
 				</output>

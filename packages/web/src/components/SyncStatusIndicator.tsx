@@ -22,6 +22,7 @@
 import type { SyncStatus } from "@apogee/shared";
 import type React from "react";
 import { useId, useRef, useState } from "react";
+import { cn } from "../lib/utils.js";
 
 export type SyncConnectionState = SyncStatus | "offline";
 
@@ -98,7 +99,7 @@ export function SyncStatusIndicator({
 		.join(" · ");
 
 	return (
-		<div style={{ position: "relative", display: "inline-block" }} className={className}>
+		<div className={cn("relative inline-block", className)}>
 			<button
 				ref={buttonRef}
 				type="button"
@@ -107,30 +108,16 @@ export function SyncStatusIndicator({
 				aria-label={`${config.ariaLabel}. ${tooltipText}. Click to ${expanded ? "hide" : "show"} details.`}
 				title={tooltipText}
 				onClick={() => setExpanded((prev) => !prev)}
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "0.375rem",
-					padding: "0.25rem 0.5rem",
-					border: "1px solid #e5e7eb",
-					borderRadius: "0.375rem",
-					background: "transparent",
-					cursor: "pointer",
-					fontSize: "0.75rem",
-					color: "#374151",
-				}}
+				className="flex items-center gap-1.5 px-2 py-1 border border-gray-200 rounded-md bg-transparent cursor-pointer text-xs text-gray-700"
 			>
 				{/* Animated dot */}
 				<span
 					aria-hidden="true"
-					style={{
-						width: "0.5rem",
-						height: "0.5rem",
-						borderRadius: "50%",
-						background: config.dotColor,
-						display: "inline-block",
-						animation: status === "pending_push" ? "pulse 1.5s ease-in-out infinite" : "none",
-					}}
+					className={cn(
+						"inline-block size-2 rounded-full",
+						status === "pending_push" && "animate-[pulse_1.5s_ease-in-out_infinite]",
+					)}
+					style={{ background: config.dotColor }}
 				/>
 				<span aria-hidden="true">{config.label}</span>
 			</button>
@@ -140,41 +127,22 @@ export function SyncStatusIndicator({
 				<section
 					id={panelId}
 					aria-label="Sync details"
-					style={{
-						position: "absolute",
-						top: "calc(100% + 0.25rem)",
-						right: 0,
-						width: "16rem",
-						background: "#fff",
-						border: "1px solid #d1d5db",
-						borderRadius: "0.375rem",
-						boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-						padding: "0.75rem",
-						zIndex: 50,
-						fontSize: "0.875rem",
-					}}
+					className="absolute top-[calc(100%+0.25rem)] right-0 w-64 bg-white border border-gray-300 rounded-md shadow-md p-3 z-50 text-sm"
 				>
-					<p style={{ margin: 0, fontWeight: 600, color: "#111827" }}>{config.label}</p>
+					<p className="m-0 font-semibold text-gray-900">{config.label}</p>
 
-					<p style={{ margin: "0.25rem 0 0", color: "#6b7280" }}>
+					<p className="mt-1 mb-0 text-gray-500">
 						{lastSyncedAt ? `Last synced ${formatRelativeTime(lastSyncedAt)}` : "Never synced"}
 					</p>
 
 					{pendingCount > 0 && (
-						<p style={{ margin: "0.25rem 0 0", color: "#92400e" }}>
+						<p className="mt-1 mb-0 text-amber-800">
 							{pendingCount} item{pendingCount === 1 ? "" : "s"} pending sync
 						</p>
 					)}
 
 					{errors.length > 0 && (
-						<ul
-							aria-label="Sync errors"
-							style={{
-								margin: "0.5rem 0 0",
-								padding: "0 0 0 1rem",
-								color: "#991b1b",
-							}}
-						>
+						<ul aria-label="Sync errors" className="mt-2 mb-0 pl-4 text-red-800">
 							{errors.map((err, i) => (
 								// biome-ignore lint/suspicious/noArrayIndexKey: static error list
 								<li key={i}>{err}</li>
@@ -183,16 +151,7 @@ export function SyncStatusIndicator({
 					)}
 
 					{status === "offline" && (
-						<p
-							style={{
-								margin: "0.5rem 0 0",
-								padding: "0.375rem",
-								background: "#fee2e2",
-								borderRadius: "0.25rem",
-								color: "#991b1b",
-								fontSize: "0.75rem",
-							}}
-						>
+						<p className="mt-2 mb-0 p-1.5 bg-red-100 rounded text-red-800 text-xs">
 							You are offline. Changes will sync when you reconnect. Compliance checks are pending.
 						</p>
 					)}
@@ -219,14 +178,7 @@ export function OfflineBanner(): React.ReactElement {
 		<div
 			aria-live="assertive"
 			aria-atomic="true"
-			style={{
-				background: "#fef3c7",
-				borderBottom: "1px solid #f59e0b",
-				padding: "0.5rem 1rem",
-				fontSize: "0.875rem",
-				color: "#92400e",
-				textAlign: "center",
-			}}
+			className="bg-amber-100 border-b border-amber-500 px-4 py-2 text-sm text-amber-800 text-center"
 		>
 			⚠ You are offline. Changes will sync when you reconnect. Compliance checks are pending.
 		</div>

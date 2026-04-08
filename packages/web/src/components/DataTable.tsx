@@ -38,6 +38,7 @@ import {
 } from "@tanstack/react-table";
 import type React from "react";
 import { useCallback, useMemo, useRef } from "react";
+import { cn } from "../lib/utils.js";
 import { downloadCSV, exportToCSV } from "../utils/csv.js";
 
 export const VIRTUALIZATION_THRESHOLD = 1_000;
@@ -169,36 +170,19 @@ export function DataTable<TData extends Record<string, unknown>>({
 	const rows = table.getRowModel().rows;
 
 	return (
-		<div className={className} style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+		<div className={cn("flex flex-col gap-2", className)}>
 			{/* Toolbar */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-					gap: "0.5rem",
-					flexWrap: "wrap",
-				}}
-			>
+			<div className="flex items-center justify-between gap-2 flex-wrap">
 				{/* Bulk actions */}
 				{bulkActions && selectedRows.length > 0 && (
-					<div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-						<span style={{ fontSize: "0.875rem", color: "#374151" }}>
-							{selectedRows.length} selected
-						</span>
+					<div className="flex items-center gap-2">
+						<span className="text-sm text-gray-700">{selectedRows.length} selected</span>
 						{bulkActions.map((action) => (
 							<button
 								key={action.label}
 								type="button"
 								onClick={() => action.onClick(selectedRows)}
-								style={{
-									padding: "0.25rem 0.75rem",
-									border: "1px solid #d1d5db",
-									borderRadius: "0.375rem",
-									background: "#fff",
-									cursor: "pointer",
-									fontSize: "0.875rem",
-								}}
+								className="px-3 py-1 border border-gray-300 rounded-md bg-white cursor-pointer text-sm"
 							>
 								{action.label}
 							</button>
@@ -206,20 +190,13 @@ export function DataTable<TData extends Record<string, unknown>>({
 					</div>
 				)}
 
-				<div style={{ marginLeft: "auto", display: "flex", gap: "0.5rem" }}>
+				<div className="ml-auto flex gap-2">
 					{exportFilename && (
 						<button
 							type="button"
 							onClick={handleExport}
 							aria-label="Export current page to CSV"
-							style={{
-								padding: "0.25rem 0.75rem",
-								border: "1px solid #d1d5db",
-								borderRadius: "0.375rem",
-								background: "#fff",
-								cursor: "pointer",
-								fontSize: "0.875rem",
-							}}
+							className="px-3 py-1 border border-gray-300 rounded-md bg-white cursor-pointer text-sm"
 						>
 							↓ Export CSV
 						</button>
@@ -230,28 +207,13 @@ export function DataTable<TData extends Record<string, unknown>>({
 			{/* Table scroll container */}
 			<div
 				ref={tableContainerRef}
-				style={{
-					overflowX: "auto",
-					border: "1px solid #e5e7eb",
-					borderRadius: "0.375rem",
-					position: "relative",
-				}}
+				className="overflow-x-auto border border-gray-200 rounded-md relative"
 			>
 				{isLoading && (
 					<div
 						aria-live="polite"
 						aria-label="Loading"
-						style={{
-							position: "absolute",
-							inset: 0,
-							background: "rgba(255,255,255,0.7)",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							zIndex: 10,
-							fontSize: "0.875rem",
-							color: "#6b7280",
-						}}
+						className="absolute inset-0 bg-white/70 flex items-center justify-center z-10 text-sm text-gray-500"
 					>
 						Loading…
 					</div>
@@ -261,20 +223,9 @@ export function DataTable<TData extends Record<string, unknown>>({
 					role="grid"
 					aria-rowcount={totalCount}
 					aria-colcount={columns.length}
-					style={{
-						width: "100%",
-						borderCollapse: "collapse",
-						fontSize: "0.875rem",
-					}}
+					className="w-full border-collapse text-sm"
 				>
-					<thead
-						style={{
-							position: "sticky",
-							top: 0,
-							background: "#f9fafb",
-							zIndex: 1,
-						}}
-					>
+					<thead className="sticky top-0 bg-gray-50 z-[1]">
 						{table.getHeaderGroups().map((headerGroup) => (
 							<tr key={headerGroup.id}>
 								{headerGroup.headers.map((header, colIndex) => {
@@ -284,18 +235,11 @@ export function DataTable<TData extends Record<string, unknown>>({
 										<th
 											key={header.id}
 											aria-sort={canSort ? ariaSortValue(isSorted) : undefined}
-											style={{
-												padding: "0.5rem 1rem",
-												textAlign: "left",
-												fontWeight: 600,
-												borderBottom: "1px solid #e5e7eb",
-												whiteSpace: "nowrap",
-												cursor: canSort ? "pointer" : "default",
-												userSelect: "none",
-												position: colIndex === 0 ? "sticky" : "static",
-												left: colIndex === 0 ? 0 : undefined,
-												background: "#f9fafb",
-											}}
+											className={cn(
+												"px-4 py-2 text-left font-semibold border-b border-gray-200 whitespace-nowrap select-none bg-gray-50",
+												canSort ? "cursor-pointer" : "cursor-default",
+												colIndex === 0 && "sticky left-0",
+											)}
 											onClick={canSort ? header.column.getToggleSortingHandler() : undefined}
 											onKeyDown={
 												canSort
@@ -308,10 +252,10 @@ export function DataTable<TData extends Record<string, unknown>>({
 													: undefined
 											}
 										>
-											<span style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+											<span className="flex items-center gap-1">
 												{flexRender(header.column.columnDef.header, header.getContext())}
 												{canSort && (
-													<span aria-hidden="true" style={{ color: "#9ca3af" }}>
+													<span aria-hidden="true" className="text-gray-400">
 														{isSorted === "asc" ? "↑" : isSorted === "desc" ? "↓" : "↕"}
 													</span>
 												)}
@@ -326,14 +270,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 					<tbody>
 						{rows.length === 0 ? (
 							<tr>
-								<td
-									colSpan={columns.length}
-									style={{
-										padding: "2rem",
-										textAlign: "center",
-										color: "#6b7280",
-									}}
-								>
+								<td colSpan={columns.length} className="p-8 text-center text-gray-500">
 									{emptyMessage}
 								</td>
 							</tr>
@@ -343,24 +280,20 @@ export function DataTable<TData extends Record<string, unknown>>({
 									key={row.id}
 									aria-rowindex={pagination.pageIndex * pagination.pageSize + rowIndex + 1}
 									aria-selected={row.getIsSelected()}
-									style={{
-										background: row.getIsSelected() ? "#eff6ff" : "transparent",
-									}}
+									className={cn("bg-transparent", row.getIsSelected() && "bg-blue-50")}
 								>
 									{row.getVisibleCells().map((cell, colIndex) => (
 										<td
 											key={cell.id}
-											style={{
-												padding: "0.5rem 1rem",
-												borderBottom: "1px solid #f3f4f6",
-												position: colIndex === 0 ? "sticky" : "static",
-												left: colIndex === 0 ? 0 : undefined,
-												background: row.getIsSelected()
-													? "#eff6ff"
+											className={cn(
+												"px-4 py-2 border-b border-gray-100",
+												colIndex === 0 && "sticky left-0",
+												row.getIsSelected()
+													? "bg-blue-50"
 													: colIndex === 0
-														? "#fff"
-														: "transparent",
-											}}
+														? "bg-white"
+														: "bg-transparent",
+											)}
 										>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</td>
@@ -372,16 +305,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 				</table>
 
 				{useVirtualization && rows.length === pagination.pageSize && (
-					<p
-						style={{
-							margin: 0,
-							padding: "0.375rem 1rem",
-							fontSize: "0.75rem",
-							color: "#6b7280",
-							borderTop: "1px solid #e5e7eb",
-							background: "#f9fafb",
-						}}
-					>
+					<p className="m-0 px-4 py-1.5 text-xs text-gray-500 border-t border-gray-200 bg-gray-50">
 						Showing {pagination.pageSize.toLocaleString()} of {totalCount.toLocaleString()} rows —
 						use pagination to navigate.
 					</p>
@@ -389,17 +313,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 			</div>
 
 			{/* Pagination footer */}
-			<div
-				style={{
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "space-between",
-					gap: "0.5rem",
-					flexWrap: "wrap",
-					fontSize: "0.875rem",
-					color: "#374151",
-				}}
-			>
+			<div className="flex items-center justify-between gap-2 flex-wrap text-sm text-gray-700">
 				{/* Row count */}
 				<span>
 					{totalCount === 0
@@ -411,7 +325,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 				</span>
 
 				{/* Page size */}
-				<label style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
+				<label className="flex items-center gap-1">
 					Rows per page:
 					<select
 						value={pagination.pageSize}
@@ -419,12 +333,7 @@ export function DataTable<TData extends Record<string, unknown>>({
 						onChange={(e) =>
 							onPaginationChange({ pageIndex: 0, pageSize: Number(e.target.value) as PageSize })
 						}
-						style={{
-							marginLeft: "0.25rem",
-							padding: "0.125rem 0.25rem",
-							border: "1px solid #d1d5db",
-							borderRadius: "0.25rem",
-						}}
+						className="ml-1 px-1 py-0.5 border border-gray-300 rounded"
 					>
 						{PAGE_SIZE_OPTIONS.map((size) => (
 							<option key={size} value={size}>
@@ -435,20 +344,18 @@ export function DataTable<TData extends Record<string, unknown>>({
 				</label>
 
 				{/* Navigation buttons */}
-				<div style={{ display: "flex", gap: "0.25rem" }}>
+				<div className="flex gap-1">
 					<button
 						type="button"
 						disabled={!table.getCanPreviousPage()}
 						onClick={() => table.firstPage()}
 						aria-label="First page"
-						style={{
-							padding: "0.25rem 0.5rem",
-							border: "1px solid #d1d5db",
-							borderRadius: "0.25rem",
-							background: "#fff",
-							cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed",
-							color: table.getCanPreviousPage() ? "#374151" : "#9ca3af",
-						}}
+						className={cn(
+							"px-2 py-1 border border-gray-300 rounded bg-white",
+							table.getCanPreviousPage()
+								? "cursor-pointer text-gray-700"
+								: "cursor-not-allowed text-gray-400",
+						)}
 					>
 						«
 					</button>
@@ -457,26 +364,17 @@ export function DataTable<TData extends Record<string, unknown>>({
 						disabled={!table.getCanPreviousPage()}
 						onClick={() => table.previousPage()}
 						aria-label="Previous page"
-						style={{
-							padding: "0.25rem 0.5rem",
-							border: "1px solid #d1d5db",
-							borderRadius: "0.25rem",
-							background: "#fff",
-							cursor: table.getCanPreviousPage() ? "pointer" : "not-allowed",
-							color: table.getCanPreviousPage() ? "#374151" : "#9ca3af",
-						}}
+						className={cn(
+							"px-2 py-1 border border-gray-300 rounded bg-white",
+							table.getCanPreviousPage()
+								? "cursor-pointer text-gray-700"
+								: "cursor-not-allowed text-gray-400",
+						)}
 					>
 						‹
 					</button>
 
-					<span
-						style={{
-							padding: "0.25rem 0.5rem",
-							border: "1px solid #e5e7eb",
-							borderRadius: "0.25rem",
-							background: "#f9fafb",
-						}}
-					>
+					<span className="px-2 py-1 border border-gray-200 rounded bg-gray-50">
 						{pagination.pageIndex + 1} / {pageCount || 1}
 					</span>
 
@@ -485,14 +383,12 @@ export function DataTable<TData extends Record<string, unknown>>({
 						disabled={!table.getCanNextPage()}
 						onClick={() => table.nextPage()}
 						aria-label="Next page"
-						style={{
-							padding: "0.25rem 0.5rem",
-							border: "1px solid #d1d5db",
-							borderRadius: "0.25rem",
-							background: "#fff",
-							cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
-							color: table.getCanNextPage() ? "#374151" : "#9ca3af",
-						}}
+						className={cn(
+							"px-2 py-1 border border-gray-300 rounded bg-white",
+							table.getCanNextPage()
+								? "cursor-pointer text-gray-700"
+								: "cursor-not-allowed text-gray-400",
+						)}
 					>
 						›
 					</button>
@@ -501,14 +397,12 @@ export function DataTable<TData extends Record<string, unknown>>({
 						disabled={!table.getCanNextPage()}
 						onClick={() => table.lastPage()}
 						aria-label="Last page"
-						style={{
-							padding: "0.25rem 0.5rem",
-							border: "1px solid #d1d5db",
-							borderRadius: "0.25rem",
-							background: "#fff",
-							cursor: table.getCanNextPage() ? "pointer" : "not-allowed",
-							color: table.getCanNextPage() ? "#374151" : "#9ca3af",
-						}}
+						className={cn(
+							"px-2 py-1 border border-gray-300 rounded bg-white",
+							table.getCanNextPage()
+								? "cursor-pointer text-gray-700"
+								: "cursor-not-allowed text-gray-400",
+						)}
 					>
 						»
 					</button>

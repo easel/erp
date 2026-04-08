@@ -21,6 +21,7 @@
 import type { CurrencyCode, UUID } from "@apogee/shared";
 import type React from "react";
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { cn } from "../lib/utils.js";
 
 export const ENTITY_SWITCHER_KEY = "apogee:activeEntityId";
 
@@ -128,8 +129,8 @@ export function EntitySwitcher({
 	};
 
 	return (
-		<div style={{ position: "relative", display: "inline-block" }} className={className}>
-			<span id={labelId} style={{ display: "none" }}>
+		<div className={cn("relative inline-block", className)}>
+			<span id={labelId} className="hidden">
 				Active entity
 			</span>
 
@@ -142,41 +143,22 @@ export function EntitySwitcher({
 				aria-controls={listboxId}
 				onKeyDown={handleKeyDown}
 				onClick={() => setOpen((prev) => !prev)}
-				style={{
-					display: "flex",
-					alignItems: "center",
-					gap: "0.5rem",
-					padding: "0.375rem 0.75rem",
-					border: "1px solid #d1d5db",
-					borderRadius: "0.375rem",
-					background: "#fff",
-					cursor: "pointer",
-					fontSize: "0.875rem",
-					fontWeight: 500,
-					minWidth: "10rem",
-				}}
+				className="flex items-center gap-2 px-3 py-1.5 border border-gray-300 rounded-md bg-white cursor-pointer text-sm font-medium min-w-40"
 			>
 				{active ? (
 					<>
-						<span style={{ flex: 1, textAlign: "left" }}>
+						<span className="flex-1 text-left">
 							{active.name}
-							<span
-								style={{
-									marginLeft: "0.375rem",
-									fontSize: "0.75rem",
-									color: "#6b7280",
-									fontWeight: 400,
-								}}
-							>
+							<span className="ml-1.5 text-xs text-gray-500 font-normal">
 								{active.code} · {active.functionalCurrency}
 							</span>
 						</span>
-						<span aria-hidden="true" style={{ color: "#6b7280" }}>
+						<span aria-hidden="true" className="text-gray-500">
 							{open ? "▲" : "▼"}
 						</span>
 					</>
 				) : (
-					<span style={{ color: "#6b7280" }}>Select entity…</span>
+					<span className="text-gray-500">Select entity…</span>
 				)}
 			</button>
 
@@ -188,20 +170,7 @@ export function EntitySwitcher({
 					aria-labelledby={labelId}
 					aria-activedescendant={active ? `entity-option-${active.id}` : undefined}
 					tabIndex={0}
-					style={{
-						position: "absolute",
-						top: "calc(100% + 0.25rem)",
-						left: 0,
-						minWidth: "100%",
-						background: "#fff",
-						border: "1px solid #d1d5db",
-						borderRadius: "0.375rem",
-						boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)",
-						listStyle: "none",
-						margin: 0,
-						padding: "0.25rem 0",
-						zIndex: 50,
-					}}
+					className="absolute top-full mt-1 left-0 min-w-full bg-white border border-gray-300 rounded-md shadow-lg list-none m-0 py-1 z-50"
 				>
 					{entities.map((entity) => {
 						const isSelected = entity.id === activeEntityId;
@@ -217,32 +186,16 @@ export function EntitySwitcher({
 									if (e.key === "Enter" || e.key === " ") handleSelect(entity);
 									if (e.key === "Escape") setOpen(false);
 								}}
-								style={{
-									display: "flex",
-									alignItems: "center",
-									justifyContent: "space-between",
-									padding: "0.5rem 1rem",
-									cursor: "pointer",
-									fontSize: "0.875rem",
-									background: isSelected ? "#eff6ff" : "transparent",
-									fontWeight: isSelected ? 600 : 400,
-								}}
+								className={cn(
+									"flex items-center justify-between px-4 py-2 cursor-pointer text-sm",
+									isSelected ? "bg-blue-50 font-semibold" : "bg-transparent font-normal",
+								)}
 							>
 								<span>
 									{entity.name}
-									<span
-										style={{
-											marginLeft: "0.5rem",
-											fontSize: "0.75rem",
-											color: "#6b7280",
-										}}
-									>
-										{entity.code}
-									</span>
+									<span className="ml-2 text-xs text-gray-500">{entity.code}</span>
 								</span>
-								<span style={{ fontSize: "0.75rem", color: "#6b7280" }}>
-									{entity.functionalCurrency}
-								</span>
+								<span className="text-xs text-gray-500">{entity.functionalCurrency}</span>
 							</li>
 						);
 					})}

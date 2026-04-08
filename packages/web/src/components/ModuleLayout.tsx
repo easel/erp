@@ -27,6 +27,7 @@
  */
 
 import type React from "react";
+import { cn } from "../lib/utils.js";
 import { Breadcrumbs, buildBreadcrumbs } from "./Breadcrumbs.js";
 import type { AppModule } from "./GlobalSearch.js";
 import { ModuleSidebar } from "./ModuleSidebar.js";
@@ -64,10 +65,7 @@ export function ModuleLayout({
 	const breadcrumbs = buildBreadcrumbs(currentPath);
 
 	return (
-		<div
-			className={className}
-			style={{ display: "flex", width: "100%", height: "100%", overflow: "hidden" }}
-		>
+		<div className={cn("flex w-full h-full overflow-hidden", className)}>
 			{/* Persistent sidebar */}
 			<ModuleSidebar
 				module={module}
@@ -77,29 +75,14 @@ export function ModuleLayout({
 			/>
 
 			{/* Page content area */}
-			<div
-				style={{
-					flex: 1,
-					display: "flex",
-					flexDirection: "column",
-					overflow: "hidden",
-					minWidth: 0,
-				}}
-			>
+			<div className="flex-1 flex flex-col overflow-hidden min-w-0">
 				{/* Breadcrumbs bar */}
-				<div
-					style={{
-						padding: "0.625rem 1.5rem",
-						borderBottom: "1px solid #f3f4f6",
-						background: "#fff",
-						flexShrink: 0,
-					}}
-				>
+				<div className="px-6 py-2.5 border-b border-gray-100 bg-white shrink-0">
 					<Breadcrumbs segments={breadcrumbs} entityName={entityName} onNavigate={onNavigate} />
 				</div>
 
 				{/* Scrollable content */}
-				<div style={{ flex: 1, overflowY: "auto", padding: "1.5rem" }}>{children}</div>
+				<div className="flex-1 overflow-y-auto p-6">{children}</div>
 			</div>
 		</div>
 	);

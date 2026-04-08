@@ -25,6 +25,7 @@
 import type { CurrencyCode } from "@apogee/shared";
 import type React from "react";
 import { useId, useState } from "react";
+import { cn } from "../lib/utils.js";
 import { formatMoneyDisplay, getDecimalPlaces, parseMoneyInput } from "../utils/money.js";
 
 /** Subset of ISO 4217 codes surfaced in the currency selector. */
@@ -151,22 +152,22 @@ export function MoneyInput({
 
 	return (
 		<div>
-			<label htmlFor={id} style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>
+			<label htmlFor={id} className="block mb-1 font-semibold">
 				{label}
 				{required && (
-					<span aria-hidden="true" style={{ marginLeft: "0.25rem", color: "#dc2626" }}>
+					<span aria-hidden="true" className="ml-1 text-red-600">
 						*
 					</span>
 				)}
 			</label>
 
 			{hint && (
-				<p id={hintId} style={{ margin: "0 0 0.25rem", fontSize: "0.875rem", color: "#6b7280" }}>
+				<p id={hintId} className="m-0 mb-1 text-sm text-gray-500">
 					{hint}
 				</p>
 			)}
 
-			<div style={{ display: "flex", gap: "0.5rem" }}>
+			<div className="flex gap-2">
 				{/* Currency selector */}
 				<select
 					id={currencyId}
@@ -174,14 +175,11 @@ export function MoneyInput({
 					value={currencyCode}
 					onChange={handleCurrencyChange}
 					disabled={disabled}
-					style={{
-						padding: "0.5rem",
-						border: `1px solid ${showError ? "#dc2626" : "#d1d5db"}`,
-						borderRadius: "0.375rem",
-						background: disabled ? "#f9fafb" : "#fff",
-						cursor: disabled ? "not-allowed" : "pointer",
-						minWidth: "5rem",
-					}}
+					className={cn(
+						"p-2 border rounded-md min-w-20",
+						showError ? "border-red-600" : "border-gray-300",
+						disabled ? "bg-gray-50 cursor-not-allowed" : "bg-white cursor-pointer",
+					)}
 				>
 					{currencies.map((c) => (
 						<option key={c} value={c}>
@@ -204,16 +202,11 @@ export function MoneyInput({
 					aria-invalid={showError}
 					aria-describedby={describedBy || undefined}
 					placeholder={decimals === 0 ? "0" : `0.${"0".repeat(decimals)}`}
-					style={{
-						flex: 1,
-						padding: "0.5rem",
-						textAlign: "right",
-						border: `1px solid ${showError ? "#dc2626" : "#d1d5db"}`,
-						borderRadius: "0.375rem",
-						background: disabled ? "#f9fafb" : "#fff",
-						fontVariantNumeric: "tabular-nums",
-						cursor: disabled ? "not-allowed" : "text",
-					}}
+					className={cn(
+						"flex-1 p-2 text-right border rounded-md tabular-nums",
+						showError ? "border-red-600" : "border-gray-300",
+						disabled ? "bg-gray-50 cursor-not-allowed" : "bg-white cursor-text",
+					)}
 				/>
 			</div>
 
@@ -222,7 +215,7 @@ export function MoneyInput({
 					id={errorId}
 					aria-live="assertive"
 					aria-atomic="true"
-					style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#dc2626" }}
+					className="mt-1 mb-0 text-sm text-red-600"
 				>
 					{error ?? "Invalid amount. Use up to 13 integer digits and 6 decimal places."}
 				</p>

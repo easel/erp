@@ -23,6 +23,7 @@
 
 import type React from "react";
 import { useState } from "react";
+import { cn } from "../lib/utils.js";
 import type { AppModule } from "./GlobalSearch.js";
 
 export interface SidebarNavItem {
@@ -97,38 +98,29 @@ export function ModuleSidebar({
 		if (hasChildren) {
 			const isAnyChildActive = (item.children ?? []).some((c) => c.href && isActive(c.href));
 			return (
-				<li key={item.id} style={{ listStyle: "none" }}>
+				<li key={item.id} className="list-none">
 					<button
 						type="button"
 						aria-expanded={!isCollapsed}
 						onClick={() => toggleSection(item.id)}
-						style={{
-							display: "flex",
-							alignItems: "center",
-							width: "100%",
-							padding: `0.375rem ${0.75 + depth * 0.75}rem`,
-							background: "transparent",
-							border: "none",
-							cursor: "pointer",
-							fontSize: "0.8125rem",
-							fontWeight: isAnyChildActive ? 600 : 500,
-							color: isAnyChildActive ? "#111827" : "#4b5563",
-							textAlign: "left",
-							gap: "0.5rem",
-						}}
+						className={cn(
+							"flex items-center w-full py-1.5 bg-transparent border-none cursor-pointer text-[0.8125rem] text-left gap-2",
+							isAnyChildActive ? "font-semibold text-gray-900" : "font-medium text-gray-600",
+						)}
+						style={{ paddingLeft: `${0.75 + depth * 0.75}rem` }}
 					>
 						{item.icon && (
-							<span aria-hidden="true" style={{ fontSize: "0.875rem" }}>
+							<span aria-hidden="true" className="text-sm">
 								{item.icon}
 							</span>
 						)}
-						<span style={{ flex: 1 }}>{item.label}</span>
-						<span aria-hidden="true" style={{ fontSize: "0.625rem", color: "#9ca3af" }}>
+						<span className="flex-1">{item.label}</span>
+						<span aria-hidden="true" className="text-[0.625rem] text-gray-400">
 							{isCollapsed ? "▶" : "▼"}
 						</span>
 					</button>
 					{!isCollapsed && (
-						<ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
+						<ul className="list-none m-0 p-0">
 							{(item.children ?? []).map((child) => renderItem(child, depth + 1))}
 						</ul>
 					)}
@@ -142,15 +134,8 @@ export function ModuleSidebar({
 				<li
 					key={item.id}
 					aria-hidden="true"
-					style={{
-						padding: `0.25rem ${0.75 + depth * 0.75}rem`,
-						fontSize: "0.7rem",
-						fontWeight: 600,
-						color: "#9ca3af",
-						textTransform: "uppercase",
-						letterSpacing: "0.05em",
-						listStyle: "none",
-					}}
+					className="py-1 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wide list-none"
+					style={{ paddingLeft: `${0.75 + depth * 0.75}rem` }}
 				>
 					{item.label}
 				</li>
@@ -160,7 +145,7 @@ export function ModuleSidebar({
 		const active = isActive(item.href);
 		const itemHref = item.href;
 		return (
-			<li key={item.id} style={{ listStyle: "none" }}>
+			<li key={item.id} className="list-none">
 				<a
 					href={itemHref}
 					aria-current={active ? "page" : undefined}
@@ -168,27 +153,19 @@ export function ModuleSidebar({
 						e.preventDefault();
 						onNavigate(itemHref);
 					}}
+					className={cn(
+						"flex items-center py-1.5 text-[0.8125rem] no-underline gap-2 border-l-2",
+						active
+							? "font-semibold text-gray-900 bg-blue-50"
+							: "font-normal text-gray-600 bg-transparent border-l-transparent hover:bg-gray-50 focus:bg-gray-50",
+					)}
 					style={{
-						display: "flex",
-						alignItems: "center",
-						padding: `0.375rem ${0.75 + depth * 0.75}rem`,
-						fontSize: "0.8125rem",
-						fontWeight: active ? 600 : 400,
-						color: active ? "#111827" : "#4b5563",
-						background: active ? "#eff6ff" : "transparent",
-						textDecoration: "none",
-						borderLeft: active ? `2px solid ${MODULE_COLOR[module]}` : "2px solid transparent",
-						gap: "0.5rem",
-					}}
-					onFocus={(e) => {
-						if (!active) (e.currentTarget as HTMLAnchorElement).style.background = "#f9fafb";
-					}}
-					onBlur={(e) => {
-						if (!active) (e.currentTarget as HTMLAnchorElement).style.background = "transparent";
+						paddingLeft: `${0.75 + depth * 0.75}rem`,
+						borderLeftColor: active ? MODULE_COLOR[module] : undefined,
 					}}
 				>
 					{item.icon && (
-						<span aria-hidden="true" style={{ fontSize: "0.875rem" }}>
+						<span aria-hidden="true" className="text-sm">
 							{item.icon}
 						</span>
 					)}
@@ -201,60 +178,22 @@ export function ModuleSidebar({
 	return (
 		<nav
 			aria-label={`${MODULE_DISPLAY[module]} module navigation`}
-			className={className}
-			style={{
-				width: "14rem",
-				minHeight: "100%",
-				background: "#fff",
-				borderRight: "1px solid #e5e7eb",
-				display: "flex",
-				flexDirection: "column",
-			}}
+			className={cn("w-56 min-h-full bg-white border-r border-gray-200 flex flex-col", className)}
 		>
 			{/* Module header */}
-			<div
-				style={{
-					padding: "1rem 0.75rem 0.5rem",
-					borderBottom: "1px solid #e5e7eb",
-					display: "flex",
-					alignItems: "center",
-					gap: "0.5rem",
-				}}
-			>
+			<div className="px-3 pt-4 pb-2 border-b border-gray-200 flex items-center gap-2">
 				<span
 					aria-hidden="true"
-					style={{
-						width: "0.625rem",
-						height: "0.625rem",
-						borderRadius: "50%",
-						background: MODULE_COLOR[module],
-						display: "inline-block",
-						flexShrink: 0,
-					}}
+					className="w-2.5 h-2.5 rounded-full inline-block shrink-0"
+					style={{ background: MODULE_COLOR[module] }}
 				/>
-				<span
-					style={{
-						fontSize: "0.75rem",
-						fontWeight: 700,
-						color: "#111827",
-						textTransform: "uppercase",
-						letterSpacing: "0.05em",
-					}}
-				>
+				<span className="text-xs font-bold text-gray-900 uppercase tracking-wide">
 					{MODULE_DISPLAY[module]}
 				</span>
 			</div>
 
 			{/* Nav items */}
-			<ul
-				style={{
-					listStyle: "none",
-					margin: 0,
-					padding: "0.5rem 0",
-					flex: 1,
-					overflowY: "auto",
-				}}
-			>
+			<ul className="list-none m-0 py-2 px-0 flex-1 overflow-y-auto">
 				{items.map((item) => renderItem(item))}
 			</ul>
 		</nav>

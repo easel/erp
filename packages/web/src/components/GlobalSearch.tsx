@@ -22,6 +22,7 @@
 
 import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "../lib/utils.js";
 
 export interface SearchResult {
 	id: string;
@@ -190,51 +191,26 @@ export function GlobalSearch({
 	return (
 		/* Backdrop — closes dialog when clicked outside the dialog box */
 		<div
-			className={className}
+			className={cn(
+				"fixed inset-0 bg-black/40 z-100 flex items-start justify-center pt-[10vh]",
+				className,
+			)}
 			onClick={() => setOpen(false)}
 			onKeyDown={(e) => {
 				if (e.key === "Escape") setOpen(false);
-			}}
-			style={{
-				position: "fixed",
-				inset: 0,
-				background: "rgba(0,0,0,0.4)",
-				zIndex: 100,
-				display: "flex",
-				alignItems: "flex-start",
-				justifyContent: "center",
-				paddingTop: "10vh",
 			}}
 		>
 			{/* Dialog */}
 			<dialog
 				open
 				aria-label="Global search"
+				className="bg-white rounded-lg shadow-xl w-[min(38rem,90vw)] overflow-hidden border-none p-0 m-0 static"
 				onClick={(e) => e.stopPropagation()}
 				onKeyDown={(e) => e.stopPropagation()}
-				style={{
-					background: "#fff",
-					borderRadius: "0.5rem",
-					boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1),0 8px 10px -6px rgba(0,0,0,0.1)",
-					width: "min(38rem, 90vw)",
-					overflow: "hidden",
-					border: "none",
-					padding: 0,
-					margin: 0,
-					position: "static",
-				}}
 			>
 				{/* Input row */}
-				<div
-					style={{
-						display: "flex",
-						alignItems: "center",
-						padding: "0.75rem 1rem",
-						borderBottom: "1px solid #e5e7eb",
-						gap: "0.5rem",
-					}}
-				>
-					<span aria-hidden="true" style={{ color: "#9ca3af", fontSize: "1rem" }}>
+				<div className="flex items-center px-4 py-3 border-b border-gray-200 gap-2">
+					<span aria-hidden="true" className="text-gray-400 text-base">
 						🔍
 					</span>
 					<input
@@ -247,70 +223,32 @@ export function GlobalSearch({
 						value={query}
 						onChange={handleQueryChange}
 						onKeyDown={handleKeyDown}
-						style={{
-							flex: 1,
-							border: "none",
-							outline: "none",
-							fontSize: "1rem",
-							color: "#111827",
-							background: "transparent",
-						}}
+						className="flex-1 border-none outline-none text-base text-gray-900 bg-transparent"
 					/>
 					{loading && (
-						<span aria-label="Searching…" style={{ color: "#9ca3af", fontSize: "0.75rem" }}>
+						<span aria-label="Searching…" className="text-gray-400 text-xs">
 							…
 						</span>
 					)}
 					{isOffline && (
 						<span
 							aria-label="Offline — searching local data"
-							style={{
-								fontSize: "0.7rem",
-								background: "#fee2e2",
-								color: "#991b1b",
-								borderRadius: "0.25rem",
-								padding: "0.125rem 0.375rem",
-							}}
+							className="text-[0.7rem] bg-red-100 text-red-800 rounded px-1.5 py-0.5"
 						>
 							OFFLINE
 						</span>
 					)}
-					<kbd
-						style={{
-							fontSize: "0.7rem",
-							color: "#9ca3af",
-							border: "1px solid #e5e7eb",
-							borderRadius: "0.25rem",
-							padding: "0.125rem 0.375rem",
-						}}
-					>
+					<kbd className="text-[0.7rem] text-gray-400 border border-gray-200 rounded px-1.5 py-0.5">
 						Esc
 					</kbd>
 				</div>
 
 				{/* Results — rendered as a list of buttons for accessibility */}
 				{results.length > 0 && (
-					<div
-						aria-label="Search results"
-						style={{
-							margin: 0,
-							padding: "0.5rem 0",
-							maxHeight: "24rem",
-							overflowY: "auto",
-						}}
-					>
+					<div aria-label="Search results" className="m-0 py-2 max-h-96 overflow-y-auto">
 						{Object.entries(grouped).map(([module, moduleResults]) => (
 							<div key={module}>
-								<div
-									style={{
-										padding: "0.25rem 1rem",
-										fontSize: "0.7rem",
-										fontWeight: 600,
-										color: "#9ca3af",
-										textTransform: "uppercase",
-										letterSpacing: "0.05em",
-									}}
-								>
+								<div className="px-4 py-1 text-[0.7rem] font-semibold text-gray-400 uppercase tracking-wide">
 									{MODULE_LABELS[module as AppModule] ?? module}
 								</div>
 								{moduleResults.map((result) => {
@@ -327,36 +265,14 @@ export function GlobalSearch({
 												onNavigate(result);
 											}}
 											onFocus={() => setActiveIndex(flatIndex)}
-											style={{
-												display: "flex",
-												flexDirection: "column",
-												width: "100%",
-												padding: "0.5rem 1rem",
-												cursor: "pointer",
-												background: isActive ? "#eff6ff" : "transparent",
-												border: "none",
-												textAlign: "left",
-											}}
+											className={cn(
+												"flex flex-col w-full px-4 py-2 cursor-pointer border-none text-left",
+												isActive ? "bg-blue-50" : "bg-transparent",
+											)}
 										>
-											<span
-												style={{
-													fontSize: "0.875rem",
-													fontWeight: 500,
-													color: "#111827",
-												}}
-											>
-												{result.title}
-											</span>
+											<span className="text-sm font-medium text-gray-900">{result.title}</span>
 											{result.description && (
-												<span
-													style={{
-														fontSize: "0.75rem",
-														color: "#6b7280",
-														marginTop: "0.125rem",
-													}}
-												>
-													{result.description}
-												</span>
+												<span className="text-xs text-gray-500 mt-0.5">{result.description}</span>
 											)}
 										</button>
 									);
@@ -367,14 +283,7 @@ export function GlobalSearch({
 				)}
 
 				{query.trim() && !loading && results.length === 0 && (
-					<div
-						style={{
-							padding: "1.5rem",
-							textAlign: "center",
-							color: "#6b7280",
-							fontSize: "0.875rem",
-						}}
-					>
+					<div className="p-6 text-center text-gray-500 text-sm">
 						No results for &ldquo;{query}&rdquo;
 					</div>
 				)}

@@ -44,6 +44,7 @@ import type { UUID } from "@apogee/shared";
 import type React from "react";
 import { useEffect, useRef } from "react";
 
+import { cn } from "../lib/utils.js";
 import { EntitySwitcher } from "./EntitySwitcher.js";
 import type { EntityOption } from "./EntitySwitcher.js";
 import { GlobalSearch } from "./GlobalSearch.js";
@@ -174,45 +175,20 @@ export function RootLayout({
 	if (!isAuthenticated) {
 		return (
 			<main
-				style={{
-					minHeight: "100vh",
-					display: "flex",
-					alignItems: "center",
-					justifyContent: "center",
-					background: "#f9fafb",
-				}}
+				className="min-h-screen flex items-center justify-center bg-gray-50"
 				aria-label="Authentication required"
 			>
-				<p style={{ color: "#6b7280", fontSize: "0.875rem" }}>Redirecting to sign in…</p>
+				<p className="text-gray-500 text-sm">Redirecting to sign in…</p>
 			</main>
 		);
 	}
 
 	return (
-		<div
-			className={className}
-			style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}
-		>
+		<div className={cn("min-h-screen flex flex-col", className)}>
 			{/* Skip to main content (accessibility) */}
 			<a
 				href="#main-content"
-				style={{
-					position: "absolute",
-					top: "-9999px",
-					left: 0,
-					padding: "0.5rem 1rem",
-					background: "#3b82f6",
-					color: "#fff",
-					zIndex: 200,
-					fontSize: "0.875rem",
-					borderRadius: "0 0 0.25rem 0.25rem",
-				}}
-				onFocus={(e) => {
-					(e.currentTarget as HTMLAnchorElement).style.top = "0";
-				}}
-				onBlur={(e) => {
-					(e.currentTarget as HTMLAnchorElement).style.top = "-9999px";
-				}}
+				className="sr-only focus:not-sr-only focus:absolute focus:top-0 focus:left-0 focus:z-[200] focus:px-4 focus:py-2 focus:bg-blue-500 focus:text-white focus:text-sm focus:rounded-b"
 			>
 				Skip to main content
 			</a>
@@ -222,19 +198,10 @@ export function RootLayout({
 
 			{/* Top navigation bar */}
 			<header
-				style={{
-					background: "#fff",
-					borderBottom: "1px solid #e5e7eb",
-					padding: "0 1.5rem",
-					display: "flex",
-					alignItems: "center",
-					height: "3.5rem",
-					gap: "1rem",
-					flexShrink: 0,
-					position: "sticky",
-					top: isOffline ? "2.5rem" : 0,
-					zIndex: 40,
-				}}
+				className={cn(
+					"bg-white border-b border-gray-200 px-6 flex items-center h-14 gap-4 shrink-0 sticky z-40",
+					isOffline ? "top-10" : "top-0",
+				)}
 			>
 				{/* Logo */}
 				<a
@@ -244,15 +211,7 @@ export function RootLayout({
 						e.preventDefault();
 						onNavigate("/dashboard");
 					}}
-					style={{
-						fontWeight: 700,
-						fontSize: "1.125rem",
-						color: "#111827",
-						letterSpacing: "-0.02em",
-						cursor: "pointer",
-						userSelect: "none",
-						textDecoration: "none",
-					}}
+					className="font-bold text-lg text-gray-900 tracking-tight cursor-pointer select-none no-underline"
 				>
 					Apogee
 				</a>
@@ -260,13 +219,7 @@ export function RootLayout({
 				{/* Module tabs */}
 				<nav
 					aria-label="Main navigation"
-					style={{
-						display: "flex",
-						alignItems: "center",
-						gap: "0.125rem",
-						flex: 1,
-						overflow: "hidden",
-					}}
+					className="flex items-center gap-0.5 flex-1 overflow-hidden"
 				>
 					{MODULE_TABS.map((tab) => {
 						const isActive = tab.module === activeModule;
@@ -280,24 +233,12 @@ export function RootLayout({
 									e.preventDefault();
 									onNavigate(tab.href);
 								}}
-								style={{
-									padding: "0.375rem 0.75rem",
-									fontSize: "0.875rem",
-									fontWeight: isActive ? 600 : 400,
-									color: isActive ? "#111827" : "#6b7280",
-									textDecoration: "none",
-									borderRadius: "0.375rem",
-									background: isActive ? "#f3f4f6" : "transparent",
-									whiteSpace: "nowrap",
-								}}
-								onFocus={(e) => {
-									if (!isActive)
-										(e.currentTarget as HTMLAnchorElement).style.background = "#f9fafb";
-								}}
-								onBlur={(e) => {
-									if (!isActive)
-										(e.currentTarget as HTMLAnchorElement).style.background = "transparent";
-								}}
+								className={cn(
+									"py-1.5 px-3 text-sm no-underline rounded-md whitespace-nowrap",
+									isActive
+										? "font-semibold text-gray-900 bg-gray-100"
+										: "font-normal text-gray-500 bg-transparent hover:bg-gray-50 focus:bg-gray-50",
+								)}
 							>
 								{tab.label}
 							</a>
@@ -306,7 +247,7 @@ export function RootLayout({
 				</nav>
 
 				{/* Right-side controls */}
-				<div style={{ display: "flex", alignItems: "center", gap: "0.5rem", flexShrink: 0 }}>
+				<div className="flex items-center gap-2 shrink-0">
 					{/* Search hint */}
 					<button
 						type="button"
@@ -318,31 +259,11 @@ export function RootLayout({
 								new KeyboardEvent("keydown", { key: "k", metaKey: true, bubbles: true }),
 							);
 						}}
-						style={{
-							display: "flex",
-							alignItems: "center",
-							gap: "0.375rem",
-							padding: "0.375rem 0.625rem",
-							border: "1px solid #e5e7eb",
-							borderRadius: "0.375rem",
-							background: "#f9fafb",
-							cursor: "pointer",
-							fontSize: "0.8125rem",
-							color: "#6b7280",
-						}}
+						className="flex items-center gap-1.5 py-1.5 px-2.5 border border-gray-200 rounded-md bg-gray-50 cursor-pointer text-[0.8125rem] text-gray-500"
 					>
 						<span aria-hidden="true">🔍</span>
 						<span>Search</span>
-						<kbd
-							style={{
-								fontSize: "0.6875rem",
-								border: "1px solid #d1d5db",
-								borderRadius: "0.25rem",
-								padding: "0.0625rem 0.25rem",
-								background: "#fff",
-								color: "#9ca3af",
-							}}
-						>
+						<kbd className="text-[0.6875rem] border border-gray-300 rounded px-1 py-px bg-white text-gray-400">
 							⌘K
 						</kbd>
 					</button>
@@ -373,14 +294,7 @@ export function RootLayout({
 					{entities.length === 1 && entities[0] && (
 						<span
 							aria-label={`Active entity: ${entities[0].name}`}
-							style={{
-								fontSize: "0.8125rem",
-								fontWeight: 500,
-								color: "#374151",
-								padding: "0.375rem 0.75rem",
-								border: "1px solid #e5e7eb",
-								borderRadius: "0.375rem",
-							}}
+							className="text-[0.8125rem] font-medium text-gray-700 py-1.5 px-3 border border-gray-200 rounded-md"
 						>
 							{entities[0].name}
 						</span>
@@ -389,7 +303,7 @@ export function RootLayout({
 			</header>
 
 			{/* Main content */}
-			<main id="main-content" style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+			<main id="main-content" className="flex-1 flex overflow-hidden">
 				{children}
 			</main>
 

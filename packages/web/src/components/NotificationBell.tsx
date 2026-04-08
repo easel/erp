@@ -20,6 +20,7 @@
 
 import type React from "react";
 import { useEffect, useId, useRef, useState } from "react";
+import { cn } from "../lib/utils.js";
 
 export interface AppNotification {
 	id: string;
@@ -95,7 +96,7 @@ export function NotificationBell({
 	};
 
 	return (
-		<div style={{ position: "relative", display: "inline-block" }} className={className}>
+		<div className={cn("relative inline-block", className)}>
 			<button
 				ref={buttonRef}
 				type="button"
@@ -105,39 +106,13 @@ export function NotificationBell({
 					unreadCount > 0 ? `Notifications — ${unreadCount} unread` : "Notifications — no unread"
 				}
 				onClick={() => setOpen((prev) => !prev)}
-				style={{
-					position: "relative",
-					background: "transparent",
-					border: "1px solid #e5e7eb",
-					borderRadius: "0.375rem",
-					padding: "0.375rem 0.5rem",
-					cursor: "pointer",
-					fontSize: "1rem",
-					lineHeight: 1,
-					display: "flex",
-					alignItems: "center",
-				}}
+				className="relative bg-transparent border border-gray-200 rounded-md py-1.5 px-2 cursor-pointer text-base leading-none flex items-center"
 			>
 				<span aria-hidden="true">🔔</span>
 				{unreadCount > 0 && (
 					<span
 						aria-hidden="true"
-						style={{
-							position: "absolute",
-							top: "-0.25rem",
-							right: "-0.25rem",
-							background: "#ef4444",
-							color: "#fff",
-							borderRadius: "9999px",
-							fontSize: "0.625rem",
-							fontWeight: 700,
-							minWidth: "1rem",
-							height: "1rem",
-							display: "flex",
-							alignItems: "center",
-							justifyContent: "center",
-							padding: "0 0.2rem",
-						}}
+						className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full text-[0.625rem] font-bold min-w-4 h-4 flex items-center justify-center px-[0.2rem]"
 					>
 						{unreadCount > 99 ? "99+" : unreadCount}
 					</span>
@@ -151,60 +126,17 @@ export function NotificationBell({
 					id={panelId}
 					aria-label="Notifications"
 					aria-live="polite"
-					style={{
-						position: "absolute",
-						top: "calc(100% + 0.375rem)",
-						right: 0,
-						width: "20rem",
-						background: "#fff",
-						border: "1px solid #d1d5db",
-						borderRadius: "0.5rem",
-						boxShadow: "0 10px 15px -3px rgba(0,0,0,0.1)",
-						zIndex: 50,
-						maxHeight: "28rem",
-						display: "flex",
-						flexDirection: "column",
-						overflow: "hidden",
-					}}
+					className="absolute top-[calc(100%+0.375rem)] right-0 w-80 bg-white border border-gray-300 rounded-lg shadow-lg z-50 max-h-[28rem] flex flex-col overflow-hidden"
 				>
-					<div
-						style={{
-							padding: "0.75rem 1rem",
-							borderBottom: "1px solid #e5e7eb",
-							display: "flex",
-							justifyContent: "space-between",
-							alignItems: "center",
-						}}
-					>
-						<span style={{ fontWeight: 600, fontSize: "0.875rem", color: "#111827" }}>
-							Notifications
-						</span>
-						{unreadCount > 0 && (
-							<span style={{ fontSize: "0.75rem", color: "#6b7280" }}>{unreadCount} unread</span>
-						)}
+					<div className="px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+						<span className="font-semibold text-sm text-gray-900">Notifications</span>
+						{unreadCount > 0 && <span className="text-xs text-gray-500">{unreadCount} unread</span>}
 					</div>
 
 					{notifications.length === 0 ? (
-						<div
-							style={{
-								padding: "2rem 1rem",
-								textAlign: "center",
-								color: "#6b7280",
-								fontSize: "0.875rem",
-							}}
-						>
-							No notifications
-						</div>
+						<div className="py-8 px-4 text-center text-gray-500 text-sm">No notifications</div>
 					) : (
-						<ul
-							style={{
-								listStyle: "none",
-								margin: 0,
-								padding: 0,
-								overflowY: "auto",
-								flex: 1,
-							}}
-						>
+						<ul className="list-none m-0 p-0 overflow-y-auto flex-1">
 							{notifications.map((n) => (
 								<li
 									key={n.id}
@@ -217,65 +149,33 @@ export function NotificationBell({
 									}}
 									role={n.href ? "button" : undefined}
 									tabIndex={n.href ? 0 : undefined}
-									style={{
-										padding: "0.75rem 1rem",
-										borderBottom: "1px solid #f3f4f6",
-										background: n.read ? "#fff" : "#eff6ff",
-										cursor: n.href ? "pointer" : "default",
-										display: "flex",
-										gap: "0.75rem",
-										alignItems: "flex-start",
-									}}
+									className={cn(
+										"px-4 py-3 border-b border-gray-100 flex gap-3 items-start",
+										n.read ? "bg-white" : "bg-blue-50",
+										n.href ? "cursor-pointer" : "cursor-default",
+									)}
 								>
 									{!n.read && (
 										<span
 											aria-label="Unread"
-											style={{
-												width: "0.5rem",
-												height: "0.5rem",
-												borderRadius: "50%",
-												background: "#3b82f6",
-												flexShrink: 0,
-												marginTop: "0.3rem",
-											}}
+											className="w-2 h-2 rounded-full bg-blue-500 shrink-0 mt-[0.3rem]"
 										/>
 									)}
-									<div style={{ flex: 1, minWidth: 0 }}>
+									<div className="flex-1 min-w-0">
 										<p
-											style={{
-												margin: 0,
-												fontSize: "0.8125rem",
-												fontWeight: n.read ? 400 : 600,
-												color: "#111827",
-												whiteSpace: "nowrap",
-												overflow: "hidden",
-												textOverflow: "ellipsis",
-											}}
+											className={cn(
+												"m-0 text-[0.8125rem] text-gray-900 whitespace-nowrap overflow-hidden text-ellipsis",
+												n.read ? "font-normal" : "font-semibold",
+											)}
 										>
 											{n.subject}
 										</p>
 										{n.body && (
-											<p
-												style={{
-													margin: "0.125rem 0 0",
-													fontSize: "0.75rem",
-													color: "#6b7280",
-													overflow: "hidden",
-													display: "-webkit-box",
-													WebkitLineClamp: 2,
-													WebkitBoxOrient: "vertical",
-												}}
-											>
+											<p className="mt-0.5 mb-0 text-xs text-gray-500 overflow-hidden line-clamp-2">
 												{n.body}
 											</p>
 										)}
-										<p
-											style={{
-												margin: "0.25rem 0 0",
-												fontSize: "0.7rem",
-												color: "#9ca3af",
-											}}
-										>
+										<p className="mt-1 mb-0 text-[0.7rem] text-gray-400">
 											{formatRelative(n.createdAt)}
 										</p>
 									</div>

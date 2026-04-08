@@ -22,6 +22,7 @@
 import type { FiscalPeriodStatus } from "@apogee/shared";
 import type React from "react";
 import { useId } from "react";
+import { cn } from "../lib/utils.js";
 import {
 	FISCAL_PERIOD_LABELS,
 	getFiscalPeriodWarning,
@@ -102,10 +103,10 @@ export function FiscalPeriodPicker({
 
 	return (
 		<div>
-			<label htmlFor={id} style={{ display: "block", marginBottom: "0.25rem", fontWeight: 600 }}>
+			<label htmlFor={id} className="block mb-1 font-semibold">
 				{label}
 				{required && (
-					<span aria-hidden="true" style={{ marginLeft: "0.25rem", color: "#dc2626" }}>
+					<span aria-hidden="true" className="ml-1 text-red-600">
 						*
 					</span>
 				)}
@@ -120,14 +121,11 @@ export function FiscalPeriodPicker({
 				aria-required={required}
 				aria-invalid={!!error}
 				aria-describedby={describedBy || undefined}
-				style={{
-					width: "100%",
-					padding: "0.5rem",
-					border: `1px solid ${error ? "#dc2626" : "#d1d5db"}`,
-					borderRadius: "0.375rem",
-					background: disabled ? "#f9fafb" : "#fff",
-					cursor: disabled ? "not-allowed" : "pointer",
-				}}
+				className={cn(
+					"w-full p-2 border rounded-md",
+					error ? "border-red-600" : "border-gray-300",
+					disabled ? "bg-gray-50 cursor-not-allowed" : "bg-white cursor-pointer",
+				)}
 			>
 				<option value="" disabled>
 					Select a fiscal period…
@@ -159,14 +157,7 @@ export function FiscalPeriodPicker({
 					id={warningId}
 					aria-live="assertive"
 					aria-atomic="true"
-					style={{
-						margin: "0.25rem 0 0",
-						fontSize: "0.875rem",
-						color: "#92400e",
-						background: "#fef3c7",
-						padding: "0.375rem 0.5rem",
-						borderRadius: "0.25rem",
-					}}
+					className="mt-1 text-sm text-amber-800 bg-amber-100 py-1.5 px-2 rounded"
 				>
 					⚠ {warning}
 				</p>
@@ -177,7 +168,7 @@ export function FiscalPeriodPicker({
 					id={errorId}
 					aria-live="assertive"
 					aria-atomic="true"
-					style={{ margin: "0.25rem 0 0", fontSize: "0.875rem", color: "#dc2626" }}
+					className="mt-1 text-sm text-red-600"
 				>
 					{error}
 				</p>
