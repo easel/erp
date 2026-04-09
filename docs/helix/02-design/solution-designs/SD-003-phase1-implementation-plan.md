@@ -303,7 +303,88 @@ Covers PRD requirements LOG-001 through LOG-002.
 ### WP-7: Integration & End-to-End Testing
 
 **Duration estimate:** 3--4 weeks
-**Dependencies:** WP-2 through WP-6
+**Dependencies:** WP-2 through WP-6, WP-8 (UI)
+
+| Test Category | Scope |
+|---|---|
+| E2E workflow: order-to-cash | Quote -> order -> compliance check -> pick/pack/ship -> customs docs -> invoice -> payment application |
+| E2E workflow: procure-to-pay | PO -> vendor compliance check -> goods receipt -> three-way match -> AP invoice -> payment |
+| Financial close | Period close, intercompany eliminations, consolidation, statement generation across 3 test entities |
+| Compliance scenarios | Denied-party hit (hold/release/reject), country embargo block, ITAR item to restricted destination, false-positive release |
+| Performance testing | Target volumes: 50 legal entities, 10K+ open transactions, 100K vendor/customer records, 1M SKUs |
+| Security audit | NIST 800-171 control checklist, penetration testing on API surface, RBAC bypass attempts, ITAR compartment leak tests |
+| Data migration dry run | Trial migration of COA, vendor/customer master, and open transactions from NetSuite export |
+
+**Demo Mode deliverables:**
+
+- `packages/server/src/seed/` — seed data scripts with realistic Orbital Dynamics Corp data
+- `bun run demo` script in root package.json — orchestrates docker-compose up + migrate + seed + server + web
+- `bun run seed` script — runs seed data independently
+
+**Playwright deliverables:**
+
+- `packages/web/e2e/` — Playwright test suite
+- Key test files: `auth.spec.ts`, `finance.spec.ts`, `sales.spec.ts`, `compliance.spec.ts`, `crm.spec.ts`, `entity-switching.spec.ts`
+- CI integration: Playwright runs against seeded app in GitHub Actions
+- Screenshot capture on every test completion
+
+**Acceptance Criteria:**
+
+- All E2E workflows pass without manual intervention (except compliance officer hold review)
+- Financial close produces balanced statements matching a manually verified baseline
+- All NIST 800-171 applicable controls documented with evidence
+- Performance targets met: 95th percentile API response under 500ms at target volume
+- `bun run demo` stands up a fully seeded environment from a fresh clone
+- Playwright tests pass headless in CI within 5 minutes
+
+**Definition of Done:** Phase 1 exit criteria met -- the reference operator scenario runs end-to-end, financial close is verified, compliance screening is proven, and `bun run demo` provides a one-command experience for stakeholder review.
+
+---
+
+### WP-8: User-Facing Application (Frontend)
+
+**Duration estimate:** 3--4 weeks
+**Dependencies:** WP-1 (Platform), ADR-010 (validation architecture), ADR-011 (component library)
+
+Covers the React frontend implementation with Next.js App Router, GraphQL integration, and browser-driven E2E testing.
+
+| Deliverable | Detail |
+|---|---|
+| Tailwind CSS 4 + shadcn/ui | Design system setup per ADR-011; component library with Radix Primitives |
+| Next.js App Router pages | Module-based layouts: `/finance/*`, `/sales/*`, `/procurement/*`, `/crm/*`, `/compliance/*`, `/settings/*` |
+| GraphQL query wiring | List/detail queries for all entity types via TanStack Query; mutations for create/update operations |
+| React Hook Form + Zod | Forms validated with shared schemas from `@apogee/shared` per ADR-010 |
+| Master-detail views | DataTable component for lists; detail pages with edit forms for core entities |
+| Entity switching | EntitySwitcher component (Cmd+E) with localStorage persistence and data scoping |
+| Playwright UI reel | Browser-driven walkthrough: login → dashboard → module navigation → create operations → entity switch |
+
+**Module coverage:**
+
+- **Finance**: Journal entries list, create journal entry form, accounts list, trial balance view
+- **Sales**: Orders list, quotes list, customer master views
+- **Procurement**: Vendors list, create vendor form, POs list
+- **CRM**: Opportunities list, contacts list
+- **Compliance**: Holds queue, screening results view
+
+**Acceptance Criteria:**
+
+- Each module has at least one functional list page and detail/edit page
+- Navigation between modules works via ModuleSidebar
+- Entity switching scopes all data queries to selected legal entity
+- Forms validate using shared Zod schemas; errors display inline
+- Playwright reel navigates the full UI without touching GraphiQL directly
+- `bun run demo` opens a usable application in the browser
+
+**Key Risks:**
+
+- GraphQL schema may lack list/detail queries for some entities — mitigate by coordinating with API team
+- Component library gaps (missing shadcn components) — mitigate by copying additional shadcn components as needed
+
+**Definition of Done:** A user can log in, navigate to any module, view entity lists, create new records via forms, and switch between legal entities — all verified by the Playwright UI reel.
+
+---
+
+## 3. Dependency Graph
 
 | Test Category | Scope |
 |---|---|
