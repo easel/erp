@@ -1,14 +1,12 @@
 # HELIX Execution Context
 
-Project root: /home/erik/Projects/erp
-Tracker: /home/erik/Projects/erp/.ddx/beads.jsonl
-Issue counts: ready=1, open=1, in-progress=0, closed=69
+Project root: /home/erik/Projects/apogee
+Tracker: /home/erik/Projects/apogee/.ddx/beads.jsonl
+Issue counts: open=7, closed=109
 
 ## Current Epic
 
-ID: erp-ad813c80
-Title: Phase 1: Core ERP + Compliance Foundation
-Spec: SD-003-phase1
+No active epic. Phase 1 (erp-ad813c80) is complete.
 
 ## Key Rules
 
