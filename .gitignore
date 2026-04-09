@@ -6,6 +6,8 @@ dist/
 .DS_Store
 coverage/
 .ddx/agent-logs/
+# TypeScript build cache
+*.tsbuildinfo
 # Playwright
 playwright-report/
 test-results/
