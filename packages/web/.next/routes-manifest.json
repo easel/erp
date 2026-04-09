@@ -1,0 +1,176 @@
+{
+  "version": 3,
+  "pages404": true,
+  "caseSensitive": false,
+  "basePath": "",
+  "redirects": [
+    {
+      "source": "/:path+/",
+      "destination": "/:path+",
+      "internal": true,
+      "statusCode": 308,
+      "regex": "^(?:/((?:[^/]+?)(?:/(?:[^/]+?))*))/$"
+    }
+  ],
+  "headers": [],
+  "rewrites": {
+    "beforeFiles": [],
+    "afterFiles": [],
+    "fallback": []
+  },
+  "dynamicRoutes": [
+    {
+      "page": "/sales/[id]",
+      "regex": "^/sales/([^/]+?)(?:/)?$",
+      "routeKeys": {
+        "nxtPid": "nxtPid"
+      },
+      "namedRegex": "^/sales/(?<nxtPid>[^/]+?)(?:/)?$"
+    }
+  ],
+  "staticRoutes": [
+    {
+      "page": "/",
+      "regex": "^/(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/(?:/)?$"
+    },
+    {
+      "page": "/_not-found",
+      "regex": "^/_not\\-found(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/_not\\-found(?:/)?$"
+    },
+    {
+      "page": "/compliance",
+      "regex": "^/compliance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance(?:/)?$"
+    },
+    {
+      "page": "/compliance/country-restrictions",
+      "regex": "^/compliance/country\\-restrictions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance/country\\-restrictions(?:/)?$"
+    },
+    {
+      "page": "/compliance/restricted-regions",
+      "regex": "^/compliance/restricted\\-regions(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance/restricted\\-regions(?:/)?$"
+    },
+    {
+      "page": "/compliance/screening-lists",
+      "regex": "^/compliance/screening\\-lists(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/compliance/screening\\-lists(?:/)?$"
+    },
+    {
+      "page": "/crm",
+      "regex": "^/crm(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm(?:/)?$"
+    },
+    {
+      "page": "/crm/companies",
+      "regex": "^/crm/companies(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm/companies(?:/)?$"
+    },
+    {
+      "page": "/crm/contacts",
+      "regex": "^/crm/contacts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/crm/contacts(?:/)?$"
+    },
+    {
+      "page": "/finance",
+      "regex": "^/finance(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance(?:/)?$"
+    },
+    {
+      "page": "/finance/accounts",
+      "regex": "^/finance/accounts(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/accounts(?:/)?$"
+    },
+    {
+      "page": "/finance/currencies",
+      "regex": "^/finance/currencies(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/currencies(?:/)?$"
+    },
+    {
+      "page": "/finance/fiscal-periods",
+      "regex": "^/finance/fiscal\\-periods(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/fiscal\\-periods(?:/)?$"
+    },
+    {
+      "page": "/finance/journal-entries/new",
+      "regex": "^/finance/journal\\-entries/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/finance/journal\\-entries/new(?:/)?$"
+    },
+    {
+      "page": "/procurement",
+      "regex": "^/procurement(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement(?:/)?$"
+    },
+    {
+      "page": "/procurement/locations",
+      "regex": "^/procurement/locations(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/locations(?:/)?$"
+    },
+    {
+      "page": "/procurement/products",
+      "regex": "^/procurement/products(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/products(?:/)?$"
+    },
+    {
+      "page": "/procurement/purchase-orders",
+      "regex": "^/procurement/purchase\\-orders(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/purchase\\-orders(?:/)?$"
+    },
+    {
+      "page": "/procurement/vendors/new",
+      "regex": "^/procurement/vendors/new(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/procurement/vendors/new(?:/)?$"
+    },
+    {
+      "page": "/sales",
+      "regex": "^/sales(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sales(?:/)?$"
+    },
+    {
+      "page": "/sales/customers",
+      "regex": "^/sales/customers(?:/)?$",
+      "routeKeys": {},
+      "namedRegex": "^/sales/customers(?:/)?$"
+    }
+  ],
+  "dataRoutes": [],
+  "rsc": {
+    "header": "rsc",
+    "varyHeader": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+    "prefetchHeader": "next-router-prefetch",
+    "didPostponeHeader": "x-nextjs-postponed",
+    "contentTypeHeader": "text/x-component",
+    "suffix": ".rsc",
+    "prefetchSuffix": ".prefetch.rsc",
+    "prefetchSegmentHeader": "next-router-segment-prefetch",
+    "prefetchSegmentSuffix": ".segment.rsc",
+    "prefetchSegmentDirSuffix": ".segments"
+  },
+  "rewriteHeaders": {
+    "pathHeader": "x-nextjs-rewritten-path",
+    "queryHeader": "x-nextjs-rewritten-query"
+  }
+}

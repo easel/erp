@@ -1,0 +1,11 @@
+{
+  "agent": "claude",
+  "attempted_cycles": 37,
+  "completed_cycles": 4,
+  "current_issue": "",
+  "focused_epic": "",
+  "last_run": "2026-04-08T02:31:07Z",
+  "skipped_count": 8,
+  "stop_reason": "blocked",
+  "total_tokens": 63019
+}
