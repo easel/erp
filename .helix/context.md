@@ -2,7 +2,7 @@
 
 Project root: /home/erik/Projects/apogee
 Tracker: /home/erik/Projects/apogee/.ddx/beads.jsonl
-Issue counts: open=7, closed=109
+Issue counts: open=4, closed=112
 
 ## Current Epic
 
