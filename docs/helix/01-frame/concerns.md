@@ -35,7 +35,7 @@
 
 ### ux-radix
 - **Component strategy**: shadcn/ui + Radix Primitives + Tailwind CSS 4 (ADR-011) — shadcn components copied into project, not installed as a dependency
-- **Current gap**: Tailwind CSS and shadcn/ui packages not yet installed; all current styling is inline CSS objects matching Tailwind's design token scale
+- **Status**: Tailwind CSS 4, shadcn/ui, and Radix primitives are installed in packages/web. Inline styles have been migrated to Tailwind classes.
 - **Accessibility**: WCAG 2.1 AA target — Radix handles keyboard nav, focus management, ARIA attributes
 - **Domain components**: MoneyInput (ISO 4217), ComplianceStatusBadge (pending/cleared/held), FiscalPeriodPicker (period status awareness), EntitySwitcher (Cmd+E, localStorage)
 - **Color palette**: Finance (#3b82f6), Sales (#10b981), Procurement (#f59e0b), CRM (#8b5cf6), Compliance (#ef4444)
