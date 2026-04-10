@@ -16,6 +16,7 @@ import {
 	CreateJournalEntrySchema,
 	type CreateVendorInput,
 	CreateVendorSchema,
+	ResolveComplianceHoldSchema,
 	SendPurchaseOrderSchema,
 	SubmitPurchaseOrderSchema,
 } from "@apogee/shared";
@@ -1344,6 +1345,16 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		}),
 	});
 
+	const ComplianceHoldResult = builder.objectRef<{ holdId: string; newStatus: string }>(
+		"ComplianceHoldResult",
+	);
+	ComplianceHoldResult.implement({
+		fields: (t) => ({
+			holdId: t.exposeString("holdId"),
+			newStatus: t.exposeString("newStatus"),
+		}),
+	});
+
 	// ------------------------------------------------------------------ //
 	// Input types
 	// ------------------------------------------------------------------ //
@@ -1419,6 +1430,14 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 		fields: (t) => ({
 			id: t.string({ required: true }),
 			sentBy: t.string({ required: true }),
+		}),
+	});
+
+	const ResolveComplianceHoldInput_GQL = builder.inputType("ResolveComplianceHoldInput", {
+		fields: (t) => ({
+			id: t.string({ required: true }),
+			status: t.string({ required: true }),
+			resolutionNotes: t.string({ required: false }),
 		}),
 	});
 
@@ -1579,6 +1598,70 @@ function _build(glRepo: GLRepository, db: DbClient | null) {
 					};
 					const result = send(po);
 					return { poId: args.input.id, newStatus: result.newStatus };
+				},
+			}),
+
+			/**
+			 * resolveComplianceHold — Resolves an ACTIVE compliance hold by setting
+			 * status to RELEASED or REJECTED with optional resolution notes.
+			 *
+			 * Validation: ResolveComplianceHoldSchema from @apogee/shared.
+			 * Business rules:
+			 * - Only ACTIVE holds can be resolved
+			 * - RELEASED status requires resolution notes
+			 *
+			 * Ref: FEAT-006 EXP-003, issue apogee-9399e1ae
+			 */
+			resolveComplianceHold: t.field({
+				type: ComplianceHoldResult,
+				args: {
+					input: t.arg({ type: ResolveComplianceHoldInput_GQL, required: true }),
+				},
+				resolve: async (_root, args) => {
+					if (!db) {
+						throw new Error("Database not configured for resolveComplianceHold mutation");
+					}
+
+					const validated = validateInput(ResolveComplianceHoldSchema, args.input);
+
+					// Load the hold from DB
+					const result = await db.query(
+						`SELECT id, entity_id, held_table, held_record_id, hold_reason,
+						        status, placed_by, placed_at, resolved_at,
+						        resolution_notes
+						 FROM compliance_hold WHERE id = $1`,
+						[validated.id],
+					);
+
+					if (result.rows.length === 0) {
+						throw new Error(`Compliance hold ${validated.id} not found`);
+					}
+
+					const hold = result.rows[0]!;
+					if (hold.status !== "ACTIVE") {
+						throw new Error(
+							`Cannot resolve a hold with status ${hold.status}. Only ACTIVE holds can be resolved.`,
+						);
+					}
+
+					// Require notes for RELEASED status
+					if (validated.status === "RELEASED" && !validated.resolutionNotes?.trim()) {
+						throw new Error("Resolution notes are required when releasing a compliance hold");
+					}
+
+					// Update the hold in DB
+					await db.query(
+						`UPDATE compliance_hold
+						 SET status = $1, resolved_by = CURRENT_USER,
+						     resolved_at = now(), resolution_notes = $2, updated_at = now()
+						 WHERE id = $3`,
+						[validated.status, validated.resolutionNotes ?? null, validated.id],
+					);
+
+					return {
+						holdId: validated.id,
+						newStatus: validated.status,
+					};
 				},
 			}),
 		}),

@@ -2,11 +2,7 @@
 
 Project root: /home/erik/Projects/apogee
 Tracker: /home/erik/Projects/apogee/.ddx/beads.jsonl
-Issue counts: open=0, closed=117
-
-## Current Epic
-
-No active epic. Phase 1 (erp-ad813c80) is complete.
+Issue counts: ready=18, open=18, in-progress=0, closed=117
 
 ## Key Rules
 
