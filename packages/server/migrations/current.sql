@@ -2593,3 +2593,21 @@ CREATE TABLE IF NOT EXISTS authn_identity_links (
 -- Fast reverse lookup: user_id → identity links (for profile management)
 CREATE INDEX IF NOT EXISTS idx_authn_identity_links_user_id
 	ON authn_identity_links(user_id);
+
+-- MFA Enforcement Configuration table
+CREATE TABLE IF NOT EXISTS mfa_enforcement_config (
+	id                  UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
+	required_for_all    BOOLEAN      NOT NULL DEFAULT FALSE,
+	required_for_roles  TEXT         NOT NULL DEFAULT '[]', -- JSON array of role codes
+	updated_at          TIMESTAMPTZ  NOT NULL DEFAULT now(),
+	CONSTRAINT valid_roles_json CHECK (required_for_roles::jsonb IS NOT NULL)
+);
+
+-- Ensure only one config row exists (singleton table pattern)
+CREATE UNIQUE INDEX IF NOT EXISTS mfa_enforcement_config_singleton_uq 
+	ON mfa_enforcement_config ((required_for_all = FALSE AND required_for_roles = '[]'));
+
+-- Seed default MFA enforcement config (disabled by default)
+INSERT INTO mfa_enforcement_config (required_for_all, required_for_roles)
+VALUES (FALSE, '[]')
+ON CONFLICT DO NOTHING;

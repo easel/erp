@@ -17,6 +17,7 @@ export * from "./entity-schemas/currency.js";
 export * from "./entity-schemas/vendor-bill.js";
 export * from "./entity-schemas/customer-invoice.js";
 export * from "./entity-schemas/export-control.js";
+export * from "./entity-schemas/auth.js";
 // WP-5: Sales & CRM
 export * from "./entity-schemas/sales.js";
 export * from "./entity-schemas/crm.js";
